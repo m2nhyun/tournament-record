@@ -32,3 +32,10 @@
 - 자동화 스크립트 추가:
   - `env:check`, `db:smoke`, `db:push:dry`, `db:push`, `verify`
 - GitHub Actions CI(`.github/workflows/ci.yml`) 추가
+
+### Refactor (Feature-based)
+
+- `/Users/minhyun/Desktop/client`의 홈/레이아웃 패턴을 참고해 모바일 탭형 홈 구조로 재구성
+- `src/features/clubs` 단위로 분리:
+  - `components`, `hooks`, `services`, `types`
+- App Router(`src/app/page.tsx`)는 조립 역할만 수행하도록 경량화

@@ -37,6 +37,13 @@
 - Supabase (Postgres/Auth/RLS)
 - Vercel
 
+## Code Structure
+
+- `src/app`: App Router 엔트리
+- `src/features/clubs`: 클럽 도메인(feature 단위 분리)
+  - `components`, `hooks`, `services`, `types`
+- `src/components/ui`: 재사용 UI 컴포넌트
+
 ## Local Setup
 
 ```bash

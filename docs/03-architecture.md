@@ -10,6 +10,10 @@
 ## Directory Overview
 
 - `src/app`: 라우트와 화면
+- `src/features/*`: 기능 단위 모듈 (components/hooks/services/types)
+- `src/features/clubs/*`: 클럽 생성/참가/목록 도메인
+- `src/components/layout`: 앱 셸(상단/하단 네비)
+- `src/components/feedback`: 상태 메시지 컴포넌트
 - `src/components/ui`: 공용 UI 컴포넌트
 - `src/lib`: 유틸/외부 연동
 - `src/lib/supabase/client.ts`: 브라우저용 Supabase client
