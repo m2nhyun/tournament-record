@@ -6,7 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "verify": "npm run lint && npm run build",
+    "env:check": "bash scripts/automation/check-env.sh",
+    "db:smoke": "bash scripts/automation/smoke-db.sh",
+    "db:push:dry": "bash scripts/automation/db-push.sh --dry-run",
+    "db:push": "bash scripts/automation/db-push.sh",
+    "automation:check": "npm run env:check && npm run db:smoke && npm run verify"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.4",

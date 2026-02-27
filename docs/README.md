@@ -8,6 +8,8 @@
 - `02-design-system.md`: 토큰, 타이포, 간격, 컴포넌트 규칙
 - `03-architecture.md`: 코드 구조, 데이터 흐름, Supabase 경계
 - `04-dev-log.md`: 작업 로그와 변경 이유
+- `05-automation.md`: 자동화 스크립트/실행 순서/운영 규칙
+- `06-design-handoff.md`: 외부(Replit 등) 디자인 전달 가이드
 
 ## 운영 원칙
 

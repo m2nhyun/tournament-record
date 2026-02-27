@@ -25,3 +25,10 @@
 - 홈 화면에 `클럽 생성`, `참가 코드 입장`, `내 클럽 목록` UI 구현
 - 익명 로그인 기반 세션 자동 확보(`supabase.auth.signInAnonymously`)
 - 참가 코드 가입용 RPC `join_club_by_invite` 스키마 추가
+
+### Automation
+
+- Supabase CLI 초기화(`supabase/config.toml`) 및 마이그레이션 파일 생성
+- 자동화 스크립트 추가:
+  - `env:check`, `db:smoke`, `db:push:dry`, `db:push`, `verify`
+- GitHub Actions CI(`.github/workflows/ci.yml`) 추가

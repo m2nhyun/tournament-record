@@ -53,6 +53,7 @@ npm run dev
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
+SUPABASE_DB_URL=
 ```
 
 ## Database
@@ -60,6 +61,20 @@ SUPABASE_SERVICE_ROLE_KEY=
 - 초기 스키마 파일: `supabase/schema.sql`
 - Supabase SQL Editor에서 파일 내용을 실행해서 테이블/RLS 정책 적용
 - 스키마 업데이트가 생기면 파일 하단의 신규 SQL도 다시 실행
+- 마이그레이션 파일: `supabase/migrations/*.sql`
+
+## Automation
+
+```bash
+npm run env:check
+npm run db:smoke
+npm run db:push:dry
+npm run db:push
+npm run verify
+npm run automation:check
+```
+
+`db:push`를 실행하려면 `SUPABASE_DB_URL` 환경변수가 필요합니다.
 
 ## Documentation
 
@@ -68,3 +83,5 @@ SUPABASE_SERVICE_ROLE_KEY=
 - `docs/02-design-system.md`
 - `docs/03-architecture.md`
 - `docs/04-dev-log.md`
+- `docs/05-automation.md`
+- `docs/06-design-handoff.md`
