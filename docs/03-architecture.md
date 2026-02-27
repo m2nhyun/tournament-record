@@ -26,6 +26,10 @@
 - `match_results`: 점수 요약/세트 정보
 - `audit_logs`: 수정/변경 이력
 
+## RPC
+
+- `join_club_by_invite(p_invite_code text, p_nickname text)`: 참가 코드 기반 클럽 가입 처리
+
 ## Security Boundary
 
 - 퍼블릭 키(`NEXT_PUBLIC_SUPABASE_ANON_KEY`): 클라이언트 조회/작성

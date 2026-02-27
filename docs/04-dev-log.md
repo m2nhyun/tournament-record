@@ -19,3 +19,9 @@
 
 - `docs/` 문서 체계 도입
 - 제품 캔버스/디자인 시스템/아키텍처/작업 로그 분리
+
+### Feature (Record Flow v1)
+
+- 홈 화면에 `클럽 생성`, `참가 코드 입장`, `내 클럽 목록` UI 구현
+- 익명 로그인 기반 세션 자동 확보(`supabase.auth.signInAnonymously`)
+- 참가 코드 가입용 RPC `join_club_by_invite` 스키마 추가

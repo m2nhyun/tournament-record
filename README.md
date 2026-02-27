@@ -59,6 +59,7 @@ SUPABASE_SERVICE_ROLE_KEY=
 
 - 초기 스키마 파일: `supabase/schema.sql`
 - Supabase SQL Editor에서 파일 내용을 실행해서 테이블/RLS 정책 적용
+- 스키마 업데이트가 생기면 파일 하단의 신규 SQL도 다시 실행
 
 ## Documentation
 
