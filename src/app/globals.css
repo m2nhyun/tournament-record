@@ -53,6 +53,10 @@
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.129 0.042 264.695);
+  --brand: oklch(0.74 0.16 145);
+  --brand-foreground: oklch(0.17 0.04 145);
+  --surface-1: oklch(0.985 0.01 145);
+  --surface-2: oklch(0.96 0.02 145);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.129 0.042 264.695);
   --popover: oklch(1 0 0);
@@ -124,5 +128,11 @@
   }
   body {
     @apply bg-background text-foreground;
+    background-image: radial-gradient(
+      circle at 10% 10%,
+      color-mix(in oklch, var(--surface-1) 55%, white),
+      transparent 45%
+    );
+    min-width: 320px;
   }
 }

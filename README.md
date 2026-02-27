@@ -59,3 +59,11 @@ SUPABASE_SERVICE_ROLE_KEY=
 
 - 초기 스키마 파일: `supabase/schema.sql`
 - Supabase SQL Editor에서 파일 내용을 실행해서 테이블/RLS 정책 적용
+
+## Documentation
+
+- `docs/README.md`
+- `docs/01-product-canvas.md`
+- `docs/02-design-system.md`
+- `docs/03-architecture.md`
+- `docs/04-dev-log.md`
