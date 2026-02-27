@@ -34,5 +34,16 @@ Vercel Project Settings > Environment Variables에도 동일하게 등록한다.
 
 1. Vercel에서 GitHub repo `m2nhyun/tournament-record` import
 2. Next.js 프레임워크 자동 감지 확인
-3. Environment Variables 등록
+3. Environment Variables 등록 (Production / Preview / Development 모두)
 4. Deploy
+
+## Branch Strategy
+
+- `main`: 운영 배포 기준 브랜치
+- `develop`: 통합 개발 브랜치
+- `feature/*`: 기능 작업 브랜치
+
+권장 흐름:
+1. `feature/*` -> `develop` PR
+2. QA 후 `develop` -> `main` PR
+3. `main` 머지 시 Production 배포
