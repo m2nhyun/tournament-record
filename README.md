@@ -70,6 +70,11 @@ SUPABASE_DB_URL=
 - 스키마 업데이트가 생기면 파일 하단의 신규 SQL도 다시 실행
 - 마이그레이션 파일: `supabase/migrations/*.sql`
 
+## Auth
+
+- 로그인 방식: Kakao OAuth (익명 로그인 미사용)
+- 설정 가이드: `docs/05-automation.md`의 `Kakao Auth Setup` 참고
+
 ## Automation
 
 ```bash

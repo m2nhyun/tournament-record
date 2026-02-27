@@ -14,6 +14,21 @@
 - Supabase Dashboard의 Auth 설정 변경(예: Anonymous Sign-ins)
 - Vercel 대시보드 환경변수 값 입력/회전
 
+## Kakao Auth Setup
+
+현재 앱은 익명 로그인이 아닌 카카오 OAuth를 사용한다.
+
+Supabase:
+1. `Authentication > Sign In / Providers > Third-Party Auth > Kakao` 활성화
+2. Kakao Client ID/Secret 입력
+3. Redirect URL 추가
+
+Kakao Developers:
+1. 플랫폼: Web 등록 (`http://localhost:3000`, `https://tournament-record-vercel.vercel.app`)
+2. Redirect URI에 Supabase callback 등록
+   - `https://<project-ref>.supabase.co/auth/v1/callback`
+3. 동의항목(이메일/프로필) 설정
+
 ## 선행 조건
 
 1. `.env.local` 설정

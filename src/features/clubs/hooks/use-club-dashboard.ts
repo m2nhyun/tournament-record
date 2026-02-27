@@ -1,9 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { User } from "@supabase/supabase-js";
 
-import { createClub, joinClub, listMyClubs } from "@/features/clubs/services/clubs";
+import {
+  createClub,
+  getCurrentUser,
+  joinClub,
+  listMyClubs,
+  signInWithKakao,
+  signOut,
+} from "@/features/clubs/services/clubs";
 import type { ClubSummary, ClubTab } from "@/features/clubs/types/club";
 
-type BusyType = "loading" | "create" | "join" | null;
+type BusyType = "loading" | "create" | "join" | "auth" | null;
 type StatusType = "info" | "success" | "error";
 
 type StatusState = {
@@ -17,6 +25,7 @@ function toMessage(error: unknown) {
 }
 
 export function useClubDashboard() {
+  const [user, setUser] = useState<User | null>(null);
   const [clubs, setClubs] = useState<ClubSummary[]>([]);
   const [activeTab, setActiveTab] = useState<ClubTab>("list");
   const [busyType, setBusyType] = useState<BusyType>("loading");
@@ -35,6 +44,15 @@ export function useClubDashboard() {
   const refreshClubs = useCallback(async () => {
     setBusyType("loading");
     try {
+      const currentUser = await getCurrentUser();
+      setUser(currentUser);
+
+      if (!currentUser) {
+        setClubs([]);
+        setStatus({ type: "info", message: "카카오 로그인 후 클럽을 만들거나 참가할 수 있습니다." });
+        return;
+      }
+
       const nextClubs = await listMyClubs();
       setClubs(nextClubs);
       setStatus({
@@ -95,7 +113,32 @@ export function useClubDashboard() {
     }
   }, [joinCode, joinNickname, refreshClubs]);
 
+  const beginKakaoSignIn = useCallback(async () => {
+    setBusyType("auth");
+    try {
+      await signInWithKakao();
+    } catch (error) {
+      setStatus({ type: "error", message: toMessage(error) });
+      setBusyType(null);
+    }
+  }, []);
+
+  const logout = useCallback(async () => {
+    setBusyType("auth");
+    try {
+      await signOut();
+      setUser(null);
+      setClubs([]);
+      setStatus({ type: "info", message: "로그아웃되었습니다." });
+    } catch (error) {
+      setStatus({ type: "error", message: toMessage(error) });
+    } finally {
+      setBusyType(null);
+    }
+  }, []);
+
   return {
+    user,
     clubs,
     activeTab,
     setActiveTab,
@@ -113,5 +156,7 @@ export function useClubDashboard() {
     setJoinNickname,
     submitCreateClub,
     submitJoinClub,
+    beginKakaoSignIn,
+    logout,
   };
 }

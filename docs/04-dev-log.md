@@ -39,3 +39,9 @@
 - `src/features/clubs` 단위로 분리:
   - `components`, `hooks`, `services`, `types`
 - App Router(`src/app/page.tsx`)는 조립 역할만 수행하도록 경량화
+
+### Auth Update
+
+- 익명 로그인 제거
+- 카카오 OAuth 로그인 게이트(`카카오로 시작하기`) 추가
+- 로그인 사용자만 클럽 생성/참가/목록 기능 접근 가능하도록 가드 적용

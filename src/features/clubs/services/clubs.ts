@@ -1,4 +1,5 @@
 import { supabaseClient } from "@/lib/supabase/client";
+import type { User } from "@supabase/supabase-js";
 
 import type { ClubSummary, ClubRole } from "@/features/clubs/types/club";
 
@@ -26,25 +27,43 @@ function generateInviteCode() {
   return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
 }
 
-export async function ensureAnonymousUser() {
+export async function getCurrentUser(): Promise<User | null> {
   const {
     data: { user },
     error,
   } = await supabaseClient.auth.getUser();
 
   if (error) throw error;
-  if (user) return user;
+  return user;
+}
 
-  const { data, error: signInError } = await supabaseClient.auth.signInAnonymously();
-  if (signInError || !data.user) {
-    throw new Error("익명 로그인 실패: Supabase Auth에서 Anonymous Sign-ins를 활성화하세요.");
+export async function signInWithKakao() {
+  const { error } = await supabaseClient.auth.signInWithOAuth({
+    provider: "kakao",
+    options: {
+      redirectTo: typeof window !== "undefined" ? window.location.origin : undefined,
+    },
+  });
+
+  if (error) throw error;
+}
+
+export async function signOut() {
+  const { error } = await supabaseClient.auth.signOut();
+  if (error) throw error;
+}
+
+export async function requireUser() {
+  const user = await getCurrentUser();
+  if (!user) {
+    throw new Error("로그인이 필요합니다. 카카오 로그인 후 다시 시도하세요.");
   }
 
-  return data.user;
+  return user;
 }
 
 export async function listMyClubs(): Promise<ClubSummary[]> {
-  const user = await ensureAnonymousUser();
+  const user = await requireUser();
 
   const { data, error } = await supabaseClient
     .from("club_members")
@@ -72,7 +91,7 @@ export async function listMyClubs(): Promise<ClubSummary[]> {
 }
 
 export async function createClub(input: { name: string; nickname: string }) {
-  const user = await ensureAnonymousUser();
+  const user = await requireUser();
   const inviteCode = generateInviteCode();
 
   const { data: club, error: clubError } = await supabaseClient
@@ -102,7 +121,7 @@ export async function createClub(input: { name: string; nickname: string }) {
 }
 
 export async function joinClub(input: { inviteCode: string; nickname: string }) {
-  await ensureAnonymousUser();
+  await requireUser();
 
   const { error } = await supabaseClient.rpc("join_club_by_invite", {
     p_invite_code: input.inviteCode.trim().toUpperCase(),
