@@ -2,7 +2,42 @@
 
 아마추어 테니스 모임/클럽의 경기 기록을 쉽고 신뢰 가능하게 남기는 서비스.
 
-## Getting Started
+## Why
+
+- 경기 수는 많지만 기록이 엑셀, 카톡, 기억에 흩어져 있음
+- 기록 부재로 운영(집계/공지/히스토리/분쟁 대응) 비용이 큼
+- 표준화된 데이터가 없어 이후 매칭/레이팅으로 확장하기 어려움
+
+## Product Hypothesis
+
+1. 기록 루프를 단순화하면(입력 -> 확인 -> 확정) 기록률이 올라간다.
+2. 클럽 단위 운영 도구가 있으면 소수 인원에서도 도입된다.
+3. 기록 데이터가 쌓이면 운영 자동화와 매칭 품질이 개선된다.
+
+## MVP Scope (Phase 1: Record)
+
+- 모임/클럽 생성 및 초대 코드
+- 경기 생성(단식/복식), 점수 입력
+- 경기 히스토리(개인/클럽)
+- 간단 리더보드(승/패, 경기 수)
+- 결과 수정 이력(누가, 언제, 무엇을 변경했는지)
+
+## Core Metrics
+
+- 경기 후 24시간 내 기록률
+- 주간 활성 모임 수
+- 사용자당 주간 평균 기록 수
+- 기록 수정/분쟁 발생률
+- 4주차 잔존 모임 비율
+
+## Tech Stack
+
+- Next.js (App Router) + TypeScript
+- Tailwind CSS + shadcn/ui
+- Supabase (Postgres/Auth/RLS)
+- Vercel
+
+## Local Setup
 
 ```bash
 npm install
@@ -10,9 +45,7 @@ cp .env.local.example .env.local
 npm run dev
 ```
 
-브라우저에서 `http://localhost:3000`을 열면 된다.
-
-## Env Vars
+브라우저에서 `http://localhost:3000` 확인.
 
 `.env.local`:
 
@@ -22,28 +55,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 ```
 
-Vercel Project Settings > Environment Variables에도 동일하게 등록한다.
+## Database
 
-## Supabase Setup
-
-1. Supabase에서 새 프로젝트 생성
-2. Project Settings > API에서 URL / anon / service_role 키 복사
-3. SQL Editor에서 `supabase/schema.sql` 실행
-
-## Deploy (Vercel)
-
-1. Vercel에서 GitHub repo `m2nhyun/tournament-record` import
-2. Next.js 프레임워크 자동 감지 확인
-3. Environment Variables 등록 (Production / Preview / Development 모두)
-4. Deploy
-
-## Branch Strategy
-
-- `main`: 운영 배포 기준 브랜치
-- `develop`: 통합 개발 브랜치
-- `feature/*`: 기능 작업 브랜치
-
-권장 흐름:
-1. `feature/*` -> `develop` PR
-2. QA 후 `develop` -> `main` PR
-3. `main` 머지 시 Production 배포
+- 초기 스키마 파일: `supabase/schema.sql`
+- Supabase SQL Editor에서 파일 내용을 실행해서 테이블/RLS 정책 적용
