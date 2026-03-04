@@ -8,6 +8,7 @@ import type { MatchType } from "@/features/matches/types/match";
 type MatchTypeSelectorProps = {
   matchType: MatchType;
   playedAt: string;
+  canUseDoubles: boolean;
   onChangeType: (type: MatchType) => void;
   onChangeDate: (date: string) => void;
 };
@@ -25,6 +26,7 @@ const options: {
 export function MatchTypeSelector({
   matchType,
   playedAt,
+  canUseDoubles,
   onChangeType,
   onChangeDate,
 }: MatchTypeSelectorProps) {
@@ -35,22 +37,25 @@ export function MatchTypeSelector({
         <div className="grid grid-cols-2 gap-3">
           {options.map((opt) => {
             const active = matchType === opt.value;
+            const disabled = opt.value === "doubles" && !canUseDoubles;
             return (
               <button
                 key={opt.value}
                 type="button"
+                disabled={disabled}
                 onClick={() => onChangeType(opt.value)}
                 className={cn(
                   "flex min-h-[80px] flex-col items-center justify-center gap-1.5 rounded-xl border-2 p-4 transition-colors",
                   active
                     ? "border-[var(--brand)] bg-[var(--brand)]/5 text-[var(--brand)]"
                     : "border-border hover:bg-accent/50",
+                  disabled && "cursor-not-allowed opacity-50 hover:bg-transparent",
                 )}
               >
                 <opt.icon className="size-6" />
                 <span className="text-sm font-semibold">{opt.label}</span>
                 <span className="text-xs text-muted-foreground">
-                  {opt.desc}
+                  {disabled ? "멤버 4명 필요" : opt.desc}
                 </span>
               </button>
             );

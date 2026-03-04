@@ -47,7 +47,6 @@ export async function getCurrentUser(): Promise<User | null> {
     error: sessionError,
   } = await client.auth.getSession();
 
-  // No session is a valid state on first landing.
   if (
     sessionError &&
     !sessionError.message.toLowerCase().includes("auth session missing")
