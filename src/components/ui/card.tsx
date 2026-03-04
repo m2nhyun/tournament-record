@@ -8,7 +8,7 @@ function Card({ className, ...props }: React.ComponentProps<"div">) {
       data-slot="card"
       className={cn(
         "rounded-2xl border border-border bg-card text-card-foreground shadow-[0_8px_24px_rgba(13,24,16,0.06)]",
-        className
+        className,
       )}
       {...props}
     />
@@ -22,18 +22,21 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
 function CardTitle({ className, ...props }: React.ComponentProps<"h3">) {
   return (
     <h3
-      className={cn("text-base font-semibold leading-none tracking-tight", className)}
+      className={cn(
+        "text-base font-semibold leading-none tracking-tight",
+        className,
+      )}
       {...props}
     />
   );
 }
 
-function CardDescription({
-  className,
-  ...props
-}: React.ComponentProps<"p">) {
+function CardDescription({ className, ...props }: React.ComponentProps<"p">) {
   return (
-    <p className={cn("text-sm leading-5 text-muted-foreground", className)} {...props} />
+    <p
+      className={cn("text-sm leading-5 text-muted-foreground", className)}
+      {...props}
+    />
   );
 }
 

@@ -28,7 +28,9 @@ export function ClubTabs({ activeTab, onChange }: ClubTabsProps) {
             onClick={() => onChange(tab.key)}
             className={cn(
               "flex min-h-[44px] flex-col items-center justify-center rounded-lg px-2 py-2 transition-colors",
-              active ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"
+              active
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground",
             )}
           >
             <Icon className="mb-1 size-4" />

@@ -1,0 +1,219 @@
+"use client";
+
+import Link from "next/link";
+import {
+  ArrowLeft,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+} from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { StatusBox } from "@/components/feedback/status-box";
+import { LoadingSpinner } from "@/components/feedback/loading-spinner";
+import { MatchTypeSelector } from "@/features/matches/components/match-type-selector";
+import { PlayerSelector } from "@/features/matches/components/player-selector";
+import { ScoreInput } from "@/features/matches/components/score-input";
+import {
+  useMatchCreation,
+  type CreationStep,
+} from "@/features/matches/hooks/use-match-creation";
+
+type MatchCreationFormProps = {
+  clubId: string;
+};
+
+const stepLabels: Record<CreationStep, string> = {
+  type: "경기 유형",
+  players: "선수 선택",
+  score: "점수 입력",
+};
+
+const stepNumbers: Record<CreationStep, number> = {
+  type: 1,
+  players: 2,
+  score: 3,
+};
+
+export function MatchCreationForm({ clubId }: MatchCreationFormProps) {
+  const {
+    step,
+    members,
+    loadingMembers,
+    submitting,
+    status,
+    createdMatchId,
+    matchType,
+    setMatchType,
+    playedAt,
+    setPlayedAt,
+    side1Ids,
+    side2Ids,
+    togglePlayer,
+    requiredPerSide,
+    setScores,
+    addSet,
+    removeLastSet,
+    updateSetScore,
+    canGoToPlayers,
+    canGoToScore,
+    canSubmit,
+    goToPlayers,
+    goToScore,
+    goBack,
+    submit,
+  } = useMatchCreation(clubId);
+
+  if (createdMatchId) {
+    return (
+      <div className="space-y-4">
+        <StatusBox type="success" message="경기가 성공적으로 기록되었습니다!" />
+        <div className="flex gap-2">
+          <Button variant="outline" className="flex-1" asChild>
+            <Link href={`/clubs/${clubId}`}>클럽 홈</Link>
+          </Button>
+          <Button
+            className="flex-1 bg-[var(--brand)] text-white hover:opacity-90"
+            asChild
+          >
+            <Link href={`/clubs/${clubId}/matches/${createdMatchId}`}>
+              경기 상세 보기
+            </Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadingMembers) {
+    return <LoadingSpinner message="멤버 정보를 불러오는 중..." />;
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <Button variant="outline" size="sm" asChild>
+          <Link href={`/clubs/${clubId}`}>
+            <ArrowLeft className="size-4" />
+          </Link>
+        </Button>
+        <h1 className="text-xl font-semibold">새 경기 기록</h1>
+      </div>
+
+      {/* Step indicator */}
+      <div className="flex items-center gap-2">
+        {(["type", "players", "score"] as CreationStep[]).map((s, i) => (
+          <div key={s} className="flex items-center gap-2">
+            {i > 0 ? <div className="h-px w-4 bg-border" /> : null}
+            <div
+              className={`flex size-7 items-center justify-center rounded-full text-xs font-semibold ${
+                stepNumbers[step] >= stepNumbers[s]
+                  ? "bg-[var(--brand)] text-white"
+                  : "bg-muted text-muted-foreground"
+              }`}
+            >
+              {stepNumbers[s]}
+            </div>
+            <span
+              className={`text-xs ${
+                step === s
+                  ? "font-semibold text-foreground"
+                  : "text-muted-foreground"
+              }`}
+            >
+              {stepLabels[s]}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {status ? (
+        <StatusBox type={status.type} message={status.message} />
+      ) : null}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{stepLabels[step]}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {step === "type" ? (
+            <MatchTypeSelector
+              matchType={matchType}
+              playedAt={playedAt}
+              onChangeType={setMatchType}
+              onChangeDate={setPlayedAt}
+            />
+          ) : null}
+
+          {step === "players" ? (
+            <PlayerSelector
+              members={members}
+              side1Ids={side1Ids}
+              side2Ids={side2Ids}
+              requiredPerSide={requiredPerSide}
+              onToggle={togglePlayer}
+            />
+          ) : null}
+
+          {step === "score" ? (
+            <ScoreInput
+              setScores={setScores}
+              onUpdate={updateSetScore}
+              onAddSet={addSet}
+              onRemoveLastSet={removeLastSet}
+            />
+          ) : null}
+        </CardContent>
+      </Card>
+
+      {/* Navigation buttons */}
+      <div className="flex gap-2">
+        {step !== "type" ? (
+          <Button variant="outline" className="flex-1" onClick={goBack}>
+            <ChevronLeft className="size-4" />
+            이전
+          </Button>
+        ) : null}
+
+        {step === "type" ? (
+          <Button
+            className="w-full bg-[var(--brand)] text-white hover:opacity-90"
+            disabled={!canGoToPlayers}
+            onClick={goToPlayers}
+          >
+            다음
+            <ChevronRight className="size-4" />
+          </Button>
+        ) : null}
+
+        {step === "players" ? (
+          <Button
+            className="flex-1 bg-[var(--brand)] text-white hover:opacity-90"
+            disabled={!canGoToScore}
+            onClick={goToScore}
+          >
+            다음
+            <ChevronRight className="size-4" />
+          </Button>
+        ) : null}
+
+        {step === "score" ? (
+          <Button
+            className="flex-1 bg-[var(--brand)] text-white hover:opacity-90"
+            disabled={!canSubmit || submitting}
+            onClick={() => void submit()}
+          >
+            {submitting ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Check className="size-4" />
+            )}
+            {submitting ? "저장 중..." : "경기 저장"}
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  );
+}

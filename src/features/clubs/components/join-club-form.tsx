@@ -31,7 +31,9 @@ export function JoinClubForm({
     <form onSubmit={handleSubmit} className="space-y-5">
       <div>
         <h2 className="text-lg font-semibold">클럽 참가</h2>
-        <p className="text-sm text-muted-foreground">전달받은 초대 코드를 입력해 주세요.</p>
+        <p className="text-sm text-muted-foreground">
+          전달받은 초대 코드를 입력해 주세요.
+        </p>
       </div>
 
       <div className="space-y-4">
@@ -40,7 +42,9 @@ export function JoinClubForm({
           <Input
             id="invite-code"
             value={inviteCode}
-            onChange={(event) => onChangeInviteCode(event.target.value.toUpperCase())}
+            onChange={(event) =>
+              onChangeInviteCode(event.target.value.toUpperCase())
+            }
             placeholder="예: 7KD2QP"
             maxLength={6}
             autoCapitalize="characters"

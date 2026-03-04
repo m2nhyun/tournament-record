@@ -13,13 +13,13 @@ function getEnv(name: string) {
 export function createSupabaseServerClient() {
   return createClient(
     getEnv("NEXT_PUBLIC_SUPABASE_URL"),
-    getEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+    getEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
   );
 }
 
 export function createSupabaseAdminClient() {
   return createClient(
     getEnv("NEXT_PUBLIC_SUPABASE_URL"),
-    getEnv("SUPABASE_SERVICE_ROLE_KEY")
+    getEnv("SUPABASE_SERVICE_ROLE_KEY"),
   );
 }

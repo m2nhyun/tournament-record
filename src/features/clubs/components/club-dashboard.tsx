@@ -43,8 +43,12 @@ export function ClubDashboard() {
       <header className="space-y-1">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h1 className="text-4xl font-semibold tracking-tight">Tournament Record</h1>
-            <p className="text-lg text-muted-foreground">아마추어 테니스 경기 기록 관리</p>
+            <h1 className="text-4xl font-semibold tracking-tight">
+              Tournament Record
+            </h1>
+            <p className="text-lg text-muted-foreground">
+              아마추어 테니스 경기 기록 관리
+            </p>
           </div>
           {user ? (
             <Button size="sm" variant="outline" onClick={() => void logout()}>
@@ -74,7 +78,9 @@ export function ClubDashboard() {
 
       {user && activeTab === "list" ? (
         <section className="space-y-3">
-          <h2 className="text-2xl font-semibold tracking-tight">내 클럽 목록</h2>
+          <h2 className="text-2xl font-semibold tracking-tight">
+            내 클럽 목록
+          </h2>
           <ClubList clubs={clubs} onMoveJoin={() => setActiveTab("join")} />
         </section>
       ) : null}

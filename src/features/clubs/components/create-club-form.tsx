@@ -31,7 +31,9 @@ export function CreateClubForm({
     <form onSubmit={handleSubmit} className="space-y-5">
       <div>
         <h2 className="text-lg font-semibold">새 클럽 만들기</h2>
-        <p className="text-sm text-muted-foreground">운영할 모임을 만들고 초대 코드를 공유하세요.</p>
+        <p className="text-sm text-muted-foreground">
+          운영할 모임을 만들고 초대 코드를 공유하세요.
+        </p>
       </div>
 
       <div className="space-y-4">
@@ -56,10 +58,12 @@ export function CreateClubForm({
             maxLength={20}
           />
         </div>
-
       </div>
 
-      <Button className="w-full bg-[var(--brand)] text-[var(--brand-foreground)]" disabled={isSubmitting}>
+      <Button
+        className="w-full bg-[var(--brand)] text-[var(--brand-foreground)]"
+        disabled={isSubmitting}
+      >
         {isSubmitting ? (
           <span className="inline-flex items-center gap-2">
             <Loader2 className="size-4 animate-spin" />

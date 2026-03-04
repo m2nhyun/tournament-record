@@ -84,17 +84,26 @@ export function useClubDashboard() {
 
   const submitCreateClub = useCallback(async () => {
     if (!createName.trim() || !createNickname.trim()) {
-      setStatus({ type: "error", message: "클럽 이름과 닉네임을 입력해주세요." });
+      setStatus({
+        type: "error",
+        message: "클럽 이름과 닉네임을 입력해주세요.",
+      });
       return;
     }
 
     setBusyType("create");
     try {
-      const inviteCode = await createClub({ name: createName, nickname: createNickname });
+      const inviteCode = await createClub({
+        name: createName,
+        nickname: createNickname,
+      });
       setCreateName("");
       setCreateNickname("");
       setActiveTab("list");
-      setStatus({ type: "success", message: `클럽 생성 완료 · 참가 코드 ${inviteCode}` });
+      setStatus({
+        type: "success",
+        message: `클럽 생성 완료 · 참가 코드 ${inviteCode}`,
+      });
       await refreshClubs();
     } catch (error) {
       setStatus({ type: "error", message: toMessage(error) });
@@ -104,7 +113,10 @@ export function useClubDashboard() {
 
   const submitJoinClub = useCallback(async () => {
     if (!joinCode.trim() || !joinNickname.trim()) {
-      setStatus({ type: "error", message: "참가 코드와 닉네임을 입력해주세요." });
+      setStatus({
+        type: "error",
+        message: "참가 코드와 닉네임을 입력해주세요.",
+      });
       return;
     }
 
@@ -134,7 +146,10 @@ export function useClubDashboard() {
 
   const beginEmailSignIn = useCallback(async () => {
     if (!email.trim() || !password.trim()) {
-      setStatus({ type: "error", message: "이메일과 비밀번호를 입력해주세요." });
+      setStatus({
+        type: "error",
+        message: "이메일과 비밀번호를 입력해주세요.",
+      });
       return;
     }
 
@@ -151,14 +166,20 @@ export function useClubDashboard() {
 
   const beginEmailSignUp = useCallback(async () => {
     if (!email.trim() || !password.trim()) {
-      setStatus({ type: "error", message: "이메일과 비밀번호를 입력해주세요." });
+      setStatus({
+        type: "error",
+        message: "이메일과 비밀번호를 입력해주세요.",
+      });
       return;
     }
 
     setBusyType("auth");
     try {
       await signUpWithEmail({ email, password });
-      setStatus({ type: "success", message: "회원가입 요청이 완료되었습니다. 이메일 인증을 확인하세요." });
+      setStatus({
+        type: "success",
+        message: "회원가입 요청이 완료되었습니다. 이메일 인증을 확인하세요.",
+      });
       setBusyType(null);
     } catch (error) {
       setStatus({ type: "error", message: toMessage(error) });
