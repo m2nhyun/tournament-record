@@ -3,11 +3,14 @@ import type { User } from "@supabase/supabase-js";
 
 import {
   createClub,
-  getCurrentUser,
+  ensureSessionUser,
+  isGuestModeEnabled,
   joinClub,
   listMyClubs,
+  signInWithEmail,
   signInWithKakao,
   signOut,
+  signUpWithEmail,
 } from "@/features/clubs/services/clubs";
 import type { ClubSummary, ClubTab } from "@/features/clubs/types/club";
 
@@ -31,7 +34,7 @@ export function useClubDashboard() {
   const [busyType, setBusyType] = useState<BusyType>("loading");
   const [status, setStatus] = useState<StatusState>({
     type: "info",
-    message: "시작하려면 클럽을 만들거나 참가 코드를 입력하세요.",
+    message: "시작하려면 로그인하거나 게스트 모드를 사용하세요.",
   });
 
   const [createName, setCreateName] = useState("");
@@ -39,17 +42,23 @@ export function useClubDashboard() {
   const [joinCode, setJoinCode] = useState("");
   const [joinNickname, setJoinNickname] = useState("");
 
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
   const isBusy = useMemo(() => busyType !== null, [busyType]);
 
   const refreshClubs = useCallback(async () => {
     setBusyType("loading");
     try {
-      const currentUser = await getCurrentUser();
-      setUser(currentUser);
+      const sessionUser = await ensureSessionUser();
+      setUser(sessionUser);
 
-      if (!currentUser) {
+      if (!sessionUser) {
         setClubs([]);
-        setStatus({ type: "info", message: "카카오 로그인 후 클럽을 만들거나 참가할 수 있습니다." });
+        setStatus({
+          type: "info",
+          message: "로그인 후 클럽을 만들거나 참가할 수 있습니다.",
+        });
         return;
       }
 
@@ -123,6 +132,40 @@ export function useClubDashboard() {
     }
   }, []);
 
+  const beginEmailSignIn = useCallback(async () => {
+    if (!email.trim() || !password.trim()) {
+      setStatus({ type: "error", message: "이메일과 비밀번호를 입력해주세요." });
+      return;
+    }
+
+    setBusyType("auth");
+    try {
+      await signInWithEmail({ email, password });
+      setStatus({ type: "success", message: "로그인되었습니다." });
+      await refreshClubs();
+    } catch (error) {
+      setStatus({ type: "error", message: toMessage(error) });
+      setBusyType(null);
+    }
+  }, [email, password, refreshClubs]);
+
+  const beginEmailSignUp = useCallback(async () => {
+    if (!email.trim() || !password.trim()) {
+      setStatus({ type: "error", message: "이메일과 비밀번호를 입력해주세요." });
+      return;
+    }
+
+    setBusyType("auth");
+    try {
+      await signUpWithEmail({ email, password });
+      setStatus({ type: "success", message: "회원가입 요청이 완료되었습니다. 이메일 인증을 확인하세요." });
+      setBusyType(null);
+    } catch (error) {
+      setStatus({ type: "error", message: toMessage(error) });
+      setBusyType(null);
+    }
+  }, [email, password]);
+
   const logout = useCallback(async () => {
     setBusyType("auth");
     try {
@@ -130,12 +173,12 @@ export function useClubDashboard() {
       setUser(null);
       setClubs([]);
       setStatus({ type: "info", message: "로그아웃되었습니다." });
+      await refreshClubs();
     } catch (error) {
       setStatus({ type: "error", message: toMessage(error) });
-    } finally {
       setBusyType(null);
     }
-  }, []);
+  }, [refreshClubs]);
 
   return {
     user,
@@ -157,6 +200,13 @@ export function useClubDashboard() {
     submitCreateClub,
     submitJoinClub,
     beginKakaoSignIn,
+    beginEmailSignIn,
+    beginEmailSignUp,
     logout,
+    email,
+    setEmail,
+    password,
+    setPassword,
+    isGuestModeEnabled,
   };
 }

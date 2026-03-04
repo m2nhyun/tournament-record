@@ -28,7 +28,14 @@ export function ClubDashboard() {
     submitCreateClub,
     submitJoinClub,
     beginKakaoSignIn,
+    beginEmailSignIn,
+    beginEmailSignUp,
     logout,
+    email,
+    setEmail,
+    password,
+    setPassword,
+    isGuestModeEnabled,
   } = useClubDashboard();
 
   return (
@@ -49,7 +56,19 @@ export function ClubDashboard() {
 
       <StatusBox type={status.type} message={status.message} />
 
-      {!user ? <AuthGate loading={busyType === "auth"} onSignIn={beginKakaoSignIn} /> : null}
+      {!user ? (
+        <AuthGate
+          loading={busyType === "auth"}
+          email={email}
+          password={password}
+          guestMode={isGuestModeEnabled}
+          onChangeEmail={setEmail}
+          onChangePassword={setPassword}
+          onKakaoSignIn={beginKakaoSignIn}
+          onEmailSignIn={beginEmailSignIn}
+          onEmailSignUp={beginEmailSignUp}
+        />
+      ) : null}
 
       {user ? <ClubTabs activeTab={activeTab} onChange={setActiveTab} /> : null}
 

@@ -61,6 +61,7 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 SUPABASE_DB_URL=
+NEXT_PUBLIC_ALLOW_GUEST_MODE=false
 ```
 
 ## Database
@@ -72,8 +73,15 @@ SUPABASE_DB_URL=
 
 ## Auth
 
-- 로그인 방식: Kakao OAuth (익명 로그인 미사용)
+- 기본: Kakao OAuth + Email/Password 로그인/회원가입
+- 개발 편의: `NEXT_PUBLIC_ALLOW_GUEST_MODE=true`일 때 자동 게스트 세션 허용
 - 설정 가이드: `docs/05-automation.md`의 `Kakao Auth Setup` 참고
+
+## Environment Strategy
+
+- Supabase는 단일 프로젝트로 운영
+- `main/develop` 분리는 Git/Vercel 레벨에서 관리
+- DB 변경은 `db:push:dry` 선검증 후 `db:push`
 
 ## Automation
 

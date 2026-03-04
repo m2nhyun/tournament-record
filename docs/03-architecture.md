@@ -45,3 +45,9 @@
 - `main`: production
 - `develop`: 통합 개발
 - `feature/*`: 기능 작업 후 PR
+
+## Environment Strategy
+
+- Supabase는 현재 단일 프로젝트로 운영한다.
+- 브랜치 분리는 Git/Vercel 배포 단위에서 관리한다.
+- 운영 리스크를 줄이기 위해 `develop`에서는 DB 스키마 변경 전 `db:push:dry`를 필수로 실행한다.

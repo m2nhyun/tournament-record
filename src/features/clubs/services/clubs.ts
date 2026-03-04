@@ -16,6 +16,9 @@ type ClubMemberRow = {
   clubs: ClubEntity | ClubEntity[] | null;
 };
 
+export const isGuestModeEnabled =
+  typeof window !== "undefined" && process.env.NEXT_PUBLIC_ALLOW_GUEST_MODE === "true";
+
 function normalizeClub(club: ClubMemberRow["clubs"]): ClubEntity | null {
   if (!club) return null;
   if (Array.isArray(club)) return club[0] ?? null;
@@ -37,6 +40,20 @@ export async function getCurrentUser(): Promise<User | null> {
   return user;
 }
 
+export async function ensureSessionUser(): Promise<User | null> {
+  const existingUser = await getCurrentUser();
+  if (existingUser) return existingUser;
+
+  if (!isGuestModeEnabled) return null;
+
+  const { data, error } = await supabaseClient.auth.signInAnonymously();
+  if (error || !data.user) {
+    throw new Error("게스트 모드 세션 생성 실패: Supabase에서 Anonymous sign-ins 설정을 확인하세요.");
+  }
+
+  return data.user;
+}
+
 export async function signInWithKakao() {
   const { error } = await supabaseClient.auth.signInWithOAuth({
     provider: "kakao",
@@ -48,15 +65,33 @@ export async function signInWithKakao() {
   if (error) throw error;
 }
 
+export async function signInWithEmail(input: { email: string; password: string }) {
+  const { error } = await supabaseClient.auth.signInWithPassword({
+    email: input.email.trim(),
+    password: input.password,
+  });
+
+  if (error) throw error;
+}
+
+export async function signUpWithEmail(input: { email: string; password: string }) {
+  const { error } = await supabaseClient.auth.signUp({
+    email: input.email.trim(),
+    password: input.password,
+  });
+
+  if (error) throw error;
+}
+
 export async function signOut() {
   const { error } = await supabaseClient.auth.signOut();
   if (error) throw error;
 }
 
 export async function requireUser() {
-  const user = await getCurrentUser();
+  const user = await ensureSessionUser();
   if (!user) {
-    throw new Error("로그인이 필요합니다. 카카오 로그인 후 다시 시도하세요.");
+    throw new Error("로그인이 필요합니다. 카카오 또는 이메일 로그인 후 다시 시도하세요.");
   }
 
   return user;

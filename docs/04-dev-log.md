@@ -23,7 +23,6 @@
 ### Feature (Record Flow v1)
 
 - 홈 화면에 `클럽 생성`, `참가 코드 입장`, `내 클럽 목록` UI 구현
-- 익명 로그인 기반 세션 자동 확보(`supabase.auth.signInAnonymously`)
 - 참가 코드 가입용 RPC `join_club_by_invite` 스키마 추가
 
 ### Automation
@@ -44,4 +43,11 @@
 
 - 익명 로그인 제거
 - 카카오 OAuth 로그인 게이트(`카카오로 시작하기`) 추가
+- 이메일/비밀번호 로그인 및 회원가입 추가
+- 개발 편의 옵션 `NEXT_PUBLIC_ALLOW_GUEST_MODE` 추가
 - 로그인 사용자만 클럽 생성/참가/목록 기능 접근 가능하도록 가드 적용
+
+### Decision Log
+
+- 사용자 타깃 특성을 고려해 이메일 OTP 대신 카카오 로그인 우선 전략 채택
+- Supabase는 단일 프로젝트로 운영하고, 브랜치는 Git/Vercel 레벨에서 분리 관리
