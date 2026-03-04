@@ -40,13 +40,38 @@ function generateInviteCode() {
 }
 
 export async function getCurrentUser(): Promise<User | null> {
+  const client = getSupabaseClient();
+
+  const {
+    data: { session },
+    error: sessionError,
+  } = await client.auth.getSession();
+
+  // No session is a valid state on first landing.
+  if (
+    sessionError &&
+    !sessionError.message.toLowerCase().includes("auth session missing")
+  ) {
+    throw sessionError;
+  }
+
+  if (!session?.access_token) {
+    return null;
+  }
+
   const {
     data: { user },
-    error,
-  } = await getSupabaseClient().auth.getUser();
+    error: userError,
+  } = await client.auth.getUser();
 
-  if (error) throw error;
-  return user;
+  if (
+    userError &&
+    !userError.message.toLowerCase().includes("auth session missing")
+  ) {
+    throw userError;
+  }
+
+  return user ?? null;
 }
 
 export async function ensureSessionUser(): Promise<User | null> {
@@ -103,7 +128,9 @@ export async function signUpWithEmail(input: {
 
 export async function signOut() {
   const { error } = await getSupabaseClient().auth.signOut();
-  if (error) throw error;
+  if (error && !error.message.toLowerCase().includes("auth session missing")) {
+    throw error;
+  }
 }
 
 export async function requireUser() {
