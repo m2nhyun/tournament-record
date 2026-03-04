@@ -7,12 +7,14 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
+  Users,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBox } from "@/components/feedback/status-box";
 import { LoadingSpinner } from "@/components/feedback/loading-spinner";
+import { EmptyState } from "@/components/feedback/empty-state";
 import { MatchTypeSelector } from "@/features/matches/components/match-type-selector";
 import { PlayerSelector } from "@/features/matches/components/player-selector";
 import { ScoreInput } from "@/features/matches/components/score-input";
@@ -53,6 +55,8 @@ export function MatchCreationForm({ clubId }: MatchCreationFormProps) {
     side2Ids,
     togglePlayer,
     requiredPerSide,
+    canCreateAnyMatch,
+    canUseDoubles,
     setScores,
     addSet,
     removeLastSet,
@@ -91,8 +95,33 @@ export function MatchCreationForm({ clubId }: MatchCreationFormProps) {
     return <LoadingSpinner message="멤버 정보를 불러오는 중..." />;
   }
 
+  if (!canCreateAnyMatch) {
+    return (
+      <div className="mx-auto w-full max-w-xl space-y-4">
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/clubs/${clubId}`}>
+              <ArrowLeft className="size-4" />
+            </Link>
+          </Button>
+          <h1 className="text-xl font-semibold">새 경기 기록</h1>
+        </div>
+
+        <EmptyState
+          icon={Users}
+          title="참가 가능한 멤버가 부족합니다."
+          description="경기를 기록하려면 최소 2명의 클럽 멤버가 필요합니다."
+          actionLabel="클럽 홈으로 이동"
+          onAction={() => {
+            window.location.href = `/clubs/${clubId}`;
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-4">
+    <div className="mx-auto w-full max-w-xl space-y-4">
       <div className="flex items-center gap-2">
         <Button variant="outline" size="sm" asChild>
           <Link href={`/clubs/${clubId}`}>
@@ -142,6 +171,7 @@ export function MatchCreationForm({ clubId }: MatchCreationFormProps) {
             <MatchTypeSelector
               matchType={matchType}
               playedAt={playedAt}
+              canUseDoubles={canUseDoubles}
               onChangeType={setMatchType}
               onChangeDate={setPlayedAt}
             />

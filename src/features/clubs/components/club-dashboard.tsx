@@ -6,6 +6,7 @@ import { CreateClubForm } from "@/features/clubs/components/create-club-form";
 import { JoinClubForm } from "@/features/clubs/components/join-club-form";
 import { AuthGate } from "@/features/clubs/components/auth-gate";
 import { useClubDashboard } from "@/features/clubs/hooks/use-club-dashboard";
+import { LoadingSpinner } from "@/components/feedback/loading-spinner";
 import { StatusBox } from "@/components/feedback/status-box";
 import { Button } from "@/components/ui/button";
 
@@ -38,17 +39,21 @@ export function ClubDashboard() {
     isGuestModeEnabled,
   } = useClubDashboard();
 
+  if (busyType === "loading") {
+    return (
+      <div className="flex min-h-[calc(100dvh-9rem)] items-center justify-center">
+        <LoadingSpinner message="세션 확인 중..." />
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="mx-auto w-full max-w-2xl space-y-6">
       <header className="space-y-1">
-        <div className="flex items-start justify-between gap-3">
+        <div className={user ? "flex items-start justify-between gap-3" : "text-center"}>
           <div>
-            <h1 className="text-4xl font-semibold tracking-tight">
-              Tournament Record
-            </h1>
-            <p className="text-lg text-muted-foreground">
-              아마추어 테니스 경기 기록 관리
-            </p>
+            <h1 className="text-4xl font-semibold tracking-tight">Tournament Record</h1>
+            <p className="text-lg text-muted-foreground">아마추어 테니스 경기 기록 관리</p>
           </div>
           {user ? (
             <Button size="sm" variant="outline" onClick={() => void logout()}>
@@ -78,9 +83,7 @@ export function ClubDashboard() {
 
       {user && activeTab === "list" ? (
         <section className="space-y-3">
-          <h2 className="text-2xl font-semibold tracking-tight">
-            내 클럽 목록
-          </h2>
+          <h2 className="text-2xl font-semibold tracking-tight">내 클럽 목록</h2>
           <ClubList clubs={clubs} onMoveJoin={() => setActiveTab("join")} />
         </section>
       ) : null}
