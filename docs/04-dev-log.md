@@ -64,3 +64,16 @@
 - 경기 생성 화면에서 클럽 멤버가 2명 미만일 때 `EmptyState`로 기록 불가 사유와 이동 액션 제공
 - 경기 생성 폼 폭을 `max-w-xl`로 제한해 모바일/데스크탑 모두 입력 집중도 개선
 - 복식 선택은 멤버 수 조건(`4명 이상`) 기준으로 제어되도록 연동
+
+### Auth Refactor & Kakao Logout
+
+- 인증 함수(`getCurrentUser`, `ensureSessionUser`, `signIn*`, `signOut`, `requireUser`)를 `src/features/auth/services/auth.ts`로 분리
+- `clubs.ts`는 클럽 도메인 로직만 유지하고 인증 의존은 `auth` 서비스 import로 정리
+- `signOut`에서 카카오 사용자(`app_metadata.provider === "kakao"`)인 경우 Supabase 로그아웃 후 카카오 로그아웃 URL로 리다이렉트 추가
+- 환경변수 `NEXT_PUBLIC_KAKAO_REST_API_KEY` 사용
+
+### Auth State Sync
+
+- `useClubDashboard`에 `onAuthStateChange` 구독 추가
+- `SIGNED_IN`, `SIGNED_OUT`, `TOKEN_REFRESHED` 이벤트에서 `refreshClubs()`를 호출하도록 반영
+- OAuth 콜백 직후 사용자/클럽 목록 상태 반영 지연을 줄이도록 개선

@@ -1,5 +1,5 @@
 import { getSupabaseClient } from "@/lib/supabase/client";
-import { requireUser } from "@/features/clubs/services/clubs";
+import { requireUser } from "@/features/auth/services/auth";
 import type { LeaderboardEntry } from "@/features/leaderboard/types/leaderboard";
 
 type MatchRow = {

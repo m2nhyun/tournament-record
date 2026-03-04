@@ -10,6 +10,7 @@
 - `04-dev-log.md`: 작업 로그와 변경 이유
 - `05-automation.md`: 자동화 스크립트/실행 순서/운영 규칙
 - `06-design-handoff.md`: 외부(Replit 등) 디자인 전달 가이드
+- `07-auth-handoff.md`: 인증/카카오 설정 상태, 현재 이슈, 다음 작업 인수인계
 
 ## 운영 원칙
 

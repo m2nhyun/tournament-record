@@ -2,17 +2,20 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 
 import {
-  createClub,
   ensureSessionUser,
   isGuestModeEnabled,
-  joinClub,
-  listMyClubs,
   signInWithEmail,
   signInWithKakao,
   signOut,
   signUpWithEmail,
+} from "@/features/auth/services/auth";
+import {
+  createClub,
+  joinClub,
+  listMyClubs,
 } from "@/features/clubs/services/clubs";
 import type { ClubSummary, ClubTab } from "@/features/clubs/types/club";
+import { getSupabaseClient } from "@/lib/supabase/client";
 
 type BusyType = "loading" | "create" | "join" | "auth" | null;
 type StatusType = "info" | "success" | "error";
@@ -80,6 +83,23 @@ export function useClubDashboard() {
 
   useEffect(() => {
     void refreshClubs();
+  }, [refreshClubs]);
+
+  useEffect(() => {
+    const client = getSupabaseClient();
+    const { data: authListener } = client.auth.onAuthStateChange((event) => {
+      if (
+        event === "SIGNED_IN" ||
+        event === "SIGNED_OUT" ||
+        event === "TOKEN_REFRESHED"
+      ) {
+        void refreshClubs();
+      }
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
   }, [refreshClubs]);
 
   const submitCreateClub = useCallback(async () => {
