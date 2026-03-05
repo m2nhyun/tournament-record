@@ -27,6 +27,24 @@ type StatusState = {
 
 function toMessage(error: unknown) {
   if (error instanceof Error) return error.message;
+  if (error && typeof error === "object" && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string") {
+      if (message.includes("Invalid invite code")) {
+        return "유효하지 않은 참가 코드입니다.";
+      }
+      if (message.includes("Not authenticated")) {
+        return "로그인이 필요합니다.";
+      }
+      if (
+        message.includes("club_members_nickname_check") ||
+        message.includes("violates check constraint")
+      ) {
+        return "닉네임은 2-24자로 입력해주세요.";
+      }
+      return message;
+    }
+  }
   return "요청 처리 중 오류가 발생했습니다.";
 }
 
