@@ -22,6 +22,15 @@ type ScoreInputProps = {
 const GAME_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7] as const;
 const POINT_OPTIONS = ["0", "15", "30", "40", "AD"] as const;
 
+function isGameRoundCompleted(score: SetScore, fallbackGamesToWin: 4 | 6) {
+  const target = score.gamesToWin ?? fallbackGamesToWin;
+  const winner = Math.max(score.side1, score.side2);
+  const loser = Math.min(score.side1, score.side2);
+  if (winner < target) return false;
+  if (winner === target && winner - loser >= 2) return true;
+  return winner === target + 1 && loser === target;
+}
+
 export function ScoreInput({
   setScores,
   onUpdate,
@@ -29,29 +38,25 @@ export function ScoreInput({
   onRemoveLastSet,
   gamesToWin,
   onChangeGamesToWin,
-  side1Label = "사이드 1",
-  side2Label = "사이드 2",
+  side1Label = "팀 A",
+  side2Label = "팀 B",
 }: ScoreInputProps) {
   return (
     <div className="space-y-4">
       <div className="space-y-1">
-        <Label>세트별 게임 스코어</Label>
+        <Label>게임 스코어 입력</Label>
         <p className="text-xs text-muted-foreground">
-          테니스 규칙상 포인트(0/15/30/40)로 게임이 진행되고, 이 입력은 각 세트의
-          최종 게임 수를 기록합니다.
-        </p>
-        <p className="text-[11px] text-muted-foreground">
-          유효 예시: 6-4, 7-6 / 4-2, 5-4
+          포인트(0/15/30/40/AD)는 선택하고, 라운드별 게임 스코어를 버튼으로 입력합니다.
         </p>
         <div className="flex items-center gap-2">
-          <Label className="text-xs text-muted-foreground">세트 목표 게임</Label>
+          <Label className="text-xs text-muted-foreground">목표 게임</Label>
           <div className="inline-flex rounded-md border p-1">
             <button
               type="button"
               className={`rounded px-2 py-1 text-xs ${gamesToWin === 6 ? "bg-[var(--brand)] text-white" : ""}`}
               onClick={() => onChangeGamesToWin(6)}
             >
-              6게임 (기본)
+              6게임
             </button>
             <button
               type="button"
@@ -64,106 +69,85 @@ export function ScoreInput({
         </div>
       </div>
 
-      {setScores.map((score, index) => (
-        <div key={index} className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground">
-            세트 {score.set}
-          </p>
-          <div className="flex items-center gap-3">
-            <div className="flex-1">
-              <Label className="mb-1 text-[11px] text-muted-foreground">
-                {side1Label}
-              </Label>
-              <div className="grid grid-cols-4 gap-1.5 rounded-md border p-2">
-                {GAME_OPTIONS.map((option) => (
-                  <label
-                    key={`s1-${score.set}-${option}`}
-                    className="flex cursor-pointer items-center gap-1 text-xs"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={score.side1 === option}
-                      onChange={(e) =>
-                        onUpdate(index, "side1", e.target.checked ? option : 0)
-                      }
-                    />
-                    <span>{option}</span>
-                  </label>
-                ))}
-              </div>
-              <div className="mt-2 flex items-center gap-2">
-                <Label className="text-[11px] text-muted-foreground">
-                  현재 포인트
-                </Label>
-                <select
-                  className="h-8 rounded-md border bg-background px-2 text-xs"
-                  value={score.side1Point ?? "0"}
-                  onChange={(e) =>
-                    onUpdate(
-                      index,
-                      "side1Point",
-                      e.target.value as "0" | "15" | "30" | "40" | "AD",
-                    )
-                  }
-                >
-                  {POINT_OPTIONS.map((point) => (
-                    <option key={`s1p-${score.set}-${point}`} value={point}>
-                      {point}
-                    </option>
-                  ))}
-                </select>
-              </div>
+      {setScores.map((score, index) => {
+        const complete = isGameRoundCompleted(score, gamesToWin);
+        return (
+          <div key={index} className="space-y-2 rounded-lg border p-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-medium text-muted-foreground">
+                라운드 {score.set}
+              </p>
+              <span
+                className={`text-[11px] ${complete ? "text-emerald-600" : "text-amber-600"}`}
+              >
+                {complete ? "완료" : "진행/중단"}
+              </span>
             </div>
-            <span className="pt-4 text-lg font-bold text-muted-foreground">
-              :
-            </span>
-            <div className="flex-1">
-              <Label className="mb-1 text-[11px] text-muted-foreground">
-                {side2Label}
-              </Label>
-              <div className="grid grid-cols-4 gap-1.5 rounded-md border p-2">
-                {GAME_OPTIONS.map((option) => (
-                  <label
-                    key={`s2-${score.set}-${option}`}
-                    className="flex cursor-pointer items-center gap-1 text-xs"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={score.side2 === option}
-                      onChange={(e) =>
-                        onUpdate(index, "side2", e.target.checked ? option : 0)
-                      }
-                    />
-                    <span>{option}</span>
-                  </label>
-                ))}
-              </div>
-              <div className="mt-2 flex items-center gap-2">
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
                 <Label className="text-[11px] text-muted-foreground">
-                  현재 포인트
+                  {side1Label}
                 </Label>
-                <select
-                  className="h-8 rounded-md border bg-background px-2 text-xs"
-                  value={score.side2Point ?? "0"}
-                  onChange={(e) =>
-                    onUpdate(
-                      index,
-                      "side2Point",
-                      e.target.value as "0" | "15" | "30" | "40" | "AD",
-                    )
-                  }
-                >
-                  {POINT_OPTIONS.map((point) => (
-                    <option key={`s2p-${score.set}-${point}`} value={point}>
-                      {point}
-                    </option>
+                <div className="flex flex-wrap gap-1">
+                  {GAME_OPTIONS.map((option) => (
+                    <button
+                      key={`s1-g-${score.set}-${option}`}
+                      type="button"
+                      className={`rounded border px-2 py-1 text-xs ${score.side1 === option ? "bg-[var(--brand)] text-white" : "bg-background"}`}
+                      onClick={() => onUpdate(index, "side1", option)}
+                    >
+                      {option}
+                    </button>
                   ))}
-                </select>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {POINT_OPTIONS.map((point) => (
+                    <button
+                      key={`s1-p-${score.set}-${point}`}
+                      type="button"
+                      className={`rounded border px-2 py-1 text-[11px] ${score.side1Point === point ? "bg-foreground text-background" : "bg-background"}`}
+                      onClick={() => onUpdate(index, "side1Point", point)}
+                    >
+                      {point}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-[11px] text-muted-foreground">
+                  {side2Label}
+                </Label>
+                <div className="flex flex-wrap gap-1">
+                  {GAME_OPTIONS.map((option) => (
+                    <button
+                      key={`s2-g-${score.set}-${option}`}
+                      type="button"
+                      className={`rounded border px-2 py-1 text-xs ${score.side2 === option ? "bg-[var(--brand)] text-white" : "bg-background"}`}
+                      onClick={() => onUpdate(index, "side2", option)}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {POINT_OPTIONS.map((point) => (
+                    <button
+                      key={`s2-p-${score.set}-${point}`}
+                      type="button"
+                      className={`rounded border px-2 py-1 text-[11px] ${score.side2Point === point ? "bg-foreground text-background" : "bg-background"}`}
+                      onClick={() => onUpdate(index, "side2Point", point)}
+                    >
+                      {point}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
 
       <div className="flex gap-2">
         <Button
@@ -174,7 +158,7 @@ export function ScoreInput({
           className="flex-1"
         >
           <Plus className="size-4" />
-          세트 추가
+          라운드 추가
         </Button>
         {setScores.length > 1 ? (
           <Button
@@ -185,7 +169,7 @@ export function ScoreInput({
             className="flex-1"
           >
             <Minus className="size-4" />
-            마지막 세트 삭제
+            마지막 라운드 삭제
           </Button>
         ) : null}
       </div>

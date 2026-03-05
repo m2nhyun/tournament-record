@@ -32,6 +32,7 @@ export type MatchSummary = {
   status: MatchStatus;
   playedAt: string;
   scoreSummary: string;
+  setScores: SetScore[];
   side1Players: string[];
   side2Players: string[];
   createdAt: string;

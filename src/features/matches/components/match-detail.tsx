@@ -50,6 +50,8 @@ export function MatchDetailView({ matchId, clubId }: MatchDetailViewProps) {
   const side1 = match.players.filter((p) => p.side === 1);
   const side2 = match.players.filter((p) => p.side === 2);
   const TypeIcon = match.matchType === "singles" ? User : Users;
+  const team1Name = side1.map((p) => p.nickname).join(" · ");
+  const team2Name = side2.map((p) => p.nickname).join(" · ");
 
   return (
     <div className="space-y-4">
@@ -92,7 +94,7 @@ export function MatchDetailView({ matchId, clubId }: MatchDetailViewProps) {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <p className="text-xs font-semibold text-muted-foreground">
-                사이드 1
+                {team1Name || "팀 A"}
               </p>
               {side1.map((p) => (
                 <p key={p.clubMemberId} className="text-sm font-medium">
@@ -102,7 +104,7 @@ export function MatchDetailView({ matchId, clubId }: MatchDetailViewProps) {
             </div>
             <div className="space-y-1.5 text-right">
               <p className="text-xs font-semibold text-muted-foreground">
-                사이드 2
+                {team2Name || "팀 B"}
               </p>
               {side2.map((p) => (
                 <p key={p.clubMemberId} className="text-sm font-medium">
@@ -116,7 +118,7 @@ export function MatchDetailView({ matchId, clubId }: MatchDetailViewProps) {
           {match.result && match.result.setScores.length > 0 ? (
             <div className="space-y-2">
               <p className="text-xs font-semibold text-muted-foreground">
-                세트별 게임 스코어
+                라운드별 게임 스코어
               </p>
               <p className="text-[11px] text-muted-foreground">
                 목표 게임: {match.result.setScores[0]?.gamesToWin ?? 6}게임
@@ -126,13 +128,13 @@ export function MatchDetailView({ matchId, clubId }: MatchDetailViewProps) {
                   <thead>
                     <tr className="border-b bg-muted/30">
                       <th className="px-3 py-2 text-left font-medium text-muted-foreground">
-                        세트
+                        라운드
                       </th>
                       <th className="px-3 py-2 text-center font-medium text-muted-foreground">
-                        사이드 1
+                        {team1Name || "팀 A"}
                       </th>
                       <th className="px-3 py-2 text-center font-medium text-muted-foreground">
-                        사이드 2
+                        {team2Name || "팀 B"}
                       </th>
                       <th className="px-3 py-2 text-center font-medium text-muted-foreground">
                         포인트

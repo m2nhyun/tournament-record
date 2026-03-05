@@ -76,13 +76,13 @@ export function MatchCreationForm({ clubId }: MatchCreationFormProps) {
     side1Ids
       .map((id) => members.find((member) => member.id === id)?.nickname)
       .filter((name): name is string => Boolean(name))
-      .join(" · ") || "사이드 1";
+      .join(" · ") || "팀 A";
 
   const side2Label =
     side2Ids
       .map((id) => members.find((member) => member.id === id)?.nickname)
       .filter((name): name is string => Boolean(name))
-      .join(" · ") || "사이드 2";
+      .join(" · ") || "팀 B";
 
   if (createdMatchId) {
     return (

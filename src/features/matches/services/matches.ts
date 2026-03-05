@@ -128,7 +128,10 @@ type MatchRow = {
   status: string;
   played_at: string;
   created_at: string;
-  match_results: { score_summary: string } | { score_summary: string }[] | null;
+  match_results:
+    | { score_summary: string; set_scores?: unknown }
+    | { score_summary: string; set_scores?: unknown }[]
+    | null;
   match_players: {
     side: number;
     club_members: { nickname: string } | { nickname: string }[] | null;
@@ -157,7 +160,7 @@ export async function listClubMatches(clubId: string): Promise<MatchSummary[]> {
   const { data, error } = await getSupabaseClient()
     .from("matches")
     .select(
-      "id,club_id,match_type,status,played_at,created_at,match_results(score_summary),match_players(side,club_members(nickname))",
+      "id,club_id,match_type,status,played_at,created_at,match_results(score_summary,set_scores),match_players(side,club_members(nickname))",
     )
     .eq("club_id", clubId)
     .order("played_at", { ascending: false });
@@ -165,7 +168,11 @@ export async function listClubMatches(clubId: string): Promise<MatchSummary[]> {
   if (error) throw error;
 
   return ((data ?? []) as MatchRow[]).map((row) => {
-    const scoreSummary = pickFirstResult(row.match_results)?.score_summary ?? "";
+    const firstResult = pickFirstResult(row.match_results);
+    const setScores = normalizeSetScores(firstResult?.set_scores);
+    const scoreSummary =
+      firstResult?.score_summary ??
+      (setScores.length > 0 ? buildScoreSummary(setScores) : "");
 
     const side1Players: string[] = [];
     const side2Players: string[] = [];
@@ -183,6 +190,7 @@ export async function listClubMatches(clubId: string): Promise<MatchSummary[]> {
       status: row.status as MatchSummary["status"],
       playedAt: row.played_at,
       scoreSummary,
+      setScores,
       side1Players,
       side2Players,
       createdAt: row.created_at,
