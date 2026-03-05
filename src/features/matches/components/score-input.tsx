@@ -10,6 +10,8 @@ type ScoreInputProps = {
   onUpdate: (setIndex: number, side: "side1" | "side2", value: number) => void;
   onAddSet: () => void;
   onRemoveLastSet: () => void;
+  side1Label?: string;
+  side2Label?: string;
 };
 
 export function ScoreInput({
@@ -17,6 +19,8 @@ export function ScoreInput({
   onUpdate,
   onAddSet,
   onRemoveLastSet,
+  side1Label = "사이드 1",
+  side2Label = "사이드 2",
 }: ScoreInputProps) {
   return (
     <div className="space-y-4">
@@ -30,7 +34,7 @@ export function ScoreInput({
           <div className="flex items-center gap-3">
             <div className="flex-1">
               <Label className="mb-1 text-[11px] text-muted-foreground">
-                사이드 1
+                {side1Label}
               </Label>
               <Input
                 type="number"
@@ -52,7 +56,7 @@ export function ScoreInput({
             </span>
             <div className="flex-1">
               <Label className="mb-1 text-[11px] text-muted-foreground">
-                사이드 2
+                {side2Label}
               </Label>
               <Input
                 type="number"

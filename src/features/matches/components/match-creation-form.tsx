@@ -70,6 +70,18 @@ export function MatchCreationForm({ clubId }: MatchCreationFormProps) {
     submit,
   } = useMatchCreation(clubId);
 
+  const side1Label =
+    side1Ids
+      .map((id) => members.find((member) => member.id === id)?.nickname)
+      .filter((name): name is string => Boolean(name))
+      .join(" · ") || "사이드 1";
+
+  const side2Label =
+    side2Ids
+      .map((id) => members.find((member) => member.id === id)?.nickname)
+      .filter((name): name is string => Boolean(name))
+      .join(" · ") || "사이드 2";
+
   if (createdMatchId) {
     return (
       <div className="space-y-4">
@@ -193,6 +205,8 @@ export function MatchCreationForm({ clubId }: MatchCreationFormProps) {
               onUpdate={updateSetScore}
               onAddSet={addSet}
               onRemoveLastSet={removeLastSet}
+              side1Label={side1Label}
+              side2Label={side2Label}
             />
           ) : null}
         </CardContent>

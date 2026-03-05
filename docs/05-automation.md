@@ -75,3 +75,35 @@ npm run automation:check # env + smoke + verify 일괄 실행
 - 신규 스키마 변경 시 `supabase/migrations`에 SQL 파일 추가
 - `supabase/schema.sql`은 스냅샷/참조 용도로 유지
 - 배포 전 `db:push:dry`를 반드시 확인
+
+## Troubleshooting
+
+### `no route to host` (db.<project-ref>.supabase.co:5432)
+
+- 원인: 현재 네트워크에서 Direct DB host(IPv6) 라우팅이 막힌 경우가 많다.
+- 해결: Supabase Dashboard에서 `Connection string`의 **Session pooler(IPv4)** URI를 복사해 `SUPABASE_DB_URL`에 설정한다.
+- 예시 형식:
+
+```bash
+SUPABASE_DB_URL=postgresql://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres
+```
+
+- 변경 후 다시 실행:
+
+```bash
+npm run db:push:dry
+npm run db:push
+```
+
+## Temporary Policy (Manual DB Migration)
+
+- 적용 기간: `db:push`가 IPv4/네트워크 이슈로 안정화되기 전까지
+- 원칙: DB 변경은 Supabase `SQL Editor`에서 수동 실행한다.
+
+실행 순서:
+
+1. `supabase/migrations/*.sql`에서 대상 파일 선택
+2. SQL Editor에 전체 붙여넣기 후 실행
+3. 검증 쿼리 실행(함수/테이블/정책 생성 확인)
+4. 앱 기능 재테스트
+5. `docs/04-dev-log.md`에 실행 일시와 적용 파일 기록
