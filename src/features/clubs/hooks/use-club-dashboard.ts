@@ -33,6 +33,12 @@ function toMessage(error: unknown) {
       if (message.includes("Invalid invite code")) {
         return "유효하지 않은 참가 코드입니다.";
       }
+      if (
+        message.includes("Could not find the function") &&
+        message.includes("join_club_by_invite")
+      ) {
+        return "서버 DB 함수가 아직 반영되지 않았습니다. 잠시 후 다시 시도해주세요.";
+      }
       if (message.includes("Not authenticated")) {
         return "로그인이 필요합니다.";
       }
