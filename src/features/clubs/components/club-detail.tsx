@@ -1,17 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Copy, Pencil, PlusCircle, Users, X } from "lucide-react";
-import { FormEvent, useCallback, useState } from "react";
+import { ArrowLeft, Copy, Pencil, PlusCircle, Users } from "lucide-react";
+import { useCallback, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { StatusBox } from "@/components/feedback/status-box";
 import { LoadingSpinner } from "@/components/feedback/loading-spinner";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { ClubMemberList } from "@/features/clubs/components/club-member-list";
+import { ClubNameEditModal } from "@/features/clubs/components/club-name-edit-modal";
 import { useClubDetail } from "@/features/clubs/hooks/use-club-detail";
 
 type ClubDetailViewProps = {
@@ -40,16 +40,6 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
       /* clipboard not available */
     }
   }, [club]);
-
-  async function submitClubName(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!club) return;
-    const formData = new FormData(event.currentTarget);
-    const name = String(formData.get("clubName") ?? "").trim();
-    if (name.length < 2 || name === club.name) return;
-    await saveClubName(name);
-    setOpenNameDialog(false);
-  }
 
   if (loading) {
     return <LoadingSpinner message="클럽 정보를 불러오는 중..." />;
@@ -155,49 +145,14 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
         )}
       </section>
 
-      {club.myRole === "owner" && openNameDialog ? (
-        <div className="fixed inset-0 z-50 bg-black/40 px-4 py-8">
-          <div className="mx-auto w-full max-w-md rounded-xl border bg-background p-4 shadow-lg">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold">클럽 이름 변경</h3>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setOpenNameDialog(false)}
-              >
-                <X className="size-3.5" />
-              </Button>
-            </div>
-            <form
-              key={`club-name-dialog-${club.name}`}
-              onSubmit={(e) => void submitClubName(e)}
-              className="space-y-3"
-            >
-              <Input
-                name="clubName"
-                defaultValue={club.name}
-                minLength={2}
-                maxLength={24}
-                placeholder="클럽 이름"
-                disabled={saving}
-              />
-              <div className="flex justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setOpenNameDialog(false)}
-                  disabled={saving}
-                >
-                  취소
-                </Button>
-                <Button type="submit" disabled={saving}>
-                  {saving ? "저장 중..." : "저장"}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
+      {club.myRole === "owner" ? (
+        <ClubNameEditModal
+          open={openNameDialog}
+          onOpenChange={setOpenNameDialog}
+          saving={saving}
+          currentName={club.name}
+          onSave={saveClubName}
+        />
       ) : null}
     </div>
   );

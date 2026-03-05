@@ -15,6 +15,7 @@
     "automation:check": "npm run env:check && npm run db:smoke && npm run verify"
   },
   "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-slot": "^1.2.4",
     "@supabase/supabase-js": "^2.98.0",
     "class-variance-authority": "^0.7.1",
