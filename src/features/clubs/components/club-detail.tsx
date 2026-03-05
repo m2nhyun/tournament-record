@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { ArrowLeft, Copy, PlusCircle, Users } from "lucide-react";
-import { useCallback, useState } from "react";
+import { FormEvent, useCallback, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { StatusBox } from "@/components/feedback/status-box";
 import { LoadingSpinner } from "@/components/feedback/loading-spinner";
 import { EmptyState } from "@/components/feedback/empty-state";
@@ -24,7 +25,8 @@ const roleLabelMap: Record<string, string> = {
 };
 
 export function ClubDetailView({ clubId }: ClubDetailViewProps) {
-  const { club, members, loading, status } = useClubDetail(clubId);
+  const { club, members, loading, status, saving, saveClubName, saveMyNickname } =
+    useClubDetail(clubId);
   const [copied, setCopied] = useState(false);
 
   const copyInviteCode = useCallback(async () => {
@@ -37,6 +39,24 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
       /* clipboard not available */
     }
   }, [club]);
+
+  async function submitClubName(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!club) return;
+    const formData = new FormData(event.currentTarget);
+    const name = String(formData.get("clubName") ?? "").trim();
+    if (name.length < 2 || name === club.name) return;
+    await saveClubName(name);
+  }
+
+  async function submitNickname(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!club) return;
+    const formData = new FormData(event.currentTarget);
+    const nickname = String(formData.get("myNickname") ?? "").trim();
+    if (nickname.length < 2 || nickname === club.myNickname) return;
+    await saveMyNickname(nickname);
+  }
 
   if (loading) {
     return <LoadingSpinner message="클럽 정보를 불러오는 중..." />;
@@ -79,12 +99,48 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-muted-foreground">닉네임</p>
-              <p className="text-sm font-medium">{club.myNickname}</p>
+          {club.myRole === "owner" ? (
+            <form
+              key={`club-name-${club.name}`}
+              onSubmit={(e) => void submitClubName(e)}
+              className="space-y-2"
+            >
+              <p className="text-xs text-muted-foreground">클럽 이름 (클럽장 전용)</p>
+              <div className="flex gap-2">
+                <Input
+                  name="clubName"
+                  defaultValue={club.name}
+                  minLength={2}
+                  maxLength={24}
+                  placeholder="클럽 이름"
+                  disabled={saving}
+                />
+                <Button type="submit" size="sm" disabled={saving}>
+                  저장
+                </Button>
+              </div>
+            </form>
+          ) : null}
+          <form
+            key={`club-nickname-${club.myNickname}`}
+            onSubmit={(e) => void submitNickname(e)}
+            className="space-y-2"
+          >
+            <p className="text-xs text-muted-foreground">내 닉네임</p>
+            <div className="flex gap-2">
+              <Input
+                name="myNickname"
+                defaultValue={club.myNickname}
+                minLength={2}
+                maxLength={24}
+                placeholder="닉네임"
+                disabled={saving}
+              />
+              <Button type="submit" size="sm" disabled={saving}>
+                저장
+              </Button>
             </div>
-          </div>
+          </form>
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs text-muted-foreground">참가 코드</p>
