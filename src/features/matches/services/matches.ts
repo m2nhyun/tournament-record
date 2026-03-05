@@ -27,8 +27,36 @@ function normalizeSetScores(value: unknown): SetScore[] {
         typeof candidate.set === "number" && candidate.set > 0
           ? candidate.set
           : index + 1;
+      const gamesToWin =
+        candidate.gamesToWin === 4 || candidate.gamesToWin === 6
+          ? candidate.gamesToWin
+          : 6;
+      const side1Point =
+        candidate.side1Point === "0" ||
+        candidate.side1Point === "15" ||
+        candidate.side1Point === "30" ||
+        candidate.side1Point === "40" ||
+        candidate.side1Point === "AD"
+          ? candidate.side1Point
+          : "0";
+      const side2Point =
+        candidate.side2Point === "0" ||
+        candidate.side2Point === "15" ||
+        candidate.side2Point === "30" ||
+        candidate.side2Point === "40" ||
+        candidate.side2Point === "AD"
+          ? candidate.side2Point
+          : "0";
+      const normalized: SetScore = {
+        set,
+        side1,
+        side2,
+        gamesToWin,
+        side1Point,
+        side2Point,
+      };
 
-      return { set, side1, side2 } satisfies SetScore;
+      return normalized;
     })
     .filter((score): score is SetScore => score !== null);
 }

@@ -116,7 +116,10 @@ export function MatchDetailView({ matchId, clubId }: MatchDetailViewProps) {
           {match.result && match.result.setScores.length > 0 ? (
             <div className="space-y-2">
               <p className="text-xs font-semibold text-muted-foreground">
-                세트별 점수
+                세트별 게임 스코어
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                목표 게임: {match.result.setScores[0]?.gamesToWin ?? 6}게임
               </p>
               <div className="overflow-hidden rounded-lg border">
                 <table className="w-full text-sm">
@@ -131,6 +134,9 @@ export function MatchDetailView({ matchId, clubId }: MatchDetailViewProps) {
                       <th className="px-3 py-2 text-center font-medium text-muted-foreground">
                         사이드 2
                       </th>
+                      <th className="px-3 py-2 text-center font-medium text-muted-foreground">
+                        포인트
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -144,6 +150,9 @@ export function MatchDetailView({ matchId, clubId }: MatchDetailViewProps) {
                         </td>
                         <td className="px-3 py-2 text-center font-semibold">
                           {s.side2}
+                        </td>
+                        <td className="px-3 py-2 text-center text-xs text-muted-foreground">
+                          {s.side1Point ?? "0"} : {s.side2Point ?? "0"}
                         </td>
                       </tr>
                     ))}

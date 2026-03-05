@@ -6,6 +6,7 @@ export type SetScore = {
   set: number;
   side1: number;
   side2: number;
+  gamesToWin?: 4 | 6;
   side1Point?: "0" | "15" | "30" | "40" | "AD";
   side2Point?: "0" | "15" | "30" | "40" | "AD";
 };

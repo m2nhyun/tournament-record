@@ -13,6 +13,8 @@ type ScoreInputProps = {
   ) => void;
   onAddSet: () => void;
   onRemoveLastSet: () => void;
+  gamesToWin: 4 | 6;
+  onChangeGamesToWin: (value: 4 | 6) => void;
   side1Label?: string;
   side2Label?: string;
 };
@@ -25,6 +27,8 @@ export function ScoreInput({
   onUpdate,
   onAddSet,
   onRemoveLastSet,
+  gamesToWin,
+  onChangeGamesToWin,
   side1Label = "사이드 1",
   side2Label = "사이드 2",
 }: ScoreInputProps) {
@@ -34,8 +38,30 @@ export function ScoreInput({
         <Label>세트별 게임 스코어</Label>
         <p className="text-xs text-muted-foreground">
           테니스 규칙상 포인트(0/15/30/40)로 게임이 진행되고, 이 입력은 각 세트의
-          최종 게임 수(예: 6:4)를 기록합니다.
+          최종 게임 수를 기록합니다.
         </p>
+        <p className="text-[11px] text-muted-foreground">
+          유효 예시: 6-4, 7-6 / 4-2, 5-4
+        </p>
+        <div className="flex items-center gap-2">
+          <Label className="text-xs text-muted-foreground">세트 목표 게임</Label>
+          <div className="inline-flex rounded-md border p-1">
+            <button
+              type="button"
+              className={`rounded px-2 py-1 text-xs ${gamesToWin === 6 ? "bg-[var(--brand)] text-white" : ""}`}
+              onClick={() => onChangeGamesToWin(6)}
+            >
+              6게임 (기본)
+            </button>
+            <button
+              type="button"
+              className={`rounded px-2 py-1 text-xs ${gamesToWin === 4 ? "bg-[var(--brand)] text-white" : ""}`}
+              onClick={() => onChangeGamesToWin(4)}
+            >
+              4게임
+            </button>
+          </div>
+        </div>
       </div>
 
       {setScores.map((score, index) => (

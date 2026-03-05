@@ -27,6 +27,28 @@ function todayString() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function isValidSetScore(score: SetScore, defaultGamesToWin: 4 | 6) {
+  const gamesToWin = score.gamesToWin ?? defaultGamesToWin;
+  const side1 = score.side1;
+  const side2 = score.side2;
+  const winnerGames = Math.max(side1, side2);
+  const loserGames = Math.min(side1, side2);
+
+  if (winnerGames < gamesToWin) return false;
+
+  // Normal set win: 6-0..6-4 / 4-0..4-2
+  if (winnerGames === gamesToWin && winnerGames - loserGames >= 2) {
+    return true;
+  }
+
+  // Tie-break style finish: 7-6 (for 6-game), 5-4 (for 4-game)
+  if (winnerGames === gamesToWin + 1 && loserGames === gamesToWin) {
+    return true;
+  }
+
+  return false;
+}
+
 export function useMatchCreation(clubId: string) {
   const [step, setStep] = useState<CreationStep>("type");
   const [members, setMembers] = useState<ClubMember[]>([]);
@@ -44,8 +66,16 @@ export function useMatchCreation(clubId: string) {
   const [side2Ids, setSide2Ids] = useState<string[]>([]);
 
   // Step 3: scores
+  const [gamesToWin, setGamesToWin] = useState<4 | 6>(6);
   const [setScores, setSetScores] = useState<SetScore[]>([
-    { set: 1, side1: 0, side2: 0, side1Point: "0", side2Point: "0" },
+    {
+      set: 1,
+      side1: 0,
+      side2: 0,
+      gamesToWin: 6,
+      side1Point: "0",
+      side2Point: "0",
+    },
   ]);
 
   useEffect(() => {
@@ -88,7 +118,7 @@ export function useMatchCreation(clubId: string) {
     side1Ids.length === requiredPerSide && side2Ids.length === requiredPerSide;
   const canSubmit =
     setScores.length > 0 &&
-    setScores.every((s) => s.side1 >= 0 && s.side2 >= 0);
+    setScores.every((s) => isValidSetScore(s, gamesToWin));
 
   const goToPlayers = useCallback(() => {
     if (!canCreateAnyMatch) {
@@ -158,10 +188,21 @@ export function useMatchCreation(clubId: string) {
         set: prev.length + 1,
         side1: 0,
         side2: 0,
+        gamesToWin,
         side1Point: "0",
         side2Point: "0",
       },
     ]);
+  }, [gamesToWin]);
+
+  const updateGamesToWin = useCallback((value: 4 | 6) => {
+    setGamesToWin(value);
+    setSetScores((prev) =>
+      prev.map((score) => ({
+        ...score,
+        gamesToWin: value,
+      })),
+    );
   }, []);
 
   const removeLastSet = useCallback(() => {
@@ -255,6 +296,8 @@ export function useMatchCreation(clubId: string) {
     requiredPerSide,
 
     setScores,
+    gamesToWin,
+    setGamesToWin: updateGamesToWin,
     addSet,
     removeLastSet,
     updateSetScore,

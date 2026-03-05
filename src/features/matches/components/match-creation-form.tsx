@@ -58,6 +58,8 @@ export function MatchCreationForm({ clubId }: MatchCreationFormProps) {
     canCreateAnyMatch,
     canUseDoubles,
     setScores,
+    gamesToWin,
+    setGamesToWin,
     addSet,
     removeLastSet,
     updateSetScore,
@@ -205,6 +207,8 @@ export function MatchCreationForm({ clubId }: MatchCreationFormProps) {
               onUpdate={updateSetScore}
               onAddSet={addSet}
               onRemoveLastSet={removeLastSet}
+              gamesToWin={gamesToWin}
+              onChangeGamesToWin={setGamesToWin}
               side1Label={side1Label}
               side2Label={side2Label}
             />
