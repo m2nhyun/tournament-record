@@ -134,9 +134,28 @@ type MatchRow = {
     | null;
   match_players: {
     side: number;
-    club_members: { nickname: string } | { nickname: string }[] | null;
+    club_members:
+      | { nickname: string; user_id: string }
+      | { nickname: string; user_id: string }[]
+      | null;
   }[];
 };
+
+function normalizeClubMember(
+  cm:
+    | { nickname: string; user_id: string }
+    | { nickname: string; user_id: string }[]
+    | null,
+): { nickname: string; userId: string | null } {
+  if (!cm) return { nickname: "?", userId: null };
+  if (Array.isArray(cm)) {
+    return {
+      nickname: cm[0]?.nickname ?? "?",
+      userId: cm[0]?.user_id ?? null,
+    };
+  }
+  return { nickname: cm.nickname, userId: cm.user_id };
+}
 
 function normalizeNickname(
   cm: { nickname: string } | { nickname: string }[] | null,
@@ -155,12 +174,12 @@ function pickFirstResult<T extends Record<string, unknown>>(
 }
 
 export async function listClubMatches(clubId: string): Promise<MatchSummary[]> {
-  await requireUser();
+  const user = await requireUser();
 
   const { data, error } = await getSupabaseClient()
     .from("matches")
     .select(
-      "id,club_id,match_type,status,played_at,created_at,match_results(score_summary,set_scores),match_players(side,club_members(nickname))",
+      "id,club_id,match_type,status,played_at,created_at,match_results(score_summary,set_scores),match_players(side,club_members(nickname,user_id))",
     )
     .eq("club_id", clubId)
     .order("played_at", { ascending: false });
@@ -176,11 +195,16 @@ export async function listClubMatches(clubId: string): Promise<MatchSummary[]> {
 
     const side1Players: string[] = [];
     const side2Players: string[] = [];
+    let currentUserSide: 1 | 2 | null = null;
 
     for (const mp of row.match_players) {
-      const name = normalizeNickname(mp.club_members);
+      const member = normalizeClubMember(mp.club_members);
+      const name = member.nickname;
       if (mp.side === 1) side1Players.push(name);
       else side2Players.push(name);
+      if (member.userId === user.id) {
+        currentUserSide = mp.side === 1 ? 1 : 2;
+      }
     }
 
     return {
@@ -193,6 +217,7 @@ export async function listClubMatches(clubId: string): Promise<MatchSummary[]> {
       setScores,
       side1Players,
       side2Players,
+      currentUserSide,
       createdAt: row.created_at,
     };
   });

@@ -108,3 +108,21 @@
 - 클럽명 수정/내 설정 수정을 페이지 인라인 폼에서 다이얼로그 기반 UX로 전환
 - `@radix-ui/react-dialog` + 공용 `Modal` 래퍼 도입
 - 편집 관련 코드를 분리 컴포넌트로 분리해 화면 컴포넌트 복잡도 축소
+
+### Match History UX Upgrade
+
+- 히스토리에 `카드/리스트` 보기 전환 추가
+- 필터 영역을 Chevron 토글(기본 접힘)로 변경
+- 필터 항목: `날짜` + `상대 이름` 적용
+- 무한 스크롤(초기 16개 + sentinel) 적용
+- 리스트 모드를 최소형(`팀A x:y 팀B`)으로 축소
+- 리스트 승패 표현을 배지 대신 얕은 배경색(`green-light`/`red-light`)으로 전환
+- 승패 계산 기준을 `side1 고정`에서 `현재 로그인 사용자 기준`으로 수정
+- 중간 날짜 그룹 헤더 제거(리스트 스캔 집중도 개선)
+
+### Design Tokens
+
+- 결과 강조용 토큰 추가/연결:
+  - `--color-green-primary`, `--color-green-light`
+  - `--color-red-primary`, `--color-red-light`
+- 관련 가이드를 `docs/10-history-ui-guidelines.md`로 문서화

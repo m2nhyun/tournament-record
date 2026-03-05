@@ -1,9 +1,20 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, History } from "lucide-react";
+import {
+  ArrowLeft,
+  CalendarDays,
+  ChevronDown,
+  ChevronUp,
+  History,
+  LayoutGrid,
+  List,
+  Search,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { StatusBox } from "@/components/feedback/status-box";
 import { LoadingSpinner } from "@/components/feedback/loading-spinner";
 import { EmptyState } from "@/components/feedback/empty-state";
@@ -16,6 +27,28 @@ type MatchHistoryViewProps = {
 
 export function MatchHistoryView({ clubId }: MatchHistoryViewProps) {
   const { matches, loading, error } = useMatchList(clubId);
+  const [playedOn, setPlayedOn] = useState("");
+  const [opponentQuery, setOpponentQuery] = useState("");
+  const [viewMode, setViewMode] = useState<"card" | "list">("card");
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+  const filteredMatches = useMemo(() => {
+    const opponent = opponentQuery.trim().toLowerCase();
+    return matches.filter((match) => {
+      if (playedOn) {
+        const date = new Date(match.playedAt);
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, "0");
+        const dd = String(date.getDate()).padStart(2, "0");
+        const dateKey = `${yyyy}-${mm}-${dd}`;
+        if (dateKey !== playedOn) return false;
+      }
+
+      if (!opponent) return true;
+      const names = [...match.side1Players, ...match.side2Players].join(" ").toLowerCase();
+      return names.includes(opponent);
+    });
+  }, [matches, opponentQuery, playedOn]);
 
   if (loading) {
     return <LoadingSpinner message="경기 기록을 불러오는 중..." />;
@@ -49,7 +82,85 @@ export function MatchHistoryView({ clubId }: MatchHistoryViewProps) {
         />
       ) : null}
 
-      {matches.length > 0 ? <MatchList matches={matches} /> : null}
+      {matches.length > 0 ? (
+        <section className="space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={viewMode === "card" ? "default" : "outline"}
+                onClick={() => setViewMode("card")}
+              >
+                <LayoutGrid className="size-4" />
+                카드
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={viewMode === "list" ? "default" : "outline"}
+                onClick={() => setViewMode("list")}
+              >
+                <List className="size-4" />
+                리스트
+              </Button>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setIsFilterOpen((prev) => !prev)}
+            >
+              필터
+              {isFilterOpen ? (
+                <ChevronUp className="size-4" />
+              ) : (
+                <ChevronDown className="size-4" />
+              )}
+            </Button>
+          </div>
+
+          {isFilterOpen ? (
+            <div className="rounded-xl border bg-card p-3">
+              <div className="grid gap-2 md:grid-cols-2">
+                <label className="flex items-center gap-2 rounded-lg border px-3">
+                  <CalendarDays className="size-4 text-muted-foreground" />
+                  <Input
+                    type="date"
+                    value={playedOn}
+                    onChange={(event) => setPlayedOn(event.target.value)}
+                    className="border-0 px-0 shadow-none focus-visible:ring-0"
+                  />
+                </label>
+                <label className="flex items-center gap-2 rounded-lg border px-3">
+                  <Search className="size-4 text-muted-foreground" />
+                  <Input
+                    type="search"
+                    value={opponentQuery}
+                    onChange={(event) => setOpponentQuery(event.target.value)}
+                    placeholder="상대 이름 검색"
+                    className="border-0 px-0 shadow-none focus-visible:ring-0"
+                  />
+                </label>
+              </div>
+            </div>
+          ) : null}
+
+          {filteredMatches.length === 0 ? (
+            <EmptyState
+              icon={History}
+              title="조건에 맞는 경기가 없습니다."
+              description="날짜 또는 상대 이름을 조정해보세요."
+            />
+          ) : (
+            <MatchList
+              key={`${viewMode}:${playedOn}:${opponentQuery}:${filteredMatches.length}`}
+              matches={filteredMatches}
+              viewMode={viewMode}
+            />
+          )}
+        </section>
+      ) : null}
     </div>
   );
 }

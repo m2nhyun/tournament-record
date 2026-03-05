@@ -35,6 +35,7 @@ export type MatchSummary = {
   setScores: SetScore[];
   side1Players: string[];
   side2Players: string[];
+  currentUserSide: 1 | 2 | null;
   createdAt: string;
 };
 

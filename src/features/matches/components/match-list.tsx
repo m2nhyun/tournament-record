@@ -1,53 +1,56 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+
 import { MatchCard } from "@/features/matches/components/match-card";
 import type { MatchSummary } from "@/features/matches/types/match";
 
 type MatchListProps = {
   matches: MatchSummary[];
+  viewMode: "card" | "list";
 };
 
-type DateGroup = {
-  label: string;
-  matches: MatchSummary[];
-};
+const PAGE_SIZE = 16;
 
-function groupByDate(matches: MatchSummary[]): DateGroup[] {
-  const groups = new Map<string, MatchSummary[]>();
+export function MatchList({ matches, viewMode }: MatchListProps) {
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
-  for (const match of matches) {
-    const dateKey = new Intl.DateTimeFormat("ko-KR", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    }).format(new Date(match.playedAt));
+  useEffect(() => {
+    const node = sentinelRef.current;
+    if (!node) return;
+    if (visibleCount >= matches.length) return;
 
-    const existing = groups.get(dateKey) ?? [];
-    existing.push(match);
-    groups.set(dateKey, existing);
-  }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const first = entries[0];
+        if (!first?.isIntersecting) return;
+        setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, matches.length));
+      },
+      { rootMargin: "300px 0px" },
+    );
 
-  return Array.from(groups.entries()).map(([label, matches]) => ({
-    label,
-    matches,
-  }));
-}
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [matches.length, visibleCount]);
 
-export function MatchList({ matches }: MatchListProps) {
-  const groups = groupByDate(matches);
+  const visibleMatches = useMemo(
+    () => matches.slice(0, visibleCount),
+    [matches, visibleCount],
+  );
+  const hasMore = visibleCount < matches.length;
 
   return (
-    <div className="space-y-6">
-      {groups.map((group) => (
-        <section key={group.label} className="space-y-2">
-          <h3 className="text-xs font-semibold text-muted-foreground">
-            {group.label}
-          </h3>
-          <div className="grid gap-2">
-            {group.matches.map((match) => (
-              <MatchCard key={match.id} match={match} />
-            ))}
-          </div>
-        </section>
+    <div className="space-y-2">
+      {visibleMatches.map((match) => (
+        <MatchCard key={match.id} match={match} viewMode={viewMode} />
       ))}
+
+      {hasMore ? (
+        <div ref={sentinelRef} className="py-4 text-center text-xs text-muted-foreground">
+          경기 기록을 더 불러오는 중...
+        </div>
+      ) : null}
     </div>
   );
 }
