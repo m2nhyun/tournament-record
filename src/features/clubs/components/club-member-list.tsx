@@ -1,4 +1,5 @@
-import { FormEvent } from "react";
+import { FormEvent, useState } from "react";
+import { Pencil, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,8 @@ export function ClubMemberList({
   onSaveMySettings,
 }: ClubMemberListProps) {
   const myMember = members.find((member) => member.isMe) ?? null;
+  const [open, setOpen] = useState(false);
+
   async function submitMySettings(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!myMember) return;
@@ -41,6 +44,7 @@ export function ClubMemberList({
       allowRecordSearch: formData.get("allowRecordSearch") === "on",
       shareHistory: formData.get("shareHistory") === "on",
     });
+    setOpen(false);
   }
 
   return (
@@ -48,7 +52,7 @@ export function ClubMemberList({
       {members.map((member) => (
         <div
           key={member.id}
-          className="space-y-2 rounded-lg border bg-card px-3 py-2.5"
+          className="rounded-lg border bg-card px-3 py-2.5"
         >
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">{member.nickname}</span>
@@ -61,20 +65,45 @@ export function ClubMemberList({
               <Badge variant={member.role === "owner" ? "brand" : "default"}>
                 {roleLabelMap[member.role] ?? member.role}
               </Badge>
+              {member.isMe ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setOpen(true)}
+                >
+                  <Pencil className="size-3.5" />
+                </Button>
+              ) : null}
             </div>
           </div>
+        </div>
+      ))}
 
-          {member.isMe ? (
+      {myMember && open ? (
+        <div className="fixed inset-0 z-50 bg-black/40 px-4 py-8">
+          <div className="mx-auto w-full max-w-md rounded-xl border bg-background p-4 shadow-lg">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold">내 설정</h3>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setOpen(false)}
+              >
+                <X className="size-3.5" />
+              </Button>
+            </div>
             <form
-              key={`my-settings-${member.id}-${member.nickname}-${member.openKakaoProfile}-${member.allowRecordSearch}-${member.shareHistory}`}
+              key={`my-settings-${myMember.id}-${myMember.nickname}-${myMember.openKakaoProfile}-${myMember.allowRecordSearch}-${myMember.shareHistory}`}
               onSubmit={(e) => void submitMySettings(e)}
-              className="space-y-2"
+              className="space-y-3"
             >
               <div className="space-y-1">
                 <p className="text-xs text-muted-foreground">내 닉네임</p>
                 <Input
                   name="myNickname"
-                  defaultValue={member.nickname}
+                  defaultValue={myMember.nickname}
                   minLength={2}
                   maxLength={24}
                   disabled={saving}
@@ -84,7 +113,7 @@ export function ClubMemberList({
                 <input
                   name="openKakaoProfile"
                   type="checkbox"
-                  defaultChecked={member.openKakaoProfile}
+                  defaultChecked={myMember.openKakaoProfile}
                   disabled={saving}
                 />
                 카카오톡 프로필 공개
@@ -93,7 +122,7 @@ export function ClubMemberList({
                 <input
                   name="allowRecordSearch"
                   type="checkbox"
-                  defaultChecked={member.allowRecordSearch}
+                  defaultChecked={myMember.allowRecordSearch}
                   disabled={saving}
                 />
                 전적 검색 허용
@@ -102,18 +131,28 @@ export function ClubMemberList({
                 <input
                   name="shareHistory"
                   type="checkbox"
-                  defaultChecked={member.shareHistory}
+                  defaultChecked={myMember.shareHistory}
                   disabled={saving}
                 />
                 내 경기 히스토리 공개
               </label>
-              <Button type="submit" size="sm" disabled={saving}>
-                {saving ? "저장 중..." : "내 설정 저장"}
-              </Button>
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setOpen(false)}
+                  disabled={saving}
+                >
+                  취소
+                </Button>
+                <Button type="submit" disabled={saving}>
+                  {saving ? "저장 중..." : "저장"}
+                </Button>
+              </div>
             </form>
-          ) : null}
+          </div>
         </div>
-      ))}
+      ) : null}
     </div>
   );
 }

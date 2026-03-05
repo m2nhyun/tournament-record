@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Copy, PlusCircle, Users } from "lucide-react";
+import { ArrowLeft, Copy, Pencil, PlusCircle, Users, X } from "lucide-react";
 import { FormEvent, useCallback, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,7 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
   const { club, members, loading, status, saving, saveClubName, saveMySettings } =
     useClubDetail(clubId);
   const [copied, setCopied] = useState(false);
+  const [openNameDialog, setOpenNameDialog] = useState(false);
 
   const copyInviteCode = useCallback(async () => {
     if (!club) return;
@@ -47,6 +48,7 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
     const name = String(formData.get("clubName") ?? "").trim();
     if (name.length < 2 || name === club.name) return;
     await saveClubName(name);
+    setOpenNameDialog(false);
   }
 
   if (loading) {
@@ -84,37 +86,29 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
         <CardHeader>
           <div className="flex items-start justify-between gap-2">
             <CardTitle>클럽 정보</CardTitle>
-            <Badge variant="brand">
-              {roleLabelMap[club.myRole] ?? club.myRole}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="brand">
+                {roleLabelMap[club.myRole] ?? club.myRole}
+              </Badge>
+              {club.myRole === "owner" ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setOpenNameDialog(true)}
+                >
+                  <Pencil className="size-3.5" />
+                </Button>
+              ) : null}
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
-          {club.myRole === "owner" ? (
-            <form
-              key={`club-name-${club.name}`}
-              onSubmit={(e) => void submitClubName(e)}
-              className="space-y-2"
-            >
-              <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-                클럽장은 클럽 이름을 변경할 수 있습니다.
-              </div>
-              <p className="text-xs text-muted-foreground">클럽 이름 (클럽장 전용)</p>
-              <div className="flex gap-2">
-                <Input
-                  name="clubName"
-                  defaultValue={club.name}
-                  minLength={2}
-                  maxLength={24}
-                  placeholder="클럽 이름"
-                  disabled={saving}
-                />
-                <Button type="submit" size="sm" disabled={saving}>
-                  {saving ? "저장 중..." : "저장"}
-                </Button>
-              </div>
-            </form>
-          ) : null}
+          <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+            {club.myRole === "owner"
+              ? "연필 아이콘을 눌러 클럽 이름을 수정할 수 있습니다."
+              : "클럽 이름은 클럽장만 변경할 수 있습니다."}
+          </div>
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs text-muted-foreground">참가 코드</p>
@@ -160,6 +154,51 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
           <EmptyState icon={Users} title="멤버가 없습니다." />
         )}
       </section>
+
+      {club.myRole === "owner" && openNameDialog ? (
+        <div className="fixed inset-0 z-50 bg-black/40 px-4 py-8">
+          <div className="mx-auto w-full max-w-md rounded-xl border bg-background p-4 shadow-lg">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold">클럽 이름 변경</h3>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setOpenNameDialog(false)}
+              >
+                <X className="size-3.5" />
+              </Button>
+            </div>
+            <form
+              key={`club-name-dialog-${club.name}`}
+              onSubmit={(e) => void submitClubName(e)}
+              className="space-y-3"
+            >
+              <Input
+                name="clubName"
+                defaultValue={club.name}
+                minLength={2}
+                maxLength={24}
+                placeholder="클럽 이름"
+                disabled={saving}
+              />
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setOpenNameDialog(false)}
+                  disabled={saving}
+                >
+                  취소
+                </Button>
+                <Button type="submit" disabled={saving}>
+                  {saving ? "저장 중..." : "저장"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
