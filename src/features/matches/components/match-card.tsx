@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ChevronRight, User, Users } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { MatchStatusBadge } from "@/features/matches/components/match-status-badge";
 import type { MatchSummary, SetScore } from "@/features/matches/types/match";
 
@@ -26,11 +27,6 @@ function isRoundComplete(score: SetScore) {
   return winner === target + 1 && loser === target;
 }
 
-function formatGameCell(sideGames: number, point?: string) {
-  if (!point || point === "0") return String(sideGames);
-  return `${sideGames} (${point})`;
-}
-
 function summarizeOutcome(setScores: SetScore[]) {
   let side1Wins = 0;
   let side2Wins = 0;
@@ -51,11 +47,19 @@ export function MatchCard({ match }: MatchCardProps) {
   const team2 = match.side2Players.join(" · ");
   const hasInProgressRound = match.setScores.some((s) => !isRoundComplete(s));
   const outcome = summarizeOutcome(match.setScores);
-  const outcomeLabel =
-    outcome.side1Wins === outcome.side2Wins
-      ? "동률"
-      : `승 ${outcome.side1Wins > outcome.side2Wins ? team1 || "팀 A" : team2 || "팀 B"} · 패 ${outcome.side1Wins > outcome.side2Wins ? team2 || "팀 B" : team1 || "팀 A"}`;
   const scoreSummary = gameScoreSummary(match.setScores);
+  const side1Result =
+    outcome.side1Wins === outcome.side2Wins
+      ? "draw"
+      : outcome.side1Wins > outcome.side2Wins
+        ? "win"
+        : "lose";
+  const side2Result =
+    outcome.side1Wins === outcome.side2Wins
+      ? "draw"
+      : outcome.side2Wins > outcome.side1Wins
+        ? "win"
+        : "lose";
 
   return (
     <Link href={`/clubs/${match.clubId}/matches/${match.id}`} className="block">
@@ -80,9 +84,49 @@ export function MatchCard({ match }: MatchCardProps) {
               </p>
               {match.setScores.length > 0 ? (
                 <div className="space-y-0.5">
-                  <p className="text-xs font-semibold text-foreground">
-                    {outcomeLabel}
-                  </p>
+                  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-sm">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-medium">{team1 || "팀 A"}</span>
+                      <Badge
+                        variant={
+                          side1Result === "win"
+                            ? "success"
+                            : side1Result === "lose"
+                              ? "destructive"
+                              : "warning"
+                        }
+                        className="px-1.5 py-0 text-[10px]"
+                      >
+                        {side1Result === "win"
+                          ? "승"
+                          : side1Result === "lose"
+                            ? "패"
+                            : "무"}
+                      </Badge>
+                    </div>
+                    <p className="font-mono text-base font-semibold text-[var(--brand)]">
+                      {outcome.side1Wins} : {outcome.side2Wins}
+                    </p>
+                    <div className="flex items-center justify-end gap-1.5">
+                      <Badge
+                        variant={
+                          side2Result === "win"
+                            ? "success"
+                            : side2Result === "lose"
+                              ? "destructive"
+                              : "warning"
+                        }
+                        className="px-1.5 py-0 text-[10px]"
+                      >
+                        {side2Result === "win"
+                          ? "승"
+                          : side2Result === "lose"
+                            ? "패"
+                            : "무"}
+                      </Badge>
+                      <span className="font-medium">{team2 || "팀 B"}</span>
+                    </div>
+                  </div>
                   <p className="text-[11px] text-muted-foreground">
                     게임 스코어: {scoreSummary}
                   </p>
@@ -93,49 +137,7 @@ export function MatchCard({ match }: MatchCardProps) {
           </div>
 
           {match.setScores.length > 0 ? (
-            <div className="overflow-hidden rounded-lg border">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b bg-muted/30">
-                    <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">
-                      게임
-                    </th>
-                    <th className="px-2 py-1.5 text-center font-medium text-muted-foreground">
-                      {team1}
-                    </th>
-                    <th className="px-2 py-1.5 text-center font-medium text-muted-foreground">
-                      {team2}
-                    </th>
-                    <th className="px-2 py-1.5 text-center font-medium text-muted-foreground">
-                      상태
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {match.setScores.map((score) => {
-                    const complete = isRoundComplete(score);
-                    return (
-                      <tr key={score.set} className="border-b last:border-0">
-                        <td className="px-2 py-1.5 text-muted-foreground">
-                          G{score.set}
-                        </td>
-                        <td className="px-2 py-1.5 text-center font-semibold">
-                          {formatGameCell(score.side1, score.side1Point)}
-                        </td>
-                        <td className="px-2 py-1.5 text-center font-semibold">
-                          {formatGameCell(score.side2, score.side2Point)}
-                        </td>
-                        <td
-                          className={`px-2 py-1.5 text-center ${complete ? "text-emerald-600" : "text-amber-600"}`}
-                        >
-                          {complete ? "완료" : "진행/중단"}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            null
           ) : (
             <p className="font-mono text-sm font-semibold text-[var(--brand)]">
               {match.scoreSummary}
