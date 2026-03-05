@@ -43,7 +43,7 @@ export function CreateClubForm({
             id="create-club-name"
             value={name}
             onChange={(event) => onChangeName(event.target.value)}
-            placeholder="예: 일요 테니스회"
+            placeholder="예: 서울대 롤랑가로스"
             maxLength={40}
           />
         </div>
@@ -54,7 +54,7 @@ export function CreateClubForm({
             id="create-club-nickname"
             value={nickname}
             onChange={(event) => onChangeNickname(event.target.value)}
-            placeholder="예: 민현"
+            placeholder="예: 홍길동"
             maxLength={20}
           />
         </div>

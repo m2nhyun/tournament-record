@@ -2,107 +2,42 @@
 
 아마추어 테니스 모임/클럽의 경기 기록을 쉽고 신뢰 가능하게 남기는 서비스.
 
-## Why
+## Product
 
-- 경기 수는 많지만 기록이 엑셀, 카톡, 기억에 흩어져 있음
-- 기록 부재로 운영(집계/공지/히스토리/분쟁 대응) 비용이 큼
-- 표준화된 데이터가 없어 이후 매칭/레이팅으로 확장하기 어려움
+- 클럽 생성 및 초대 코드 기반 멤버 운영
+- 단식/복식 경기 기록
+- 테니스 게임 단위 점수 입력(목표 게임 선택)
+- 경기 히스토리 조회(카드/리스트, 필터, 무한 스크롤)
+- 클럽 리더보드(승/패/경기 수)
 
-## Product Hypothesis
+## Core UX Principles
 
-1. 기록 루프를 단순화하면(입력 -> 확인 -> 확정) 기록률이 올라간다.
-2. 클럽 단위 운영 도구가 있으면 소수 인원에서도 도입된다.
-3. 기록 데이터가 쌓이면 운영 자동화와 매칭 품질이 개선된다.
+1. 기록은 빠르고 직관적이어야 한다.
+2. 용어는 테니스 실사용 관점(게임 중심)으로 통일한다.
+3. 히스토리는 스캔 중심으로 설계한다.
+4. 승/패 표시는 로그인 사용자 기준으로 정확해야 한다.
 
-## MVP Scope (Phase 1: Record)
+## Match History
 
-- 모임/클럽 생성 및 초대 코드
-- 경기 생성(단식/복식), 점수 입력
-- 경기 히스토리(개인/클럽)
-- 간단 리더보드(승/패, 경기 수)
-- 결과 수정 이력(누가, 언제, 무엇을 변경했는지)
+- `카드 모드`: 경기 맥락(유형/상태/날짜/게임 스코어) 확인
+- `리스트 모드`: `팀A x:y 팀B` 최소 정보만 노출
+- 필터: 날짜 + 상대 이름 (접기/펼치기)
+- 무한 스크롤: 점진 로딩
 
-## Core Metrics
+## Design Direction
 
-- 경기 후 24시간 내 기록률
-- 주간 활성 모임 수
-- 사용자당 주간 평균 기록 수
-- 기록 수정/분쟁 발생률
-- 4주차 잔존 모임 비율
+- 담백한 UI, 높은 가독성
+- 배지 남용보다 정보 밀도와 스캔 속도 우선
+- 승/패 시각 강조는 연한 그린/레드 톤 사용
 
-## Tech Stack
+## Tech
 
 - Next.js (App Router) + TypeScript
 - Tailwind CSS + shadcn/ui
 - Supabase (Postgres/Auth/RLS)
 - Vercel
 
-## Code Structure
-
-- `src/app`: App Router 엔트리
-- `src/features/clubs`: 클럽 도메인(feature 단위 분리)
-  - `components`, `hooks`, `services`, `types`
-- `src/components/ui`: 재사용 UI 컴포넌트
-
-## Local Setup
-
-```bash
-npm install
-cp .env.local.example .env.local
-npm run dev
-```
-
-브라우저에서 `http://localhost:3000` 확인.
-
-`.env.local`:
-
-```bash
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
-SUPABASE_DB_URL=
-NEXT_PUBLIC_ALLOW_GUEST_MODE=false
-NEXT_PUBLIC_KAKAO_REST_API_KEY=
-```
-
-## Database
-
-- 초기 스키마 파일: `supabase/schema.sql`
-- Supabase SQL Editor에서 파일 내용을 실행해서 테이블/RLS 정책 적용
-- 스키마 업데이트가 생기면 파일 하단의 신규 SQL도 다시 실행
-- 마이그레이션 파일: `supabase/migrations/*.sql`
-
 ## Auth
 
-- 기본: Kakao OAuth + Email/Password 로그인/회원가입
-- 개발 편의: `NEXT_PUBLIC_ALLOW_GUEST_MODE=true`일 때 자동 게스트 세션 허용
-- 설정 가이드: `docs/05-automation.md`의 `Kakao Auth Setup` 참고
-
-## Environment Strategy
-
-- Supabase는 단일 프로젝트로 운영
-- `main/develop` 분리는 Git/Vercel 레벨에서 관리
-- DB 변경은 `db:push:dry` 선검증 후 `db:push`
-
-## Automation
-
-```bash
-npm run env:check
-npm run db:smoke
-npm run db:push:dry
-npm run db:push
-npm run verify
-npm run automation:check
-```
-
-`db:push`를 실행하려면 `SUPABASE_DB_URL` 환경변수가 필요합니다.
-
-## Documentation
-
-- `docs/README.md`
-- `docs/01-product-canvas.md`
-- `docs/02-design-system.md`
-- `docs/03-architecture.md`
-- `docs/04-dev-log.md`
-- `docs/05-automation.md`
-- `docs/06-design-handoff.md`
+- Kakao OAuth 로그인 지원
+- Email/Password 로그인 지원
