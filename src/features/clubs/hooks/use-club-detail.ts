@@ -50,6 +50,7 @@ export function useClubDetail(clubId: string) {
 
   const saveClubName = useCallback(
     async (name: string) => {
+      if (saving) return;
       setSaving(true);
       try {
         await updateClubName(clubId, name);
@@ -61,11 +62,12 @@ export function useClubDetail(clubId: string) {
         setSaving(false);
       }
     },
-    [clubId, refresh],
+    [clubId, refresh, saving],
   );
 
   const saveMyNickname = useCallback(
     async (nickname: string) => {
+      if (saving) return;
       setSaving(true);
       try {
         await updateMyClubNickname(clubId, nickname);
@@ -77,7 +79,7 @@ export function useClubDetail(clubId: string) {
         setSaving(false);
       }
     },
-    [clubId, refresh],
+    [clubId, refresh, saving],
   );
 
   return {

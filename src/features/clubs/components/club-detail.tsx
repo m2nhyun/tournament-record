@@ -99,6 +99,11 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
+          <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+            {club.myRole === "owner"
+              ? "클럽장은 클럽 이름 변경이 가능합니다."
+              : "클럽 이름 변경은 클럽장만 가능합니다."}
+          </div>
           {club.myRole === "owner" ? (
             <form
               key={`club-name-${club.name}`}
@@ -116,7 +121,7 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
                   disabled={saving}
                 />
                 <Button type="submit" size="sm" disabled={saving}>
-                  저장
+                  {saving ? "저장 중..." : "저장"}
                 </Button>
               </div>
             </form>
@@ -137,9 +142,12 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
                 disabled={saving}
               />
               <Button type="submit" size="sm" disabled={saving}>
-                저장
+                {saving ? "저장 중..." : "저장"}
               </Button>
             </div>
+            <p className="text-[11px] text-muted-foreground">
+              같은 클럽 내에서는 중복 닉네임을 사용할 수 없습니다.
+            </p>
           </form>
           <div className="flex items-center justify-between">
             <div>
