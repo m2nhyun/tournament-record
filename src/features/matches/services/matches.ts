@@ -100,7 +100,7 @@ type MatchRow = {
   status: string;
   played_at: string;
   created_at: string;
-  match_results: { score_summary: string }[] | null;
+  match_results: { score_summary: string } | { score_summary: string }[] | null;
   match_players: {
     side: number;
     club_members: { nickname: string } | { nickname: string }[] | null;
@@ -113,6 +113,14 @@ function normalizeNickname(
   if (!cm) return "?";
   if (Array.isArray(cm)) return cm[0]?.nickname ?? "?";
   return cm.nickname;
+}
+
+function pickFirstResult<T extends Record<string, unknown>>(
+  value: T | T[] | null | undefined,
+): T | null {
+  if (!value) return null;
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value;
 }
 
 export async function listClubMatches(clubId: string): Promise<MatchSummary[]> {
@@ -129,9 +137,7 @@ export async function listClubMatches(clubId: string): Promise<MatchSummary[]> {
   if (error) throw error;
 
   return ((data ?? []) as MatchRow[]).map((row) => {
-    const results = row.match_results;
-    const scoreSummary =
-      results && results.length > 0 ? results[0].score_summary : "";
+    const scoreSummary = pickFirstResult(row.match_results)?.score_summary ?? "";
 
     const side1Players: string[] = [];
     const side2Players: string[] = [];
@@ -169,6 +175,11 @@ type MatchDetailRow = {
         score_summary: string;
         set_scores?: unknown;
         submitted_by: string;
+      }
+    | {
+        score_summary: string;
+        set_scores?: unknown;
+        submitted_by: string;
       }[]
     | null;
   match_players: {
@@ -195,7 +206,7 @@ export async function getMatchDetail(matchId: string): Promise<MatchDetail> {
   }
 
   const row = data as MatchDetailRow;
-  const firstResult = row.match_results?.[0];
+  const firstResult = pickFirstResult(row.match_results);
   const result =
     firstResult
       ? {

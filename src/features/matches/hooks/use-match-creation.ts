@@ -45,7 +45,7 @@ export function useMatchCreation(clubId: string) {
 
   // Step 3: scores
   const [setScores, setSetScores] = useState<SetScore[]>([
-    { set: 1, side1: 0, side2: 0 },
+    { set: 1, side1: 0, side2: 0, side1Point: "0", side2Point: "0" },
   ]);
 
   useEffect(() => {
@@ -154,7 +154,13 @@ export function useMatchCreation(clubId: string) {
   const addSet = useCallback(() => {
     setSetScores((prev) => [
       ...prev,
-      { set: prev.length + 1, side1: 0, side2: 0 },
+      {
+        set: prev.length + 1,
+        side1: 0,
+        side2: 0,
+        side1Point: "0",
+        side2Point: "0",
+      },
     ]);
   }, []);
 
@@ -163,7 +169,11 @@ export function useMatchCreation(clubId: string) {
   }, []);
 
   const updateSetScore = useCallback(
-    (setIndex: number, side: "side1" | "side2", value: number) => {
+    (
+      setIndex: number,
+      side: "side1" | "side2" | "side1Point" | "side2Point",
+      value: number | "0" | "15" | "30" | "40" | "AD",
+    ) => {
       setSetScores((prev) =>
         prev.map((s, i) => (i === setIndex ? { ...s, [side]: value } : s)),
       );

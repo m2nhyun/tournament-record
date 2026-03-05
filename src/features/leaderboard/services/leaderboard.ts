@@ -9,6 +9,10 @@ type MatchRow = {
     | {
         score_summary: string;
         set_scores?: unknown;
+      }
+    | {
+        score_summary: string;
+        set_scores?: unknown;
       }[]
     | null;
   match_players: {
@@ -56,6 +60,14 @@ function normalizeSetScores(value: unknown): { side1: number; side2: number }[] 
     .filter((score): score is { side1: number; side2: number } => score !== null);
 }
 
+function pickFirstResult<T extends Record<string, unknown>>(
+  value: T | T[] | null | undefined,
+): T | null {
+  if (!value) return null;
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value;
+}
+
 export async function getClubLeaderboard(
   clubId: string,
 ): Promise<LeaderboardEntry[]> {
@@ -77,7 +89,9 @@ export async function getClubLeaderboard(
   >();
 
   for (const row of (data ?? []) as MatchRow[]) {
-    const setScores = normalizeSetScores(row.match_results?.[0]?.set_scores);
+    const setScores = normalizeSetScores(
+      pickFirstResult(row.match_results)?.set_scores,
+    );
     if (!setScores || setScores.length === 0) continue;
 
     const winningSide = determineWinningSide(setScores);

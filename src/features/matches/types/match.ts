@@ -6,6 +6,8 @@ export type SetScore = {
   set: number;
   side1: number;
   side2: number;
+  side1Point?: "0" | "15" | "30" | "40" | "AD";
+  side2Point?: "0" | "15" | "30" | "40" | "AD";
 };
 
 export type PlayerAssignment = {
