@@ -46,7 +46,7 @@ export function ScoreInput({
       <div className="space-y-1">
         <Label>게임 스코어 입력</Label>
         <p className="text-xs text-muted-foreground">
-          포인트(0/15/30/40/AD)는 선택하고, 라운드별 게임 스코어를 버튼으로 입력합니다.
+          포인트(0/15/30/40/AD)는 선택하고, 게임별 스코어를 버튼으로 입력합니다.
         </p>
         <div className="flex items-center gap-2">
           <Label className="text-xs text-muted-foreground">목표 게임</Label>
@@ -75,7 +75,7 @@ export function ScoreInput({
           <div key={index} className="space-y-2 rounded-lg border p-3">
             <div className="flex items-center justify-between">
               <p className="text-xs font-medium text-muted-foreground">
-                라운드 {score.set}
+                게임 {score.set}
               </p>
               <span
                 className={`text-[11px] ${complete ? "text-emerald-600" : "text-amber-600"}`}
@@ -158,7 +158,7 @@ export function ScoreInput({
           className="flex-1"
         >
           <Plus className="size-4" />
-          라운드 추가
+          게임 추가
         </Button>
         {setScores.length > 1 ? (
           <Button
@@ -169,7 +169,7 @@ export function ScoreInput({
             className="flex-1"
           >
             <Minus className="size-4" />
-            마지막 라운드 삭제
+            마지막 게임 삭제
           </Button>
         ) : null}
       </div>

@@ -118,7 +118,7 @@ export function MatchDetailView({ matchId, clubId }: MatchDetailViewProps) {
           {match.result && match.result.setScores.length > 0 ? (
             <div className="space-y-2">
               <p className="text-xs font-semibold text-muted-foreground">
-                라운드별 게임 스코어
+                게임별 스코어
               </p>
               <p className="text-[11px] text-muted-foreground">
                 목표 게임: {match.result.setScores[0]?.gamesToWin ?? 6}게임
@@ -128,7 +128,7 @@ export function MatchDetailView({ matchId, clubId }: MatchDetailViewProps) {
                   <thead>
                     <tr className="border-b bg-muted/30">
                       <th className="px-3 py-2 text-left font-medium text-muted-foreground">
-                        라운드
+                        게임
                       </th>
                       <th className="px-3 py-2 text-center font-medium text-muted-foreground">
                         {team1Name || "팀 A"}

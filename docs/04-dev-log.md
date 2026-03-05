@@ -77,3 +77,9 @@
 - `useClubDashboard`에 `onAuthStateChange` 구독 추가
 - `SIGNED_IN`, `SIGNED_OUT`, `TOKEN_REFRESHED` 이벤트에서 `refreshClubs()`를 호출하도록 반영
 - OAuth 콜백 직후 사용자/클럽 목록 상태 반영 지연을 줄이도록 개선
+
+### Match UX Terminology & Input Redesign
+
+- 점수 입력 UI를 체크박스 방식에서 버튼형 단일 선택 방식으로 전환
+- `라운드` 표기를 `게임`으로 정리하고, 히스토리/상세에서 팀 이름 기반 표기로 가독성 개선
+- 예외 기록(진행/중단) 상태를 히스토리 카드에서 식별 가능하게 노출

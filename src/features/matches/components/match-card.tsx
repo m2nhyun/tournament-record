@@ -63,7 +63,7 @@ export function MatchCard({ match }: MatchCardProps) {
                 <thead>
                   <tr className="border-b bg-muted/30">
                     <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">
-                      라운드
+                      게임
                     </th>
                     <th className="px-2 py-1.5 text-center font-medium text-muted-foreground">
                       {team1}

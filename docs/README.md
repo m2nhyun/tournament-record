@@ -11,6 +11,7 @@
 - `05-automation.md`: 자동화 스크립트/실행 순서/운영 규칙
 - `06-design-handoff.md`: 외부(Replit 등) 디자인 전달 가이드
 - `07-auth-handoff.md`: 인증/카카오 설정 상태, 현재 이슈, 다음 작업 인수인계
+- `08-ux-tasks.md`: UX 개선 실행 태스크(P0/P1/P2), 수용 기준
 
 ## 운영 원칙
 
