@@ -25,7 +25,7 @@ function formatDateTime(value: string) {
 }
 
 function formatGameCell(sideGames: number, point?: string) {
-  if (!point) return String(sideGames);
+  if (!point || point === "0") return String(sideGames);
   return `${sideGames} (${point})`;
 }
 

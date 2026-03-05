@@ -20,7 +20,7 @@ type ScoreInputProps = {
 };
 
 const GAME_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7] as const;
-const POINT_OPTIONS = ["", "0", "15", "30", "40", "AD"] as const;
+const POINT_OPTIONS = ["", "15", "30", "40", "AD"] as const;
 
 function isGameRoundCompleted(score: SetScore, fallbackGamesToWin: 4 | 6) {
   const target = score.gamesToWin ?? fallbackGamesToWin;
@@ -46,7 +46,7 @@ export function ScoreInput({
       <div className="space-y-1">
         <Label>게임 스코어 입력</Label>
         <p className="text-xs text-muted-foreground">
-          포인트(0/15/30/40/AD)는 선택하고, 게임별 스코어를 버튼으로 입력합니다.
+          포인트는 선택 입력입니다. 일반 게임은 비워두고, 필요할 때만 입력하세요.
         </p>
         <div className="flex items-center gap-2">
           <Label className="text-xs text-muted-foreground">목표 게임</Label>
