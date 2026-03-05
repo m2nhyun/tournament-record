@@ -94,11 +94,11 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-            {club.myRole === "owner"
-              ? "연필 아이콘을 눌러 클럽 이름을 수정할 수 있습니다."
-              : "클럽 이름은 클럽장만 변경할 수 있습니다."}
-          </div>
+          {club.myRole === "owner" ? (
+            <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+              연필 아이콘을 눌러 클럽 이름을 수정할 수 있습니다.
+            </div>
+          ) : null}
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs text-muted-foreground">참가 코드</p>
