@@ -24,7 +24,13 @@ export function ScoreInput({
 }: ScoreInputProps) {
   return (
     <div className="space-y-4">
-      <Label>세트별 점수</Label>
+      <div className="space-y-1">
+        <Label>세트별 게임 스코어</Label>
+        <p className="text-xs text-muted-foreground">
+          테니스 규칙상 포인트(0/15/30/40)로 게임이 진행되고, 이 입력은 각 세트의
+          최종 게임 수(예: 6:4)를 기록합니다.
+        </p>
+      </div>
 
       {setScores.map((score, index) => (
         <div key={index} className="space-y-2">

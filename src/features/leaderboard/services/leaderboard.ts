@@ -8,7 +8,7 @@ type MatchRow = {
   match_results:
     | {
         score_summary: string;
-        set_scores: { set: number; side1: number; side2: number }[];
+        set_scores?: unknown;
       }[]
     | null;
   match_players: {
@@ -40,6 +40,22 @@ function determineWinningSide(
   return null;
 }
 
+function normalizeSetScores(value: unknown): { side1: number; side2: number }[] {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .map((raw) => {
+      if (!raw || typeof raw !== "object") return null;
+      const candidate = raw as { side1?: unknown; side2?: unknown };
+      const side1 =
+        typeof candidate.side1 === "number" ? Math.max(0, candidate.side1) : 0;
+      const side2 =
+        typeof candidate.side2 === "number" ? Math.max(0, candidate.side2) : 0;
+      return { side1, side2 };
+    })
+    .filter((score): score is { side1: number; side2: number } => score !== null);
+}
+
 export async function getClubLeaderboard(
   clubId: string,
 ): Promise<LeaderboardEntry[]> {
@@ -61,10 +77,7 @@ export async function getClubLeaderboard(
   >();
 
   for (const row of (data ?? []) as MatchRow[]) {
-    const results = row.match_results;
-    if (!results || results.length === 0) continue;
-
-    const setScores = results[0].set_scores;
+    const setScores = normalizeSetScores(row.match_results?.[0]?.set_scores);
     if (!setScores || setScores.length === 0) continue;
 
     const winningSide = determineWinningSide(setScores);

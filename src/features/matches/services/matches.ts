@@ -12,6 +12,27 @@ function buildScoreSummary(setScores: SetScore[]): string {
   return setScores.map((s) => `${s.side1}-${s.side2}`).join(", ");
 }
 
+function normalizeSetScores(value: unknown): SetScore[] {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .map((raw, index) => {
+      if (!raw || typeof raw !== "object") return null;
+      const candidate = raw as Partial<SetScore>;
+      const side1 =
+        typeof candidate.side1 === "number" ? Math.max(0, candidate.side1) : 0;
+      const side2 =
+        typeof candidate.side2 === "number" ? Math.max(0, candidate.side2) : 0;
+      const set =
+        typeof candidate.set === "number" && candidate.set > 0
+          ? candidate.set
+          : index + 1;
+
+      return { set, side1, side2 } satisfies SetScore;
+    })
+    .filter((score): score is SetScore => score !== null);
+}
+
 export async function createMatch(
   clubId: string,
   data: MatchCreationData,
@@ -146,7 +167,7 @@ type MatchDetailRow = {
   match_results:
     | {
         score_summary: string;
-        set_scores: SetScore[];
+        set_scores?: unknown;
         submitted_by: string;
       }[]
     | null;
@@ -174,12 +195,13 @@ export async function getMatchDetail(matchId: string): Promise<MatchDetail> {
   }
 
   const row = data as MatchDetailRow;
+  const firstResult = row.match_results?.[0];
   const result =
-    row.match_results && row.match_results.length > 0
+    firstResult
       ? {
-          scoreSummary: row.match_results[0].score_summary,
-          setScores: row.match_results[0].set_scores,
-          submittedBy: row.match_results[0].submitted_by,
+          scoreSummary: firstResult.score_summary,
+          setScores: normalizeSetScores(firstResult.set_scores),
+          submittedBy: firstResult.submitted_by,
         }
       : null;
 
