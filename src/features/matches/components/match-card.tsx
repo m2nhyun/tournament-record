@@ -26,11 +26,36 @@ function isRoundComplete(score: SetScore) {
   return winner === target + 1 && loser === target;
 }
 
+function formatGameCell(sideGames: number, point?: string) {
+  if (!point || point === "0") return String(sideGames);
+  return `${sideGames} (${point})`;
+}
+
+function summarizeOutcome(setScores: SetScore[]) {
+  let side1Wins = 0;
+  let side2Wins = 0;
+  for (const s of setScores) {
+    if (s.side1 > s.side2) side1Wins++;
+    else if (s.side2 > s.side1) side2Wins++;
+  }
+  return { side1Wins, side2Wins };
+}
+
+function gameScoreSummary(setScores: SetScore[]) {
+  return setScores.map((s) => `${s.side1}-${s.side2}`).join(", ");
+}
+
 export function MatchCard({ match }: MatchCardProps) {
   const TypeIcon = match.matchType === "singles" ? User : Users;
   const team1 = match.side1Players.join(" · ");
   const team2 = match.side2Players.join(" · ");
   const hasInProgressRound = match.setScores.some((s) => !isRoundComplete(s));
+  const outcome = summarizeOutcome(match.setScores);
+  const outcomeLabel =
+    outcome.side1Wins === outcome.side2Wins
+      ? "동률"
+      : `승 ${outcome.side1Wins > outcome.side2Wins ? team1 || "팀 A" : team2 || "팀 B"} · 패 ${outcome.side1Wins > outcome.side2Wins ? team2 || "팀 B" : team1 || "팀 A"}`;
+  const scoreSummary = gameScoreSummary(match.setScores);
 
   return (
     <Link href={`/clubs/${match.clubId}/matches/${match.id}`} className="block">
@@ -53,6 +78,16 @@ export function MatchCard({ match }: MatchCardProps) {
               <p className="text-[11px] text-muted-foreground">
                 {formatDate(match.playedAt)}
               </p>
+              {match.setScores.length > 0 ? (
+                <div className="space-y-0.5">
+                  <p className="text-xs font-semibold text-foreground">
+                    {outcomeLabel}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    게임 스코어: {scoreSummary}
+                  </p>
+                </div>
+              ) : null}
             </div>
             <ChevronRight className="mt-1 size-4 shrink-0 text-muted-foreground" />
           </div>
@@ -85,10 +120,10 @@ export function MatchCard({ match }: MatchCardProps) {
                           G{score.set}
                         </td>
                         <td className="px-2 py-1.5 text-center font-semibold">
-                          {score.side1}
+                          {formatGameCell(score.side1, score.side1Point)}
                         </td>
                         <td className="px-2 py-1.5 text-center font-semibold">
-                          {score.side2}
+                          {formatGameCell(score.side2, score.side2Point)}
                         </td>
                         <td
                           className={`px-2 py-1.5 text-center ${complete ? "text-emerald-600" : "text-amber-600"}`}

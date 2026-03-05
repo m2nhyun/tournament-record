@@ -14,12 +14,23 @@ type ModalProps = {
   onOpenChange: (open: boolean) => void;
   title: string;
   children: ReactNode;
+  preventAutoFocus?: boolean;
 };
 
-export function Modal({ open, onOpenChange, title, children }: ModalProps) {
+export function Modal({
+  open,
+  onOpenChange,
+  title,
+  children,
+  preventAutoFocus = true,
+}: ModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent
+        onOpenAutoFocus={
+          preventAutoFocus ? (event) => event.preventDefault() : undefined
+        }
+      >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
