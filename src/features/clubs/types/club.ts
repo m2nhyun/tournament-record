@@ -26,4 +26,8 @@ export type ClubMember = {
   nickname: string;
   role: ClubRole;
   createdAt: string;
+  isMe: boolean;
+  openKakaoProfile: boolean;
+  allowRecordSearch: boolean;
+  shareHistory: boolean;
 };

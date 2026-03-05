@@ -25,7 +25,7 @@ const roleLabelMap: Record<string, string> = {
 };
 
 export function ClubDetailView({ clubId }: ClubDetailViewProps) {
-  const { club, members, loading, status, saving, saveClubName, saveMyNickname } =
+  const { club, members, loading, status, saving, saveClubName, saveMySettings } =
     useClubDetail(clubId);
   const [copied, setCopied] = useState(false);
 
@@ -47,15 +47,6 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
     const name = String(formData.get("clubName") ?? "").trim();
     if (name.length < 2 || name === club.name) return;
     await saveClubName(name);
-  }
-
-  async function submitNickname(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!club) return;
-    const formData = new FormData(event.currentTarget);
-    const nickname = String(formData.get("myNickname") ?? "").trim();
-    if (nickname.length < 2 || nickname === club.myNickname) return;
-    await saveMyNickname(nickname);
   }
 
   if (loading) {
@@ -99,17 +90,15 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-            {club.myRole === "owner"
-              ? "클럽장은 클럽 이름 변경이 가능합니다."
-              : "클럽 이름 변경은 클럽장만 가능합니다."}
-          </div>
           {club.myRole === "owner" ? (
             <form
               key={`club-name-${club.name}`}
               onSubmit={(e) => void submitClubName(e)}
               className="space-y-2"
             >
+              <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                클럽장은 클럽 이름을 변경할 수 있습니다.
+              </div>
               <p className="text-xs text-muted-foreground">클럽 이름 (클럽장 전용)</p>
               <div className="flex gap-2">
                 <Input
@@ -126,29 +115,6 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
               </div>
             </form>
           ) : null}
-          <form
-            key={`club-nickname-${club.myNickname}`}
-            onSubmit={(e) => void submitNickname(e)}
-            className="space-y-2"
-          >
-            <p className="text-xs text-muted-foreground">내 닉네임</p>
-            <div className="flex gap-2">
-              <Input
-                name="myNickname"
-                defaultValue={club.myNickname}
-                minLength={2}
-                maxLength={24}
-                placeholder="닉네임"
-                disabled={saving}
-              />
-              <Button type="submit" size="sm" disabled={saving}>
-                {saving ? "저장 중..." : "저장"}
-              </Button>
-            </div>
-            <p className="text-[11px] text-muted-foreground">
-              같은 클럽 내에서는 중복 닉네임을 사용할 수 없습니다.
-            </p>
-          </form>
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs text-muted-foreground">참가 코드</p>
@@ -185,7 +151,11 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
           멤버 ({members.length})
         </h2>
         {members.length > 0 ? (
-          <ClubMemberList members={members} />
+          <ClubMemberList
+            members={members}
+            saving={saving}
+            onSaveMySettings={saveMySettings}
+          />
         ) : (
           <EmptyState icon={Users} title="멤버가 없습니다." />
         )}

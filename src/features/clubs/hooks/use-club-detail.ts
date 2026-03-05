@@ -6,7 +6,7 @@ import {
   getClubDetail,
   listClubMembers,
   updateClubName,
-  updateMyClubNickname,
+  updateMyClubMemberSettings,
 } from "@/features/clubs/services/clubs";
 import type { ClubDetail, ClubMember } from "@/features/clubs/types/club";
 
@@ -65,13 +65,18 @@ export function useClubDetail(clubId: string) {
     [clubId, refresh, saving],
   );
 
-  const saveMyNickname = useCallback(
-    async (nickname: string) => {
+  const saveMySettings = useCallback(
+    async (input: {
+      nickname: string;
+      openKakaoProfile: boolean;
+      allowRecordSearch: boolean;
+      shareHistory: boolean;
+    }) => {
       if (saving) return;
       setSaving(true);
       try {
-        await updateMyClubNickname(clubId, nickname);
-        setStatus({ type: "success", message: "내 닉네임이 변경되었습니다." });
+        await updateMyClubMemberSettings(clubId, input);
+        setStatus({ type: "success", message: "내 멤버 설정이 변경되었습니다." });
         await refresh();
       } catch (error) {
         setStatus({ type: "error", message: toMessage(error) });
@@ -90,6 +95,6 @@ export function useClubDetail(clubId: string) {
     saving,
     refresh,
     saveClubName,
-    saveMyNickname,
+    saveMySettings,
   };
 }

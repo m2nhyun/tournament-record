@@ -95,3 +95,10 @@
   - `clubs` 이름 정규화 unique
   - `club_members`(club_id + 닉네임 정규화) unique
   - 클럽명/닉네임 길이 check(2~24자)
+
+### Club Member Self Settings
+
+- 클럽명 변경 UI는 클럽장(owner)에게만 노출되도록 유지(멤버 비노출)
+- 내 닉네임 변경 위치를 클럽 정보 카드에서 멤버 목록의 `내 항목`으로 이동
+- `카카오 프로필 공개`, `전적 검색 허용`, `내 경기 히스토리 공개` 개인 설정 추가
+- 개인 설정 저장 RPC `update_my_club_member_settings` 도입

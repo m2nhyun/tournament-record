@@ -144,11 +144,13 @@ export async function getClubDetail(clubId: string): Promise<ClubDetail> {
 }
 
 export async function listClubMembers(clubId: string): Promise<ClubMember[]> {
-  await requireUser();
+  const user = await requireUser();
 
   const { data, error } = await getSupabaseClient()
     .from("club_members")
-    .select("id,user_id,nickname,role,created_at")
+    .select(
+      "id,user_id,nickname,role,created_at,open_kakao_profile,allow_record_search,share_history",
+    )
     .eq("club_id", clubId)
     .order("created_at", { ascending: true });
 
@@ -160,6 +162,10 @@ export async function listClubMembers(clubId: string): Promise<ClubMember[]> {
     nickname: row.nickname,
     role: row.role as ClubRole,
     createdAt: row.created_at,
+    isMe: row.user_id === user.id,
+    openKakaoProfile: row.open_kakao_profile ?? false,
+    allowRecordSearch: row.allow_record_search ?? false,
+    shareHistory: row.share_history ?? false,
   }));
 }
 
@@ -219,5 +225,29 @@ export async function updateMyClubNickname(clubId: string, nickname: string) {
     p_club_id: clubId,
     p_nickname: nickname.trim(),
   });
+  if (error) throw mapClubSettingsError(error);
+}
+
+export async function updateMyClubMemberSettings(
+  clubId: string,
+  input: {
+    nickname: string;
+    openKakaoProfile: boolean;
+    allowRecordSearch: boolean;
+    shareHistory: boolean;
+  },
+) {
+  await requireUser();
+
+  const { error } = await getSupabaseClient().rpc(
+    "update_my_club_member_settings",
+    {
+      p_club_id: clubId,
+      p_nickname: input.nickname.trim(),
+      p_open_kakao_profile: input.openKakaoProfile,
+      p_allow_record_search: input.allowRecordSearch,
+      p_share_history: input.shareHistory,
+    },
+  );
   if (error) throw mapClubSettingsError(error);
 }
