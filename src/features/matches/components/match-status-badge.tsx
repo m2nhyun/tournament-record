@@ -9,8 +9,8 @@ const statusConfig: Record<
   }
 > = {
   draft: { label: "임시저장", variant: "default" },
-  submitted: { label: "제출됨", variant: "brand" },
-  confirmed: { label: "확정", variant: "success" },
+  submitted: { label: "기록됨", variant: "success" },
+  confirmed: { label: "기록됨", variant: "success" },
   disputed: { label: "이의제기", variant: "warning" },
 };
 

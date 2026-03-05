@@ -9,7 +9,7 @@ type ScoreInputProps = {
   onUpdate: (
     setIndex: number,
     side: "side1" | "side2" | "side1Point" | "side2Point",
-    value: number | "0" | "15" | "30" | "40" | "AD",
+    value: number | "0" | "15" | "30" | "40" | "AD" | "",
   ) => void;
   onAddSet: () => void;
   onRemoveLastSet: () => void;
@@ -20,7 +20,7 @@ type ScoreInputProps = {
 };
 
 const GAME_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7] as const;
-const POINT_OPTIONS = ["0", "15", "30", "40", "AD"] as const;
+const POINT_OPTIONS = ["", "0", "15", "30", "40", "AD"] as const;
 
 function isGameRoundCompleted(score: SetScore, fallbackGamesToWin: 4 | 6) {
   const target = score.gamesToWin ?? fallbackGamesToWin;
@@ -106,10 +106,12 @@ export function ScoreInput({
                     <button
                       key={`s1-p-${score.set}-${point}`}
                       type="button"
-                      className={`rounded border px-2 py-1 text-[11px] ${score.side1Point === point ? "bg-foreground text-background" : "bg-background"}`}
-                      onClick={() => onUpdate(index, "side1Point", point)}
+                      className={`rounded border px-2 py-1 text-[11px] ${((score.side1Point ?? "") === point) ? "bg-foreground text-background" : "bg-background"}`}
+                      onClick={() =>
+                        onUpdate(index, "side1Point", point as "" | "0" | "15" | "30" | "40" | "AD")
+                      }
                     >
-                      {point}
+                      {point === "" ? "미입력" : point}
                     </button>
                   ))}
                 </div>
@@ -136,10 +138,12 @@ export function ScoreInput({
                     <button
                       key={`s2-p-${score.set}-${point}`}
                       type="button"
-                      className={`rounded border px-2 py-1 text-[11px] ${score.side2Point === point ? "bg-foreground text-background" : "bg-background"}`}
-                      onClick={() => onUpdate(index, "side2Point", point)}
+                      className={`rounded border px-2 py-1 text-[11px] ${((score.side2Point ?? "") === point) ? "bg-foreground text-background" : "bg-background"}`}
+                      onClick={() =>
+                        onUpdate(index, "side2Point", point as "" | "0" | "15" | "30" | "40" | "AD")
+                      }
                     >
-                      {point}
+                      {point === "" ? "미입력" : point}
                     </button>
                   ))}
                 </div>

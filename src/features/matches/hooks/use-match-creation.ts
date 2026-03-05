@@ -73,8 +73,6 @@ export function useMatchCreation(clubId: string) {
       side1: 0,
       side2: 0,
       gamesToWin: 6,
-      side1Point: "0",
-      side2Point: "0",
     },
   ]);
 
@@ -189,8 +187,6 @@ export function useMatchCreation(clubId: string) {
         side1: 0,
         side2: 0,
         gamesToWin,
-        side1Point: "0",
-        side2Point: "0",
       },
     ]);
   }, [gamesToWin]);
@@ -213,10 +209,18 @@ export function useMatchCreation(clubId: string) {
     (
       setIndex: number,
       side: "side1" | "side2" | "side1Point" | "side2Point",
-      value: number | "0" | "15" | "30" | "40" | "AD",
+      value: number | "0" | "15" | "30" | "40" | "AD" | "",
     ) => {
       setSetScores((prev) =>
-        prev.map((s, i) => (i === setIndex ? { ...s, [side]: value } : s)),
+        prev.map((s, i) => {
+          if (i !== setIndex) return s;
+          if ((side === "side1Point" || side === "side2Point") && value === "") {
+            const next = { ...s };
+            delete next[side];
+            return next;
+          }
+          return { ...s, [side]: value };
+        }),
       );
     },
     [],

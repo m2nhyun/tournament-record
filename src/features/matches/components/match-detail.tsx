@@ -24,6 +24,23 @@ function formatDateTime(value: string) {
   }).format(new Date(value));
 }
 
+function formatGameCell(sideGames: number, point?: string) {
+  if (!point) return String(sideGames);
+  return `${sideGames} (${point})`;
+}
+
+function overallScore(
+  setScores: { side1: number; side2: number }[],
+): { side1: number; side2: number } {
+  let side1Wins = 0;
+  let side2Wins = 0;
+  for (const s of setScores) {
+    if (s.side1 > s.side2) side1Wins++;
+    else if (s.side2 > s.side1) side2Wins++;
+  }
+  return { side1: side1Wins, side2: side2Wins };
+}
+
 export function MatchDetailView({ matchId, clubId }: MatchDetailViewProps) {
   const { match, loading, error } = useMatchDetail(matchId);
 
@@ -52,6 +69,7 @@ export function MatchDetailView({ matchId, clubId }: MatchDetailViewProps) {
   const TypeIcon = match.matchType === "singles" ? User : Users;
   const team1Name = side1.map((p) => p.nickname).join(" · ");
   const team2Name = side2.map((p) => p.nickname).join(" · ");
+  const finalScore = overallScore(match.result?.setScores ?? []);
 
   return (
     <div className="space-y-4">
@@ -81,48 +99,24 @@ export function MatchDetailView({ matchId, clubId }: MatchDetailViewProps) {
             {formatDateTime(match.playedAt)}
           </p>
 
-          {/* Score summary */}
           {match.result ? (
-            <div className="rounded-lg bg-muted/30 p-4 text-center">
-              <p className="font-mono text-2xl font-bold text-[var(--brand)]">
-                {match.result.scoreSummary}
-              </p>
+            <div className="rounded-lg bg-muted/30 p-4">
+              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+                <div className="text-sm font-semibold">{team1Name || "팀 A"}</div>
+                <p className="font-mono text-2xl font-bold text-[var(--brand)]">
+                  {finalScore.side1} : {finalScore.side2}
+                </p>
+                <div className="text-right text-sm font-semibold">
+                  {team2Name || "팀 B"}
+                </div>
+              </div>
             </div>
           ) : null}
-
-          {/* Players */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <p className="text-xs font-semibold text-muted-foreground">
-                {team1Name || "팀 A"}
-              </p>
-              {side1.map((p) => (
-                <p key={p.clubMemberId} className="text-sm font-medium">
-                  {p.nickname}
-                </p>
-              ))}
-            </div>
-            <div className="space-y-1.5 text-right">
-              <p className="text-xs font-semibold text-muted-foreground">
-                {team2Name || "팀 B"}
-              </p>
-              {side2.map((p) => (
-                <p key={p.clubMemberId} className="text-sm font-medium">
-                  {p.nickname}
-                </p>
-              ))}
-            </div>
-          </div>
 
           {/* Set scores table */}
           {match.result && match.result.setScores.length > 0 ? (
             <div className="space-y-2">
-              <p className="text-xs font-semibold text-muted-foreground">
-                게임별 스코어
-              </p>
-              <p className="text-[11px] text-muted-foreground">
-                목표 게임: {match.result.setScores[0]?.gamesToWin ?? 6}게임
-              </p>
+              <p className="text-xs font-semibold text-muted-foreground">게임 상세</p>
               <div className="overflow-hidden rounded-lg border">
                 <table className="w-full text-sm">
                   <thead>
@@ -136,9 +130,6 @@ export function MatchDetailView({ matchId, clubId }: MatchDetailViewProps) {
                       <th className="px-3 py-2 text-center font-medium text-muted-foreground">
                         {team2Name || "팀 B"}
                       </th>
-                      <th className="px-3 py-2 text-center font-medium text-muted-foreground">
-                        포인트
-                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -148,13 +139,10 @@ export function MatchDetailView({ matchId, clubId }: MatchDetailViewProps) {
                           {s.set}
                         </td>
                         <td className="px-3 py-2 text-center font-semibold">
-                          {s.side1}
+                          {formatGameCell(s.side1, s.side1Point)}
                         </td>
                         <td className="px-3 py-2 text-center font-semibold">
-                          {s.side2}
-                        </td>
-                        <td className="px-3 py-2 text-center text-xs text-muted-foreground">
-                          {s.side1Point ?? "0"} : {s.side2Point ?? "0"}
+                          {formatGameCell(s.side2, s.side2Point)}
                         </td>
                       </tr>
                     ))}

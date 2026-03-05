@@ -38,7 +38,7 @@ function normalizeSetScores(value: unknown): SetScore[] {
         candidate.side1Point === "40" ||
         candidate.side1Point === "AD"
           ? candidate.side1Point
-          : "0";
+          : undefined;
       const side2Point =
         candidate.side2Point === "0" ||
         candidate.side2Point === "15" ||
@@ -46,7 +46,7 @@ function normalizeSetScores(value: unknown): SetScore[] {
         candidate.side2Point === "40" ||
         candidate.side2Point === "AD"
           ? candidate.side2Point
-          : "0";
+          : undefined;
       const normalized: SetScore = {
         set,
         side1,
@@ -72,7 +72,7 @@ export async function createMatch(
     .insert({
       club_id: clubId,
       match_type: data.matchType,
-      status: "submitted",
+      status: "confirmed",
       played_at: data.playedAt,
       created_by: user.id,
     })
