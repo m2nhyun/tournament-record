@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, User, Users } from "lucide-react";
+import { User, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +9,7 @@ import { StatusBox } from "@/components/feedback/status-box";
 import { LoadingSpinner } from "@/components/feedback/loading-spinner";
 import { MatchStatusBadge } from "@/features/matches/components/match-status-badge";
 import { useMatchDetail } from "@/features/matches/hooks/use-match-detail";
+import { AppBar } from "@/components/layout/app-bar";
 
 type MatchDetailViewProps = {
   matchId: string;
@@ -45,16 +46,16 @@ export function MatchDetailView({ matchId, clubId }: MatchDetailViewProps) {
   const { match, loading, error } = useMatchDetail(matchId);
 
   if (loading) {
-    return <LoadingSpinner message="경기 정보를 불러오는 중..." />;
+    return <LoadingSpinner title="로딩 중" message="경기 정보를 불러오는 중..." />;
   }
 
   if (error) {
     return (
       <div className="space-y-4">
+        <AppBar title="경기 상세" showBack />
         <StatusBox type="error" message={error} />
         <Button variant="outline" asChild>
           <Link href={`/clubs/${clubId}`}>
-            <ArrowLeft className="size-4" />
             클럽 홈으로
           </Link>
         </Button>
@@ -73,14 +74,13 @@ export function MatchDetailView({ matchId, clubId }: MatchDetailViewProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" asChild>
-          <Link href={`/clubs/${clubId}/history`}>
-            <ArrowLeft className="size-4" />
-          </Link>
-        </Button>
-        <h1 className="text-xl font-semibold">경기 상세</h1>
-      </div>
+      <AppBar
+        title="경기 상세"
+        showBack
+        onBack={() => {
+          window.location.href = `/clubs/${clubId}/history`;
+        }}
+      />
 
       <Card>
         <CardHeader>

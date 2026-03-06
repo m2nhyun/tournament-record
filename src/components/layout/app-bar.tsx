@@ -18,7 +18,7 @@ type AppBarProps = {
 export function AppBar({
   title,
   onBack,
-  showBack = false,
+  showBack = true,
   actions,
   bottomBorder = true,
   className,
@@ -28,7 +28,7 @@ export function AppBar({
   return (
     <div
       className={cn(
-        "sticky top-0 z-20 flex h-14 items-center justify-center bg-background/95 px-2 backdrop-blur-sm",
+        "sticky top-0 z-20 flex min-h-14 items-center justify-center bg-background/95 px-2 backdrop-blur-sm",
         bottomBorder ? "border-b" : "",
         className,
       )}

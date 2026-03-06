@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import {
-  ArrowLeft,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -18,6 +17,7 @@ import { EmptyState } from "@/components/feedback/empty-state";
 import { MatchTypeSelector } from "@/features/matches/components/match-type-selector";
 import { PlayerSelector } from "@/features/matches/components/player-selector";
 import { ScoreInput } from "@/features/matches/components/score-input";
+import { AppBar } from "@/components/layout/app-bar";
 import {
   useMatchCreation,
   type CreationStep,
@@ -107,20 +107,19 @@ export function MatchCreationForm({ clubId }: MatchCreationFormProps) {
   }
 
   if (loadingMembers) {
-    return <LoadingSpinner message="멤버 정보를 불러오는 중..." />;
+    return <LoadingSpinner title="로딩 중" message="멤버 정보를 불러오는 중..." />;
   }
 
   if (!canCreateAnyMatch) {
     return (
       <div className="mx-auto w-full max-w-xl space-y-4">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/clubs/${clubId}`}>
-              <ArrowLeft className="size-4" />
-            </Link>
-          </Button>
-          <h1 className="text-xl font-semibold">새 경기 기록</h1>
-        </div>
+        <AppBar
+          title="새 경기 기록"
+          showBack
+          onBack={() => {
+            window.location.href = `/clubs/${clubId}`;
+          }}
+        />
 
         <EmptyState
           icon={Users}
@@ -138,14 +137,13 @@ export function MatchCreationForm({ clubId }: MatchCreationFormProps) {
   if (!canRecordMatch) {
     return (
       <div className="mx-auto w-full max-w-xl space-y-4">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/clubs/${clubId}`}>
-              <ArrowLeft className="size-4" />
-            </Link>
-          </Button>
-          <h1 className="text-xl font-semibold">새 경기 기록</h1>
-        </div>
+        <AppBar
+          title="새 경기 기록"
+          showBack
+          onBack={() => {
+            window.location.href = `/clubs/${clubId}`;
+          }}
+        />
 
         <EmptyState
           icon={Users}
@@ -162,14 +160,13 @@ export function MatchCreationForm({ clubId }: MatchCreationFormProps) {
 
   return (
     <div className="mx-auto w-full max-w-xl space-y-4">
-      <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" asChild>
-          <Link href={`/clubs/${clubId}`}>
-            <ArrowLeft className="size-4" />
-          </Link>
-        </Button>
-        <h1 className="text-xl font-semibold">새 경기 기록</h1>
-      </div>
+      <AppBar
+        title="새 경기 기록"
+        showBack
+        onBack={() => {
+          window.location.href = `/clubs/${clubId}`;
+        }}
+      />
 
       {/* Step indicator */}
       <div className="flex items-center gap-2">

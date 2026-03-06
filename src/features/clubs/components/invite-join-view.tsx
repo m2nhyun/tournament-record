@@ -20,6 +20,7 @@ import {
   joinClub,
   joinClubAsGuest,
 } from "@/features/clubs/services/clubs";
+import { AppBar } from "@/components/layout/app-bar";
 
 type InviteJoinViewProps = {
   inviteCode: string;
@@ -173,6 +174,7 @@ export function InviteJoinView({ inviteCode }: InviteJoinViewProps) {
 
   return (
     <div className="mx-auto w-full max-w-lg space-y-4">
+      <AppBar title="클럽 초대 참가" showBack />
       <section className="space-y-2 rounded-2xl border bg-card p-5">
         <h1 className="text-xl font-semibold">초대 링크로 클럽 참가</h1>
         <p className="text-sm text-muted-foreground">

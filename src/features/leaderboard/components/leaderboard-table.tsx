@@ -1,14 +1,13 @@
 "use client";
 
-import Link from "next/link";
-import { ArrowLeft, Medal, Trophy } from "lucide-react";
+import { Medal } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { StatusBox } from "@/components/feedback/status-box";
 import { LoadingSpinner } from "@/components/feedback/loading-spinner";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { useLeaderboard } from "@/features/leaderboard/hooks/use-leaderboard";
 import type { LeaderboardEntry } from "@/features/leaderboard/types/leaderboard";
+import { AppBar } from "@/components/layout/app-bar";
 
 type LeaderboardViewProps = {
   clubId: string;
@@ -54,22 +53,18 @@ export function LeaderboardView({ clubId }: LeaderboardViewProps) {
   const { entries, loading, error } = useLeaderboard(clubId);
 
   if (loading) {
-    return <LoadingSpinner message="리더보드를 불러오는 중..." />;
+    return <LoadingSpinner title="로딩 중" message="리더보드를 불러오는 중..." />;
   }
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" asChild>
-          <Link href={`/clubs/${clubId}`}>
-            <ArrowLeft className="size-4" />
-          </Link>
-        </Button>
-        <h1 className="flex items-center gap-2 text-xl font-semibold">
-          <Trophy className="size-5 text-[var(--brand)]" />
-          리더보드
-        </h1>
-      </div>
+      <AppBar
+        title="리더보드"
+        showBack
+        onBack={() => {
+          window.location.href = `/clubs/${clubId}`;
+        }}
+      />
 
       {error ? <StatusBox type="error" message={error} /> : null}
 

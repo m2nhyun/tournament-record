@@ -54,7 +54,7 @@ export function ClubDashboard() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-2xl">
+    <div className="w-full max-w-2xl">
       <AppBar
         title={user ? tabTitle(activeTab) : "시작하기"}
         actions={
@@ -64,91 +64,96 @@ export function ClubDashboard() {
             </Button>
           ) : null
         }
+        showBack={false}
       />
+      <div className="px-4">
+        <div className="space-y-6 pt-4">
+          <StatusBox type={status.type} message={status.message} />
 
-      <div className="space-y-6 pt-4">
-        <StatusBox type={status.type} message={status.message} />
+          {!user ? (
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <AuthGate
+                loading={busyType === "auth"}
+                email={email}
+                password={password}
+                guestMode={isGuestModeEnabled}
+                onChangeEmail={setEmail}
+                onChangePassword={setPassword}
+                onKakaoSignIn={beginKakaoSignIn}
+                onEmailSignIn={beginEmailSignIn}
+                onEmailSignUp={beginEmailSignUp}
+              />
+            </motion.div>
+          ) : null}
 
-        {!user ? (
-          <motion.div
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <AuthGate
-              loading={busyType === "auth"}
-              email={email}
-              password={password}
-              guestMode={isGuestModeEnabled}
-              onChangeEmail={setEmail}
-              onChangePassword={setPassword}
-              onKakaoSignIn={beginKakaoSignIn}
-              onEmailSignIn={beginEmailSignIn}
-              onEmailSignUp={beginEmailSignUp}
+          {user ? (
+            <ClubTabs
+              activeTab={activeTab}
+              onChange={setActiveTab}
+              canCreateClub={!isAnonymousUser}
             />
-          </motion.div>
-        ) : null}
-
-        {user ? (
-          <ClubTabs
-            activeTab={activeTab}
-            onChange={setActiveTab}
-            canCreateClub={!isAnonymousUser}
-          />
-        ) : null}
-
-        <AnimatePresence mode="wait" initial={false}>
-          {user && activeTab === "list" ? (
-            <motion.section
-              key="tab-list"
-              className="space-y-3"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.18 }}
-            >
-              <ClubList clubs={clubs} onMoveJoin={() => setActiveTab("join")} />
-            </motion.section>
           ) : null}
 
-          {user && activeTab === "join" ? (
-            <motion.div
-              key="tab-join"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.18 }}
-            >
-              <JoinClubForm
-                inviteCode={joinCode}
-                nickname={joinNickname}
-                isSubmitting={busyType === "join"}
-                onChangeInviteCode={setJoinCode}
-                onChangeNickname={setJoinNickname}
-                onSubmit={submitJoinClub}
-              />
-            </motion.div>
-          ) : null}
+          <AnimatePresence mode="wait" initial={false}>
+            {user && activeTab === "list" ? (
+              <motion.section
+                key="tab-list"
+                className="space-y-3"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.18 }}
+              >
+                <ClubList
+                  clubs={clubs}
+                  onMoveJoin={() => setActiveTab("join")}
+                />
+              </motion.section>
+            ) : null}
 
-          {user && !isAnonymousUser && activeTab === "create" ? (
-            <motion.div
-              key="tab-create"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.18 }}
-            >
-              <CreateClubForm
-                name={createName}
-                nickname={createNickname}
-                isSubmitting={busyType === "create"}
-                onChangeName={setCreateName}
-                onChangeNickname={setCreateNickname}
-                onSubmit={submitCreateClub}
-              />
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
+            {user && activeTab === "join" ? (
+              <motion.div
+                key="tab-join"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.18 }}
+              >
+                <JoinClubForm
+                  inviteCode={joinCode}
+                  nickname={joinNickname}
+                  isSubmitting={busyType === "join"}
+                  onChangeInviteCode={setJoinCode}
+                  onChangeNickname={setJoinNickname}
+                  onSubmit={submitJoinClub}
+                />
+              </motion.div>
+            ) : null}
+
+            {user && !isAnonymousUser && activeTab === "create" ? (
+              <motion.div
+                key="tab-create"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.18 }}
+              >
+                <CreateClubForm
+                  name={createName}
+                  nickname={createNickname}
+                  isSubmitting={busyType === "create"}
+                  onChangeName={setCreateName}
+                  onChangeNickname={setCreateNickname}
+                  onSubmit={submitCreateClub}
+                />
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   );

@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import {
-  ArrowLeft,
   Copy,
   Pencil,
   PlusCircle,
@@ -18,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { StatusBox } from "@/components/feedback/status-box";
 import { LoadingSpinner } from "@/components/feedback/loading-spinner";
 import { EmptyState } from "@/components/feedback/empty-state";
+import { AppBar } from "@/components/layout/app-bar";
 import { ClubMemberList } from "@/features/clubs/components/club-member-list";
 import { ClubNameEditModal } from "@/features/clubs/components/club-name-edit-modal";
 import { useClubDetail } from "@/features/clubs/hooks/use-club-detail";
@@ -91,16 +91,16 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
   }, [club]);
 
   if (loading) {
-    return <LoadingSpinner message="클럽 정보를 불러오는 중..." />;
+    return <LoadingSpinner title="로딩 중" message="클럽 정보를 불러오는 중..." />;
   }
 
   if (status?.type === "error") {
     return (
       <div className="space-y-4">
+        <AppBar title="클럽" showBack />
         <StatusBox type="error" message={status.message} />
         <Button variant="outline" asChild>
           <Link href="/">
-            <ArrowLeft className="size-4" />
             홈으로 돌아가기
           </Link>
         </Button>
@@ -112,14 +112,7 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" asChild>
-          <Link href="/">
-            <ArrowLeft className="size-4" />
-          </Link>
-        </Button>
-        <h1 className="truncate text-xl font-semibold">{club.name}</h1>
-      </div>
+      <AppBar title={club.name} showBack />
 
       <Card>
         <CardHeader>
