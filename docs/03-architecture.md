@@ -9,46 +9,76 @@
 
 ## Directory Overview
 
-- `src/app`: 라우트와 화면
+- `src/app`: 라우트 엔트리
+  - `/`: 홈(클럽 대시보드)
+  - `/auth/callback`: OAuth 콜백
+  - `/join/[inviteCode]`: 원클릭 초대 링크 참가
+  - `/clubs/[clubId]/*`: 클럽 상세/히스토리/리더보드/경기
 - `src/features/*`: 기능 단위 모듈 (components/hooks/services/types)
-- `src/features/clubs/*`: 클럽 생성/참가/목록 도메인
-- `src/features/auth/*`: 인증 세션/로그인/로그아웃 도메인
-- `src/components/layout`: 앱 셸(상단/하단 네비)
-- `src/components/feedback`: 상태 메시지 컴포넌트
+  - `auth`: 세션/로그인/로그아웃 책임
+  - `clubs`: 클럽/멤버/초대 흐름
+  - `matches`: 경기 생성/상세/히스토리
+  - `leaderboard`: 전적 집계
+- `src/components/layout`: `AppShell`, `AppBar`, `BottomNav`
+- `src/components/feedback`: 로딩/상태/빈 상태 컴포넌트
 - `src/components/ui`: 공용 UI 컴포넌트
-- `src/lib`: 유틸/외부 연동
-- `src/lib/supabase/client.ts`: 브라우저용 Supabase client
-- `src/lib/supabase/server.ts`: 서버/관리자용 Supabase client
-- `supabase/schema.sql`: DB 스키마 + RLS 정책
-- `docs/*`: 제품/설계/작업 문서
+- `src/lib/supabase/client.ts`: 브라우저 Supabase client
+- `supabase/migrations/*`: SQL 마이그레이션(운영 기준 원본)
 
-## Data Model (MVP)
+## Data Model (Current)
 
-- `clubs`: 클럽 기본 정보
-- `club_members`: 클럽 멤버십, 역할(owner/manager/member)
-- `matches`: 경기 메타
-- `match_players`: 경기 참가자
-- `match_results`: 점수 요약/세트 정보
-- `audit_logs`: 수정/변경 이력
+- `clubs`
+  - `invite_code` (초대 코드)
+  - `invite_expires_at` (초대 만료 시각)
+- `club_members`
+  - 역할: `owner | manager | member | guest`
+  - `is_active`, `left_at` (소프트 삭제/탈퇴 처리)
+  - 개인 설정: `open_kakao_profile`, `allow_record_search`, `share_history`
+- `matches`
+  - `created_by` 기준 생성자 보존
+- `match_players`
+  - 경기-멤버 매핑(히스토리 보존 핵심 FK)
+- `match_results`
+  - 게임 점수 배열(`set_scores`) + 요약
+- `audit_logs`
+  - 운영/변경 추적 로그
 
-## RPC
+## Core RPC / Functions
 
-- `join_club_by_invite(p_invite_code text, p_nickname text)`: 참가 코드 기반 클럽 가입 처리
+- `join_club_by_invite(code, nickname)`: 정회원 참가
+- `join_club_by_invite_as_guest(code, nickname)`: 게스트 참가
+- `regenerate_club_invite_code(club_id, days)`: 방장 초대코드 재발급
+- `remove_club_member(club_id, member_id)`: 방장 멤버 소프트 삭제
+- `update_club_name`, `update_my_club_nickname`, `update_my_club_member_settings`
 
-## Security Boundary
+## Permission Model
 
-- 퍼블릭 키(`NEXT_PUBLIC_SUPABASE_ANON_KEY`): 클라이언트 조회/작성
-- 시크릿 키(`SUPABASE_SERVICE_ROLE_KEY`): 서버 전용
-- 모든 민감 조작은 RLS 정책으로 클럽 멤버 권한 검증
+- 공통 검증 함수:
+  - `is_club_member(club_id)`: `is_active = true` 멤버만 true
+  - `is_club_admin(club_id)`: active + `owner/manager`
+  - `can_manage_match(club_id, created_by)`: `owner/manager` 또는 생성자
+- 경기 권한:
+  - 생성: `owner/manager/member`만
+  - 수정/결과 수정: `owner/manager/생성자`
+  - 게스트: 조회/참가만, 생성/수정 불가
+
+## UI Layout Contract
+
+- 페이지 구조 표준:
+  - `<AppBar />`
+  - `<div className="px-4">...</div>`
+- `AppShell`은 캔버스(`max-w`, bottom nav, 배경)만 담당
+- 상단 타이틀/뒤로가기/액션은 각 화면의 `AppBar`에서 결정
+
+## Auth Boundary
+
+- 기본 로그인: Kakao OAuth + Email/Password
+- 게스트: Supabase anonymous session 지원
+- `requireUser`: 로그인 또는 게스트 세션 요구
+- `requireRegisteredUser`: 정회원(비-anonymous) 요구
 
 ## Branch & Deploy
 
 - `main`: production
 - `develop`: 통합 개발
-- `feature/*`: 기능 작업 후 PR
-
-## Environment Strategy
-
-- Supabase는 현재 단일 프로젝트로 운영한다.
-- 브랜치 분리는 Git/Vercel 배포 단위에서 관리한다.
-- 운영 리스크를 줄이기 위해 `develop`에서는 DB 스키마 변경 전 `db:push:dry`를 필수로 실행한다.
+- `feature/*`: 기능 작업 후 병합

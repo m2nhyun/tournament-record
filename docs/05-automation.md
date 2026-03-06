@@ -1,6 +1,6 @@
 # Automation Guide
 
-이 문서는 "수동 SQL 실행"을 줄이고, 반복 작업을 명령어로 고정하기 위한 가이드다.
+이 문서는 DB/검증/배포 관련 반복 작업을 명령어로 고정하기 위한 가이드다.
 
 ## 자동화 범위
 
@@ -11,15 +11,18 @@
 - GitHub Actions CI(푸시/PR 시 자동 검증)
 
 수동 필요:
-- Supabase Dashboard의 Auth 설정 변경(카카오 Provider 값)
-- Vercel 대시보드 환경변수 값 입력/회전
+- Supabase Dashboard Auth 설정(Provider/Redirect)
+- Vercel 환경변수 관리
+- SQL Editor 수동 반영(현재 운영 정책)
 
 ## Auth Modes
 
 - 운영 권장: Kakao OAuth + Email/Password 로그인
-- 개발 편의: `NEXT_PUBLIC_ALLOW_GUEST_MODE=true` 설정 시 자동 게스트 세션 생성
-  - 카카오 연동 전 UI/기능 테스트용
-  - 운영 배포에서는 `false` 유지 권장
+- 게스트 참가: 초대 링크(`/join/[inviteCode]`)에서 게스트 참가 허용
+  - 게스트 권한: 조회/참가만 허용, 경기 생성/수정 불가
+- 개발 편의 옵션: `NEXT_PUBLIC_ALLOW_GUEST_MODE=true`
+  - 홈에서 자동 게스트 세션 생성
+  - 운영 배포에서는 기본 `false` 권장
 
 ## Kakao Auth Setup
 
@@ -29,10 +32,10 @@ Supabase:
 3. Redirect URL 추가
 
 Kakao Developers:
-1. 플랫폼: Web 등록 (`http://localhost:3000`, `https://tournament-record-vercel.vercel.app`)
+1. 플랫폼: Web 등록 (`http://localhost:3000`, 운영 도메인)
 2. Redirect URI에 Supabase callback 등록
    - `https://<project-ref>.supabase.co/auth/v1/callback`
-3. 동의항목(이메일/프로필) 설정
+3. 동의항목(프로필/이메일) 설정
 
 ## Environment Strategy
 
@@ -43,7 +46,7 @@ Kakao Developers:
 ## 선행 조건
 
 1. `.env.local` 설정
-2. `SUPABASE_DB_URL` 환경변수 설정 (`.env.local`에 넣어도 됨)
+2. `SUPABASE_DB_URL` 환경변수 설정
 
 예시:
 
@@ -70,40 +73,27 @@ npm run automation:check # env + smoke + verify 일괄 실행
 4. `npm run db:push`
 5. `npm run verify`
 
-## 마이그레이션 운영 규칙
-
-- 신규 스키마 변경 시 `supabase/migrations`에 SQL 파일 추가
-- `supabase/schema.sql`은 스냅샷/참조 용도로 유지
-- 배포 전 `db:push:dry`를 반드시 확인
-
-## Troubleshooting
-
-### `no route to host` (db.<project-ref>.supabase.co:5432)
-
-- 원인: 현재 네트워크에서 Direct DB host(IPv6) 라우팅이 막힌 경우가 많다.
-- 해결: Supabase Dashboard에서 `Connection string`의 **Session pooler(IPv4)** URI를 복사해 `SUPABASE_DB_URL`에 설정한다.
-- 예시 형식:
-
-```bash
-SUPABASE_DB_URL=postgresql://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres
-```
-
-- 변경 후 다시 실행:
-
-```bash
-npm run db:push:dry
-npm run db:push
-```
-
 ## Temporary Policy (Manual DB Migration)
 
-- 적용 기간: `db:push`가 IPv4/네트워크 이슈로 안정화되기 전까지
-- 원칙: DB 변경은 Supabase `SQL Editor`에서 수동 실행한다.
+- 원칙: DB 변경은 Supabase `SQL Editor` 수동 실행을 기본으로 유지한다.
 
 실행 순서:
-
 1. `supabase/migrations/*.sql`에서 대상 파일 선택
 2. SQL Editor에 전체 붙여넣기 후 실행
 3. 검증 쿼리 실행(함수/테이블/정책 생성 확인)
 4. 앱 기능 재테스트
 5. `docs/04-dev-log.md`에 실행 일시와 적용 파일 기록
+
+## Required SQL (Current Baseline)
+
+아래 마이그레이션은 현재 기능 기준으로 반드시 반영되어야 한다.
+
+1. `20260306114000_add_guest_invite_policy_and_match_permissions.sql`
+- `guest` role 추가
+- `invite_expires_at`/재발급 함수
+- 게스트 경기 권한 제한
+
+2. `20260306123000_add_member_soft_removal_and_guest_message.sql`
+- `club_members.is_active`, `left_at`
+- 멤버 소프트 삭제 함수 `remove_club_member`
+- active 멤버 기준 권한 함수 갱신

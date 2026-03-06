@@ -147,3 +147,14 @@
 
 - 이메일 로그인/회원가입 경로를 홈 인증 게이트에서 유지
 - 게스트 사용자는 홈에서 `클럽 만들기` 탭 비노출
+
+### Club Member Lifecycle
+
+- 방장(owner) 멤버 제외 기능 추가(`remove_club_member`)
+- 멤버 제외는 소프트 삭제(`is_active=false`, `left_at`)로 처리
+- 과거 경기/히스토리 참조 무결성(FK) 유지
+
+### Layout Standardization
+
+- 주요 화면을 `AppBar + content(px-4)` 패턴으로 통일
+- `LoadingSpinner`를 공통 중앙 정렬 + `title/message` 구조로 통일
