@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pencil } from "lucide-react";
+import { Pencil, UserX } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import type { ClubMember } from "@/features/clubs/types/club";
 
 type ClubMemberListProps = {
   members: ClubMember[];
+  myRole: ClubMember["role"];
   saving: boolean;
   onSaveMySettings: (input: {
     nickname: string;
@@ -15,6 +16,7 @@ type ClubMemberListProps = {
     allowRecordSearch: boolean;
     shareHistory: boolean;
   }) => Promise<void>;
+  onRemoveMember: (memberId: string) => Promise<void>;
 };
 
 const roleLabelMap: Record<string, string> = {
@@ -26,8 +28,10 @@ const roleLabelMap: Record<string, string> = {
 
 export function ClubMemberList({
   members,
+  myRole,
   saving,
   onSaveMySettings,
+  onRemoveMember,
 }: ClubMemberListProps) {
   const myMember = members.find((member) => member.isMe) ?? null;
   const [open, setOpen] = useState(false);
@@ -58,6 +62,23 @@ export function ClubMemberList({
                   onClick={() => setOpen(true)}
                 >
                   <Pencil className="size-3.5" />
+                </Button>
+              ) : null}
+              {myRole === "owner" && !member.isMe && member.role !== "owner" ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={saving}
+                  onClick={() => {
+                    const ok = window.confirm(
+                      `${member.nickname} 님을 클럽에서 제외할까요?`,
+                    );
+                    if (!ok) return;
+                    void onRemoveMember(member.id);
+                  }}
+                >
+                  <UserX className="size-3.5" />
                 </Button>
               ) : null}
             </div>

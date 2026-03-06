@@ -43,6 +43,7 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
     saveClubName,
     saveMySettings,
     regenerateInviteCode,
+    removeMember,
   } = useClubDetail(clubId);
   const [copied, setCopied] = useState(false);
   const [openNameDialog, setOpenNameDialog] = useState(false);
@@ -223,8 +224,10 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
         {members.length > 0 ? (
           <ClubMemberList
             members={members}
+            myRole={club.myRole}
             saving={saving}
             onSaveMySettings={saveMySettings}
+            onRemoveMember={removeMember}
           />
         ) : (
           <EmptyState icon={Users} title="멤버가 없습니다." />

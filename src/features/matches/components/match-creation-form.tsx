@@ -56,6 +56,7 @@ export function MatchCreationForm({ clubId }: MatchCreationFormProps) {
     togglePlayer,
     requiredPerSide,
     canCreateAnyMatch,
+    canRecordMatch,
     canUseDoubles,
     setScores,
     gamesToWin,
@@ -125,6 +126,31 @@ export function MatchCreationForm({ clubId }: MatchCreationFormProps) {
           icon={Users}
           title="참가 가능한 멤버가 부족합니다."
           description="경기를 기록하려면 최소 2명의 클럽 멤버가 필요합니다."
+          actionLabel="클럽 홈으로 이동"
+          onAction={() => {
+            window.location.href = `/clubs/${clubId}`;
+          }}
+        />
+      </div>
+    );
+  }
+
+  if (!canRecordMatch) {
+    return (
+      <div className="mx-auto w-full max-w-xl space-y-4">
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/clubs/${clubId}`}>
+              <ArrowLeft className="size-4" />
+            </Link>
+          </Button>
+          <h1 className="text-xl font-semibold">새 경기 기록</h1>
+        </div>
+
+        <EmptyState
+          icon={Users}
+          title="게스트는 경기 저장이 불가합니다."
+          description="경기 조회/참가는 가능하며, 기록 저장은 정회원(카카오/이메일)만 가능합니다."
           actionLabel="클럽 홈으로 이동"
           onAction={() => {
             window.location.href = `/clubs/${clubId}`;

@@ -1,5 +1,5 @@
 import { getSupabaseClient } from "@/lib/supabase/client";
-import { requireRegisteredUser, requireUser } from "@/features/auth/services/auth";
+import { requireUser } from "@/features/auth/services/auth";
 import { writeAuditLog } from "@/features/matches/services/audit";
 import type {
   MatchCreationData,
@@ -65,7 +65,12 @@ export async function createMatch(
   clubId: string,
   data: MatchCreationData,
 ): Promise<string> {
-  const user = await requireRegisteredUser();
+  const user = await requireUser();
+  if (user.is_anonymous) {
+    throw new Error(
+      "게스트는 경기 기록을 저장할 수 없습니다. 카카오/이메일 로그인 후 이용해주세요.",
+    );
+  }
 
   const { data: match, error: matchError } = await getSupabaseClient()
     .from("matches")

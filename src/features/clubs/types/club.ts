@@ -27,6 +27,7 @@ export type ClubMember = {
   userId: string;
   nickname: string;
   role: ClubRole;
+  isActive: boolean;
   createdAt: string;
   isMe: boolean;
   openKakaoProfile: boolean;

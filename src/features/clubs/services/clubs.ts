@@ -43,6 +43,7 @@ export async function listMyClubs(): Promise<ClubSummary[]> {
     .from("club_members")
     .select("role,nickname,clubs(id,name,invite_code,invite_expires_at,created_at)")
     .eq("user_id", user.id)
+    .eq("is_active", true)
     .order("created_at", { ascending: false });
 
   if (error) throw error;
@@ -151,6 +152,7 @@ export async function getClubDetail(clubId: string): Promise<ClubDetail> {
     .select("role,nickname")
     .eq("club_id", clubId)
     .eq("user_id", user.id)
+    .eq("is_active", true)
     .single();
 
   if (memberError || !membership) {
@@ -174,9 +176,10 @@ export async function listClubMembers(clubId: string): Promise<ClubMember[]> {
   const { data, error } = await getSupabaseClient()
     .from("club_members")
     .select(
-      "id,user_id,nickname,role,created_at,open_kakao_profile,allow_record_search,share_history",
+      "id,user_id,nickname,role,is_active,created_at,open_kakao_profile,allow_record_search,share_history",
     )
     .eq("club_id", clubId)
+    .eq("is_active", true)
     .order("created_at", { ascending: true });
 
   if (error) throw error;
@@ -186,6 +189,7 @@ export async function listClubMembers(clubId: string): Promise<ClubMember[]> {
     userId: row.user_id,
     nickname: row.nickname,
     role: row.role as ClubRole,
+    isActive: row.is_active ?? true,
     createdAt: row.created_at,
     isMe: row.user_id === user.id,
     openKakaoProfile: row.open_kakao_profile ?? false,
@@ -226,6 +230,18 @@ function mapClubSettingsError(error: unknown): Error {
 
   if (message.includes("Not a club member")) {
     return new Error("클럽 멤버만 닉네임을 변경할 수 있습니다.");
+  }
+  if (message.includes("Only owner can remove member")) {
+    return new Error("클럽장만 멤버를 내보낼 수 있습니다.");
+  }
+  if (message.includes("Owner cannot be removed")) {
+    return new Error("방장은 내보낼 수 없습니다.");
+  }
+  if (message.includes("Cannot remove yourself")) {
+    return new Error("본인은 내보낼 수 없습니다.");
+  }
+  if (message.includes("Member not found")) {
+    return new Error("이미 클럽에서 제외된 멤버입니다.");
   }
 
   if (message.includes("violates check constraint")) {
@@ -297,4 +313,15 @@ export async function regenerateClubInviteCode(clubId: string, daysValid = 30) {
     inviteCode: String(row?.invite_code ?? ""),
     inviteExpiresAt: String(row?.invite_expires_at ?? ""),
   };
+}
+
+export async function removeClubMember(clubId: string, memberId: string) {
+  await requireUser();
+
+  const { error } = await getSupabaseClient().rpc("remove_club_member", {
+    p_club_id: clubId,
+    p_member_id: memberId,
+  });
+
+  if (error) throw mapClubSettingsError(error);
 }

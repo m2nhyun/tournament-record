@@ -105,6 +105,8 @@ export function useMatchCreation(clubId: string) {
   }, [members.length, matchType]);
 
   const requiredPerSide = matchType === "singles" ? 1 : 2;
+  const myMembership = members.find((member) => member.isMe) ?? null;
+  const canRecordMatch = myMembership?.role !== "guest";
   const canCreateAnyMatch = members.length >= 2;
   const canUseDoubles = members.length >= 4;
   const selectedTypeMemberRequirementMet =
@@ -308,6 +310,7 @@ export function useMatchCreation(clubId: string) {
 
     canGoToPlayers,
     canCreateAnyMatch,
+    canRecordMatch,
     canUseDoubles,
     canGoToScore,
     canSubmit,

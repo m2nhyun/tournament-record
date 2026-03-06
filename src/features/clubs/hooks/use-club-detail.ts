@@ -6,6 +6,7 @@ import {
   getClubDetail,
   listClubMembers,
   regenerateClubInviteCode,
+  removeClubMember,
   updateClubName,
   updateMyClubMemberSettings,
 } from "@/features/clubs/services/clubs";
@@ -105,6 +106,23 @@ export function useClubDetail(clubId: string) {
     }
   }, [clubId, refresh, saving]);
 
+  const removeMember = useCallback(
+    async (memberId: string) => {
+      if (saving) return;
+      setSaving(true);
+      try {
+        await removeClubMember(clubId, memberId);
+        setStatus({ type: "success", message: "멤버를 클럽에서 제외했습니다." });
+        await refresh();
+      } catch (error) {
+        setStatus({ type: "error", message: toMessage(error) });
+      } finally {
+        setSaving(false);
+      }
+    },
+    [clubId, refresh, saving],
+  );
+
   return {
     club,
     members,
@@ -115,5 +133,6 @@ export function useClubDetail(clubId: string) {
     saveClubName,
     saveMySettings,
     regenerateInviteCode,
+    removeMember,
   };
 }
