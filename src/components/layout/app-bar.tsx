@@ -28,12 +28,12 @@ export function AppBar({
   return (
     <div
       className={cn(
-        "sticky top-0 z-20 flex h-14 items-center justify-between bg-background/95 px-2 backdrop-blur-sm",
+        "sticky top-0 z-20 flex h-14 items-center justify-center bg-background/95 px-2 backdrop-blur-sm",
         bottomBorder ? "border-b" : "",
         className,
       )}
     >
-      <div className="flex w-14 items-center justify-start">
+      <div className="absolute left-1 flex h-full items-center justify-start">
         {showBack ? (
           <button
             type="button"
@@ -49,11 +49,13 @@ export function AppBar({
         ) : null}
       </div>
 
-      <span className="pointer-events-none absolute left-1/2 max-w-[calc(100%-120px)] -translate-x-1/2 truncate text-center text-sm font-semibold">
+      <span className="max-w-[calc(100%-120px)] truncate text-center text-sm font-semibold">
         {title ?? ""}
       </span>
 
-      <div className="flex min-w-14 items-center justify-end">{actions}</div>
+      <div className="absolute right-1 flex h-full min-w-14 items-center justify-end">
+        {actions}
+      </div>
     </div>
   );
 }
