@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronRight, User, Users } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { MatchStatusBadge } from "@/features/matches/components/match-status-badge";
@@ -70,7 +70,6 @@ function resultMeta(match: MatchSummary, setScores: SetScore[]) {
 }
 
 export function MatchCard({ match, viewMode = "card" }: MatchCardProps) {
-  const TypeIcon = match.matchType === "singles" ? User : Users;
   const team1 = match.side1Players.join(" · ");
   const team2 = match.side2Players.join(" · ");
   const hasInProgressRound = match.setScores.some((s) => !isRoundComplete(s));
@@ -88,7 +87,7 @@ export function MatchCard({ match, viewMode = "card" }: MatchCardProps) {
       <Link href={`/clubs/${match.clubId}/matches/${match.id}`} className="block">
         <article
           className={[
-            "rounded-xl border px-4 py-3 transition-colors active:brightness-[0.99]",
+            "rounded-xl border px-4 py-3 shadow-[0_2px_10px_rgba(15,15,15,0.05)] transition-colors active:opacity-95",
             `${result.listBgClass} hover:brightness-[0.99]`,
           ].join(" ")}
         >
@@ -104,17 +103,15 @@ export function MatchCard({ match, viewMode = "card" }: MatchCardProps) {
 
   return (
     <Link href={`/clubs/${match.clubId}/matches/${match.id}`} className="block">
-      <article
-        className={[
-          "rounded-xl border px-4 py-3 transition-colors active:bg-accent",
-          "bg-card hover:bg-accent/50",
-        ].join(" ")}
-      >
+        <article
+          className={[
+            "rounded-xl border bg-card px-4 py-3 shadow-[0_2px_10px_rgba(15,15,15,0.05)] transition-colors hover:bg-accent/50 active:opacity-95",
+          ].join(" ")}
+        >
         <div className="space-y-2">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1 space-y-1.5">
               <div className="flex items-center gap-2">
-                <TypeIcon className="size-4 text-muted-foreground" />
                 <Badge variant={result.badgeVariant} className="px-1.5 py-0">
                   {result.label}
                 </Badge>

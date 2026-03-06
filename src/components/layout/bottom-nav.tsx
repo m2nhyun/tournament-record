@@ -73,7 +73,7 @@ export function BottomNav({ clubId }: BottomNavProps) {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-1",
+                "flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-1 rounded-md active:opacity-95",
                 active ? "text-[var(--brand)]" : "text-muted-foreground",
               )}
               aria-label={item.label}

@@ -1,4 +1,5 @@
 import { LayoutGrid, Plus, UserPlus } from "lucide-react";
+import { motion } from "framer-motion";
 
 import { cn } from "@/lib/utils";
 import type { ClubTab } from "@/features/clubs/types/club";
@@ -41,14 +42,19 @@ export function ClubTabs({
             type="button"
             onClick={() => onChange(tab.key)}
             className={cn(
-              "flex min-h-[44px] flex-col items-center justify-center rounded-lg px-2 py-2 transition-colors",
-              active
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground",
+              "relative flex min-h-[44px] flex-col items-center justify-center rounded-lg px-2 py-2 transition-colors active:opacity-95",
+              active ? "text-foreground" : "text-muted-foreground",
             )}
           >
-            <Icon className="mb-1 size-4" />
-            <span className="text-xs font-medium">{tab.label}</span>
+            {active ? (
+              <motion.span
+                layoutId="club-tab-active-bg"
+                className="absolute inset-0 rounded-lg bg-background shadow-sm"
+                transition={{ type: "spring", stiffness: 420, damping: 34 }}
+              />
+            ) : null}
+            <Icon className="relative mb-1 size-4" />
+            <span className="relative text-xs font-medium">{tab.label}</span>
           </button>
         );
       })}
