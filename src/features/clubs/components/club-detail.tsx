@@ -98,12 +98,14 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
     return (
       <div className="space-y-4">
         <AppBar title="클럽" showBack />
-        <StatusBox type="error" message={status.message} />
-        <Button variant="outline" asChild>
-          <Link href="/">
-            홈으로 돌아가기
-          </Link>
-        </Button>
+        <div className="space-y-4 px-4">
+          <StatusBox type="error" message={status.message} />
+          <Button variant="outline" asChild>
+            <Link href="/">
+              홈으로 돌아가기
+            </Link>
+          </Button>
+        </div>
       </div>
     );
   }
@@ -113,119 +115,120 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
   return (
     <div className="space-y-6">
       <AppBar title={club.name} showBack />
-
-      <Card>
-        <CardHeader>
-          <div className="flex items-start justify-between gap-2">
-            <CardTitle>클럽 정보</CardTitle>
-            <div className="flex items-center gap-2">
-              <Badge variant="brand">
-                {roleLabelMap[club.myRole] ?? club.myRole}
-              </Badge>
-              {club.myRole === "owner" ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setOpenNameDialog(true)}
-                >
-                  <Pencil className="size-3.5" />
-                </Button>
-              ) : null}
+      <div className="space-y-6 px-4">
+        <Card>
+          <CardHeader>
+            <div className="flex items-start justify-between gap-2">
+              <CardTitle>클럽 정보</CardTitle>
+              <div className="flex items-center gap-2">
+                <Badge variant="brand">
+                  {roleLabelMap[club.myRole] ?? club.myRole}
+                </Badge>
+                {club.myRole === "owner" ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setOpenNameDialog(true)}
+                  >
+                    <Pencil className="size-3.5" />
+                  </Button>
+                ) : null}
+              </div>
             </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {club.myRole === "owner" ? (
-            <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-              연필 아이콘을 눌러 클럽 이름을 수정할 수 있습니다.
-            </div>
-          ) : null}
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-muted-foreground">참가 코드</p>
-              <p className="font-mono text-sm font-semibold tracking-wider">
-                {club.inviteCode}
-              </p>
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                유효기간: {new Date(club.inviteExpiresAt).toLocaleDateString("ko-KR")}
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => void copyInviteCode()}
-              >
-                <Copy className="size-3.5" />
-                {copied ? "복사됨" : "코드 복사"}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => void copyInviteLink()}
-              >
-                <Copy className="size-3.5" />
-                링크 복사
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  void shareInviteToKakao().catch(() => {
-                    /* user canceled share */
-                  });
-                }}
-              >
-                <Share2 className="size-3.5" />
-                카카오톡 공유
-              </Button>
-              {club.myRole === "owner" ? (
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {club.myRole === "owner" ? (
+              <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                연필 아이콘을 눌러 클럽 이름을 수정할 수 있습니다.
+              </div>
+            ) : null}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-muted-foreground">참가 코드</p>
+                <p className="font-mono text-sm font-semibold tracking-wider">
+                  {club.inviteCode}
+                </p>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  유효기간: {new Date(club.inviteExpiresAt).toLocaleDateString("ko-KR")}
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={saving}
-                  onClick={() => void regenerateInviteCode()}
+                  onClick={() => void copyInviteCode()}
                 >
-                  <RefreshCw className="size-3.5" />
-                  재발급
+                  <Copy className="size-3.5" />
+                  {copied ? "복사됨" : "코드 복사"}
                 </Button>
-              ) : null}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void copyInviteLink()}
+                >
+                  <Copy className="size-3.5" />
+                  링크 복사
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    void shareInviteToKakao().catch(() => {
+                      /* user canceled share */
+                    });
+                  }}
+                >
+                  <Share2 className="size-3.5" />
+                  카카오톡 공유
+                </Button>
+                {club.myRole === "owner" ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={saving}
+                    onClick={() => void regenerateInviteCode()}
+                  >
+                    <RefreshCw className="size-3.5" />
+                    재발급
+                  </Button>
+                ) : null}
+              </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {club.myRole !== "guest" ? (
+          <div className="flex gap-2">
+            <Button
+              className="flex-1 bg-[var(--brand)] text-white hover:opacity-90"
+              asChild
+            >
+              <Link href={`/clubs/${clubId}/matches/new`}>
+                <PlusCircle className="size-4" />새 경기 기록
+              </Link>
+            </Button>
           </div>
-        </CardContent>
-      </Card>
+        ) : null}
 
-      {club.myRole !== "guest" ? (
-        <div className="flex gap-2">
-          <Button
-            className="flex-1 bg-[var(--brand)] text-white hover:opacity-90"
-            asChild
-          >
-            <Link href={`/clubs/${clubId}/matches/new`}>
-              <PlusCircle className="size-4" />새 경기 기록
-            </Link>
-          </Button>
-        </div>
-      ) : null}
-
-      <section className="space-y-3">
-        <h2 className="flex items-center gap-2 text-lg font-semibold">
-          <Users className="size-5" />
-          멤버 ({members.length})
-        </h2>
-        {members.length > 0 ? (
-          <ClubMemberList
-            members={members}
-            myRole={club.myRole}
-            saving={saving}
-            onSaveMySettings={saveMySettings}
-            onRemoveMember={removeMember}
-          />
-        ) : (
-          <EmptyState icon={Users} title="멤버가 없습니다." />
-        )}
-      </section>
+        <section className="space-y-3">
+          <h2 className="flex items-center gap-2 text-lg font-semibold">
+            <Users className="size-5" />
+            멤버 ({members.length})
+          </h2>
+          {members.length > 0 ? (
+            <ClubMemberList
+              members={members}
+              myRole={club.myRole}
+              saving={saving}
+              onSaveMySettings={saveMySettings}
+              onRemoveMember={removeMember}
+            />
+          ) : (
+            <EmptyState icon={Users} title="멤버가 없습니다." />
+          )}
+        </section>
+      </div>
 
       {club.myRole === "owner" ? (
         <ClubNameEditModal

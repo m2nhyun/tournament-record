@@ -175,101 +175,103 @@ export function InviteJoinView({ inviteCode }: InviteJoinViewProps) {
   return (
     <div className="mx-auto w-full max-w-lg space-y-4">
       <AppBar title="클럽 초대 참가" showBack />
-      <section className="space-y-2 rounded-2xl border bg-card p-5">
-        <h1 className="text-xl font-semibold">초대 링크로 클럽 참가</h1>
-        <p className="text-sm text-muted-foreground">
-          코드 <span className="font-mono font-semibold">{normalizedCode}</span>
-        </p>
-      </section>
-
-      <StatusBox type={status.type} message={status.message} />
-
-      {!user ? (
-        <section className="space-y-3 rounded-2xl border bg-card p-5">
-          <Button
-            className="w-full bg-[#FEE500] text-[#191600] hover:bg-[#f6de00]"
-            onClick={() => void handleKakaoSignIn()}
-            disabled={busy !== null}
-          >
-            <MessageCircle className="size-4" />
-            카카오로 계속
-          </Button>
-          <Button
-            className="w-full"
-            variant="outline"
-            onClick={() => void handleGuestContinue()}
-            disabled={busy !== null}
-          >
-            <UserRound className="size-4" />
-            게스트로 계속
-          </Button>
-
-          <form onSubmit={handleEmailSignIn} className="space-y-3 rounded-xl border p-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="invite-email">이메일</Label>
-              <Input
-                id="invite-email"
-                value={email}
-                type="email"
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="you@example.com"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="invite-password">비밀번호</Label>
-              <Input
-                id="invite-password"
-                value={password}
-                type="password"
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="8자 이상"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <Button type="submit" disabled={busy !== null}>
-                <Mail className="size-4" />
-                이메일 로그인
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => void handleEmailSignUp()}
-                disabled={busy !== null}
-              >
-                회원가입
-              </Button>
-            </div>
-          </form>
+      <div className="space-y-4 px-4">
+        <section className="space-y-2 rounded-2xl border bg-card p-5">
+          <h1 className="text-xl font-semibold">초대 링크로 클럽 참가</h1>
+          <p className="text-sm text-muted-foreground">
+            코드 <span className="font-mono font-semibold">{normalizedCode}</span>
+          </p>
         </section>
-      ) : null}
 
-      {user ? (
-        <form onSubmit={handleJoin} className="space-y-4 rounded-2xl border bg-card p-5">
-          <div className="rounded-lg border px-3 py-2 text-xs text-muted-foreground">
-            현재 모드: {isGuest ? "게스트 참가 (조회/참가만 가능)" : "정회원 참가"}
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="invite-nickname">활동 닉네임</Label>
-            <Input
-              id="invite-nickname"
-              value={nickname}
-              onChange={(event) => setNickname(event.target.value)}
-              placeholder="클럽에서 사용할 이름"
-              maxLength={24}
-            />
-          </div>
-          <Button className="w-full" disabled={busy !== null}>
-            {busy === "join" ? (
-              <>
-                <Loader2 className="size-4 animate-spin" />
-                참가 처리 중...
-              </>
-            ) : (
-              "클럽 참가 완료"
-            )}
-          </Button>
-        </form>
-      ) : null}
+        <StatusBox type={status.type} message={status.message} />
+
+        {!user ? (
+          <section className="space-y-3 rounded-2xl border bg-card p-5">
+            <Button
+              className="w-full bg-[#FEE500] text-[#191600] hover:bg-[#f6de00]"
+              onClick={() => void handleKakaoSignIn()}
+              disabled={busy !== null}
+            >
+              <MessageCircle className="size-4" />
+              카카오로 계속
+            </Button>
+            <Button
+              className="w-full"
+              variant="outline"
+              onClick={() => void handleGuestContinue()}
+              disabled={busy !== null}
+            >
+              <UserRound className="size-4" />
+              게스트로 계속
+            </Button>
+
+            <form onSubmit={handleEmailSignIn} className="space-y-3 rounded-xl border p-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="invite-email">이메일</Label>
+                <Input
+                  id="invite-email"
+                  value={email}
+                  type="email"
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="you@example.com"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="invite-password">비밀번호</Label>
+                <Input
+                  id="invite-password"
+                  value={password}
+                  type="password"
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="8자 이상"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Button type="submit" disabled={busy !== null}>
+                  <Mail className="size-4" />
+                  이메일 로그인
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void handleEmailSignUp()}
+                  disabled={busy !== null}
+                >
+                  회원가입
+                </Button>
+              </div>
+            </form>
+          </section>
+        ) : null}
+
+        {user ? (
+          <form onSubmit={handleJoin} className="space-y-4 rounded-2xl border bg-card p-5">
+            <div className="rounded-lg border px-3 py-2 text-xs text-muted-foreground">
+              현재 모드: {isGuest ? "게스트 참가 (조회/참가만 가능)" : "정회원 참가"}
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="invite-nickname">활동 닉네임</Label>
+              <Input
+                id="invite-nickname"
+                value={nickname}
+                onChange={(event) => setNickname(event.target.value)}
+                placeholder="클럽에서 사용할 이름"
+                maxLength={24}
+              />
+            </div>
+            <Button className="w-full" disabled={busy !== null}>
+              {busy === "join" ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  참가 처리 중...
+                </>
+              ) : (
+                "클럽 참가 완료"
+              )}
+            </Button>
+          </form>
+        ) : null}
+      </div>
     </div>
   );
 }

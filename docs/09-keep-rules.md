@@ -56,6 +56,8 @@
 - 인라인 편집 폼으로 화면을 복잡하게 만들지 않는다.
 - 편집은 연필 아이콘 트리거 + 모달/다이얼로그 패턴을 기본으로 한다.
 - 공통 모달은 `shadcn Dialog` 기반 컴포넌트(`src/components/ui/dialog.tsx`, `src/components/common/modal.tsx`)를 재사용한다.
+- 주요 화면 레이아웃은 `AppBar + content(px-4)` 구조를 기본으로 유지한다.
+- `AppShell`은 공통 캔버스 역할만 담당하고, 페이지별 본문 패딩은 컴포넌트에서 직접 제어한다.
 
 ## 8) 테니스 컬러 토큰
 

@@ -53,12 +53,14 @@ export function MatchDetailView({ matchId, clubId }: MatchDetailViewProps) {
     return (
       <div className="space-y-4">
         <AppBar title="경기 상세" showBack />
-        <StatusBox type="error" message={error} />
-        <Button variant="outline" asChild>
-          <Link href={`/clubs/${clubId}`}>
-            클럽 홈으로
-          </Link>
-        </Button>
+        <div className="space-y-4 px-4">
+          <StatusBox type="error" message={error} />
+          <Button variant="outline" asChild>
+            <Link href={`/clubs/${clubId}`}>
+              클럽 홈으로
+            </Link>
+          </Button>
+        </div>
       </div>
     );
   }
@@ -81,78 +83,79 @@ export function MatchDetailView({ matchId, clubId }: MatchDetailViewProps) {
           window.location.href = `/clubs/${clubId}/history`;
         }}
       />
-
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <TypeIcon className="size-4 text-muted-foreground" />
-              <CardTitle>
-                {match.matchType === "singles" ? "단식" : "복식"}
-              </CardTitle>
+      <div className="px-4">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <TypeIcon className="size-4 text-muted-foreground" />
+                <CardTitle>
+                  {match.matchType === "singles" ? "단식" : "복식"}
+                </CardTitle>
+              </div>
+              <MatchStatusBadge status={match.status} />
             </div>
-            <MatchStatusBadge status={match.status} />
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            {formatDateTime(match.playedAt)}
-          </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              {formatDateTime(match.playedAt)}
+            </p>
 
-          {match.result ? (
-            <div className="rounded-lg bg-muted/30 p-4">
-              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-                <div className="text-sm font-semibold">{team1Name || "팀 A"}</div>
-                <p className="font-mono text-2xl font-bold text-[var(--brand)]">
-                  {finalScore.side1} : {finalScore.side2}
-                </p>
-                <div className="text-right text-sm font-semibold">
-                  {team2Name || "팀 B"}
+            {match.result ? (
+              <div className="rounded-lg bg-muted/30 p-4">
+                <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+                  <div className="text-sm font-semibold">{team1Name || "팀 A"}</div>
+                  <p className="font-mono text-2xl font-bold text-[var(--brand)]">
+                    {finalScore.side1} : {finalScore.side2}
+                  </p>
+                  <div className="text-right text-sm font-semibold">
+                    {team2Name || "팀 B"}
+                  </div>
                 </div>
               </div>
-            </div>
-          ) : null}
+            ) : null}
 
-          {/* Set scores table */}
-          {match.result && match.result.setScores.length > 0 ? (
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-muted-foreground">게임 상세</p>
-              <div className="overflow-hidden rounded-lg border">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b bg-muted/30">
-                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">
-                        게임
-                      </th>
-                      <th className="px-3 py-2 text-center font-medium text-muted-foreground">
-                        {team1Name || "팀 A"}
-                      </th>
-                      <th className="px-3 py-2 text-center font-medium text-muted-foreground">
-                        {team2Name || "팀 B"}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {match.result.setScores.map((s) => (
-                      <tr key={s.set} className="border-b last:border-0">
-                        <td className="px-3 py-2 text-muted-foreground">
-                          {s.set}
-                        </td>
-                        <td className="px-3 py-2 text-center font-semibold">
-                          {formatGameCell(s.side1, s.side1Point)}
-                        </td>
-                        <td className="px-3 py-2 text-center font-semibold">
-                          {formatGameCell(s.side2, s.side2Point)}
-                        </td>
+            {/* Set scores table */}
+            {match.result && match.result.setScores.length > 0 ? (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground">게임 상세</p>
+                <div className="overflow-hidden rounded-lg border">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/30">
+                        <th className="px-3 py-2 text-left font-medium text-muted-foreground">
+                          게임
+                        </th>
+                        <th className="px-3 py-2 text-center font-medium text-muted-foreground">
+                          {team1Name || "팀 A"}
+                        </th>
+                        <th className="px-3 py-2 text-center font-medium text-muted-foreground">
+                          {team2Name || "팀 B"}
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {match.result.setScores.map((s) => (
+                        <tr key={s.set} className="border-b last:border-0">
+                          <td className="px-3 py-2 text-muted-foreground">
+                            {s.set}
+                          </td>
+                          <td className="px-3 py-2 text-center font-semibold">
+                            {formatGameCell(s.side1, s.side1Point)}
+                          </td>
+                          <td className="px-3 py-2 text-center font-semibold">
+                            {formatGameCell(s.side2, s.side2Point)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
-          ) : null}
-        </CardContent>
-      </Card>
+            ) : null}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

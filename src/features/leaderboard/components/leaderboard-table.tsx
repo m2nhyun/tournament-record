@@ -57,7 +57,7 @@ export function LeaderboardView({ clubId }: LeaderboardViewProps) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
       <AppBar
         title="리더보드"
         showBack
@@ -65,75 +65,76 @@ export function LeaderboardView({ clubId }: LeaderboardViewProps) {
           window.location.href = `/clubs/${clubId}`;
         }}
       />
+      <div className="space-y-4 px-4">
+        {error ? <StatusBox type="error" message={error} /> : null}
 
-      {error ? <StatusBox type="error" message={error} /> : null}
+        {!error && entries.length === 0 ? (
+          <EmptyState
+            icon={Medal}
+            title="아직 리더보드 데이터가 없습니다."
+            description="경기를 기록하면 자동으로 집계됩니다."
+          />
+        ) : null}
 
-      {!error && entries.length === 0 ? (
-        <EmptyState
-          icon={Medal}
-          title="아직 리더보드 데이터가 없습니다."
-          description="경기를 기록하면 자동으로 집계됩니다."
-        />
-      ) : null}
+        {/* Mobile: card layout */}
+        {entries.length > 0 ? (
+          <div className="space-y-2 sm:hidden">
+            {entries.map((entry, i) => (
+              <MobileCard key={entry.clubMemberId} entry={entry} rank={i + 1} />
+            ))}
+          </div>
+        ) : null}
 
-      {/* Mobile: card layout */}
-      {entries.length > 0 ? (
-        <div className="space-y-2 sm:hidden">
-          {entries.map((entry, i) => (
-            <MobileCard key={entry.clubMemberId} entry={entry} rank={i + 1} />
-          ))}
-        </div>
-      ) : null}
-
-      {/* Desktop: table layout */}
-      {entries.length > 0 ? (
-        <div className="hidden overflow-hidden rounded-xl border sm:block">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-muted/30">
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                  순위
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                  선수
-                </th>
-                <th className="px-4 py-3 text-center font-medium text-muted-foreground">
-                  승
-                </th>
-                <th className="px-4 py-3 text-center font-medium text-muted-foreground">
-                  패
-                </th>
-                <th className="px-4 py-3 text-center font-medium text-muted-foreground">
-                  경기
-                </th>
-                <th className="px-4 py-3 text-center font-medium text-muted-foreground">
-                  승률
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {entries.map((entry, i) => (
-                <tr key={entry.clubMemberId} className="border-b last:border-0">
-                  <td className="px-4 py-3">
-                    <RankBadge rank={i + 1} />
-                  </td>
-                  <td className="px-4 py-3 font-medium">{entry.nickname}</td>
-                  <td className="px-4 py-3 text-center font-semibold text-[var(--brand)]">
-                    {entry.wins}
-                  </td>
-                  <td className="px-4 py-3 text-center">{entry.losses}</td>
-                  <td className="px-4 py-3 text-center text-muted-foreground">
-                    {entry.totalMatches}
-                  </td>
-                  <td className="px-4 py-3 text-center font-semibold">
-                    {entry.winRate}%
-                  </td>
+        {/* Desktop: table layout */}
+        {entries.length > 0 ? (
+          <div className="hidden overflow-hidden rounded-xl border sm:block">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/30">
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                    순위
+                  </th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                    선수
+                  </th>
+                  <th className="px-4 py-3 text-center font-medium text-muted-foreground">
+                    승
+                  </th>
+                  <th className="px-4 py-3 text-center font-medium text-muted-foreground">
+                    패
+                  </th>
+                  <th className="px-4 py-3 text-center font-medium text-muted-foreground">
+                    경기
+                  </th>
+                  <th className="px-4 py-3 text-center font-medium text-muted-foreground">
+                    승률
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
+              </thead>
+              <tbody>
+                {entries.map((entry, i) => (
+                  <tr key={entry.clubMemberId} className="border-b last:border-0">
+                    <td className="px-4 py-3">
+                      <RankBadge rank={i + 1} />
+                    </td>
+                    <td className="px-4 py-3 font-medium">{entry.nickname}</td>
+                    <td className="px-4 py-3 text-center font-semibold text-[var(--brand)]">
+                      {entry.wins}
+                    </td>
+                    <td className="px-4 py-3 text-center">{entry.losses}</td>
+                    <td className="px-4 py-3 text-center text-muted-foreground">
+                      {entry.totalMatches}
+                    </td>
+                    <td className="px-4 py-3 text-center font-semibold">
+                      {entry.winRate}%
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

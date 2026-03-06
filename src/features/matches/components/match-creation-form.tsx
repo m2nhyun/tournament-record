@@ -120,16 +120,17 @@ export function MatchCreationForm({ clubId }: MatchCreationFormProps) {
             window.location.href = `/clubs/${clubId}`;
           }}
         />
-
-        <EmptyState
-          icon={Users}
-          title="참가 가능한 멤버가 부족합니다."
-          description="경기를 기록하려면 최소 2명의 클럽 멤버가 필요합니다."
-          actionLabel="클럽 홈으로 이동"
-          onAction={() => {
-            window.location.href = `/clubs/${clubId}`;
-          }}
-        />
+        <div className="px-4">
+          <EmptyState
+            icon={Users}
+            title="참가 가능한 멤버가 부족합니다."
+            description="경기를 기록하려면 최소 2명의 클럽 멤버가 필요합니다."
+            actionLabel="클럽 홈으로 이동"
+            onAction={() => {
+              window.location.href = `/clubs/${clubId}`;
+            }}
+          />
+        </div>
       </div>
     );
   }
@@ -144,16 +145,17 @@ export function MatchCreationForm({ clubId }: MatchCreationFormProps) {
             window.location.href = `/clubs/${clubId}`;
           }}
         />
-
-        <EmptyState
-          icon={Users}
-          title="게스트는 경기 저장이 불가합니다."
-          description="경기 조회/참가는 가능하며, 기록 저장은 정회원(카카오/이메일)만 가능합니다."
-          actionLabel="클럽 홈으로 이동"
-          onAction={() => {
-            window.location.href = `/clubs/${clubId}`;
-          }}
-        />
+        <div className="px-4">
+          <EmptyState
+            icon={Users}
+            title="게스트는 경기 저장이 불가합니다."
+            description="경기 조회/참가는 가능하며, 기록 저장은 정회원(카카오/이메일)만 가능합니다."
+            actionLabel="클럽 홈으로 이동"
+            onAction={() => {
+              window.location.href = `/clubs/${clubId}`;
+            }}
+          />
+        </div>
       </div>
     );
   }
@@ -167,123 +169,124 @@ export function MatchCreationForm({ clubId }: MatchCreationFormProps) {
           window.location.href = `/clubs/${clubId}`;
         }}
       />
-
-      {/* Step indicator */}
-      <div className="flex items-center gap-2">
-        {(["type", "players", "score"] as CreationStep[]).map((s, i) => (
-          <div key={s} className="flex items-center gap-2">
-            {i > 0 ? <div className="h-px w-4 bg-border" /> : null}
-            <div
-              className={`flex size-7 items-center justify-center rounded-full text-xs font-semibold ${
-                stepNumbers[step] >= stepNumbers[s]
-                  ? "bg-[var(--brand)] text-white"
-                  : "bg-muted text-muted-foreground"
-              }`}
-            >
-              {stepNumbers[s]}
+      <div className="space-y-4 px-4">
+        {/* Step indicator */}
+        <div className="flex items-center gap-2">
+          {(["type", "players", "score"] as CreationStep[]).map((s, i) => (
+            <div key={s} className="flex items-center gap-2">
+              {i > 0 ? <div className="h-px w-4 bg-border" /> : null}
+              <div
+                className={`flex size-7 items-center justify-center rounded-full text-xs font-semibold ${
+                  stepNumbers[step] >= stepNumbers[s]
+                    ? "bg-[var(--brand)] text-white"
+                    : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {stepNumbers[s]}
+              </div>
+              <span
+                className={`text-xs ${
+                  step === s
+                    ? "font-semibold text-foreground"
+                    : "text-muted-foreground"
+                }`}
+              >
+                {stepLabels[s]}
+              </span>
             </div>
-            <span
-              className={`text-xs ${
-                step === s
-                  ? "font-semibold text-foreground"
-                  : "text-muted-foreground"
-              }`}
-            >
-              {stepLabels[s]}
-            </span>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
 
-      {status ? (
-        <StatusBox type={status.type} message={status.message} />
-      ) : null}
+        {status ? (
+          <StatusBox type={status.type} message={status.message} />
+        ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{stepLabels[step]}</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <Card>
+          <CardHeader>
+            <CardTitle>{stepLabels[step]}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {step === "type" ? (
+              <MatchTypeSelector
+                matchType={matchType}
+                playedAt={playedAt}
+                canUseDoubles={canUseDoubles}
+                onChangeType={setMatchType}
+                onChangeDate={setPlayedAt}
+              />
+            ) : null}
+
+            {step === "players" ? (
+              <PlayerSelector
+                members={members}
+                side1Ids={side1Ids}
+                side2Ids={side2Ids}
+                requiredPerSide={requiredPerSide}
+                onToggle={togglePlayer}
+              />
+            ) : null}
+
+            {step === "score" ? (
+              <ScoreInput
+                setScores={setScores}
+                onUpdate={updateSetScore}
+                onAddSet={addSet}
+                onRemoveLastSet={removeLastSet}
+                gamesToWin={gamesToWin}
+                onChangeGamesToWin={setGamesToWin}
+                side1Label={side1Label}
+                side2Label={side2Label}
+              />
+            ) : null}
+          </CardContent>
+        </Card>
+
+        {/* Navigation buttons */}
+        <div className="flex gap-2">
+          {step !== "type" ? (
+            <Button variant="outline" className="flex-1" onClick={goBack}>
+              <ChevronLeft className="size-4" />
+              이전
+            </Button>
+          ) : null}
+
           {step === "type" ? (
-            <MatchTypeSelector
-              matchType={matchType}
-              playedAt={playedAt}
-              canUseDoubles={canUseDoubles}
-              onChangeType={setMatchType}
-              onChangeDate={setPlayedAt}
-            />
+            <Button
+              className="w-full bg-[var(--brand)] text-white hover:opacity-90"
+              disabled={!canGoToPlayers}
+              onClick={goToPlayers}
+            >
+              다음
+              <ChevronRight className="size-4" />
+            </Button>
           ) : null}
 
           {step === "players" ? (
-            <PlayerSelector
-              members={members}
-              side1Ids={side1Ids}
-              side2Ids={side2Ids}
-              requiredPerSide={requiredPerSide}
-              onToggle={togglePlayer}
-            />
+            <Button
+              className="flex-1 bg-[var(--brand)] text-white hover:opacity-90"
+              disabled={!canGoToScore}
+              onClick={goToScore}
+            >
+              다음
+              <ChevronRight className="size-4" />
+            </Button>
           ) : null}
 
           {step === "score" ? (
-            <ScoreInput
-              setScores={setScores}
-              onUpdate={updateSetScore}
-              onAddSet={addSet}
-              onRemoveLastSet={removeLastSet}
-              gamesToWin={gamesToWin}
-              onChangeGamesToWin={setGamesToWin}
-              side1Label={side1Label}
-              side2Label={side2Label}
-            />
+            <Button
+              className="flex-1 bg-[var(--brand)] text-white hover:opacity-90"
+              disabled={!canSubmit || submitting}
+              onClick={() => void submit()}
+            >
+              {submitting ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Check className="size-4" />
+              )}
+              {submitting ? "저장 중..." : "경기 저장"}
+            </Button>
           ) : null}
-        </CardContent>
-      </Card>
-
-      {/* Navigation buttons */}
-      <div className="flex gap-2">
-        {step !== "type" ? (
-          <Button variant="outline" className="flex-1" onClick={goBack}>
-            <ChevronLeft className="size-4" />
-            이전
-          </Button>
-        ) : null}
-
-        {step === "type" ? (
-          <Button
-            className="w-full bg-[var(--brand)] text-white hover:opacity-90"
-            disabled={!canGoToPlayers}
-            onClick={goToPlayers}
-          >
-            다음
-            <ChevronRight className="size-4" />
-          </Button>
-        ) : null}
-
-        {step === "players" ? (
-          <Button
-            className="flex-1 bg-[var(--brand)] text-white hover:opacity-90"
-            disabled={!canGoToScore}
-            onClick={goToScore}
-          >
-            다음
-            <ChevronRight className="size-4" />
-          </Button>
-        ) : null}
-
-        {step === "score" ? (
-          <Button
-            className="flex-1 bg-[var(--brand)] text-white hover:opacity-90"
-            disabled={!canSubmit || submitting}
-            onClick={() => void submit()}
-          >
-            {submitting ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Check className="size-4" />
-            )}
-            {submitting ? "저장 중..." : "경기 저장"}
-          </Button>
-        ) : null}
+        </div>
       </div>
     </div>
   );

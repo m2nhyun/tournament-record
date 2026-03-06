@@ -64,7 +64,7 @@ export function MatchHistoryView({ clubId }: MatchHistoryViewProps) {
           window.location.href = `/clubs/${clubId}`;
         }}
       />
-      <div className="space-y-3">
+      <div className="space-y-3 px-4">
         {error ? <StatusBox type="error" message={error} /> : null}
 
         {!error && matches.length === 0 ? (
