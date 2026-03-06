@@ -33,6 +33,9 @@ function toMessage(error: unknown) {
       if (message.includes("Invalid invite code")) {
         return "유효하지 않은 참가 코드입니다.";
       }
+      if (message.includes("Invalid or expired invite code")) {
+        return "만료되었거나 유효하지 않은 초대 코드입니다.";
+      }
       if (
         message.includes("Could not find the function") &&
         message.includes("join_club_by_invite")
@@ -41,6 +44,9 @@ function toMessage(error: unknown) {
       }
       if (message.includes("Not authenticated")) {
         return "로그인이 필요합니다.";
+      }
+      if (message.includes("게스트 계정은 사용할 수 없습니다")) {
+        return "정회원(카카오/이메일) 로그인 후 참가할 수 있습니다.";
       }
       if (
         message.includes("club_members_nickname_check") ||
@@ -73,6 +79,7 @@ export function useClubDashboard() {
   const [password, setPassword] = useState("");
 
   const isBusy = useMemo(() => busyType !== null, [busyType]);
+  const isAnonymousUser = !!user?.is_anonymous;
 
   const refreshClubs = useCallback(async () => {
     setBusyType("loading");
@@ -127,6 +134,14 @@ export function useClubDashboard() {
   }, [refreshClubs]);
 
   const submitCreateClub = useCallback(async () => {
+    if (user?.is_anonymous) {
+      setStatus({
+        type: "error",
+        message: "게스트 계정은 클럽 생성이 불가합니다. 카카오/이메일 로그인 후 이용해주세요.",
+      });
+      return;
+    }
+
     if (!createName.trim() || !createNickname.trim()) {
       setStatus({
         type: "error",
@@ -153,7 +168,7 @@ export function useClubDashboard() {
       setStatus({ type: "error", message: toMessage(error) });
       setBusyType(null);
     }
-  }, [createName, createNickname, refreshClubs]);
+  }, [createName, createNickname, refreshClubs, user?.is_anonymous]);
 
   const submitJoinClub = useCallback(async () => {
     if (!joinCode.trim() || !joinNickname.trim()) {
@@ -273,5 +288,6 @@ export function useClubDashboard() {
     password,
     setPassword,
     isGuestModeEnabled,
+    isAnonymousUser,
   };
 }

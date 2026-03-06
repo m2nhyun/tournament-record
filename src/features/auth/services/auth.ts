@@ -55,6 +55,16 @@ export async function ensureSessionUser(): Promise<User | null> {
   return data.user;
 }
 
+export async function signInAsGuest() {
+  const { data, error } = await getSupabaseClient().auth.signInAnonymously();
+  if (error || !data.user) {
+    throw new Error(
+      "게스트 로그인 실패: Supabase Anonymous sign-ins 설정을 확인하세요.",
+    );
+  }
+  return data.user;
+}
+
 export async function signInWithKakao() {
   const { error } = await getSupabaseClient().auth.signInWithOAuth({
     provider: "kakao",
@@ -129,5 +139,13 @@ export async function requireUser() {
     );
   }
 
+  return user;
+}
+
+export async function requireRegisteredUser() {
+  const user = await requireUser();
+  if (user.is_anonymous) {
+    throw new Error("게스트 계정은 사용할 수 없습니다. 카카오/이메일로 로그인해주세요.");
+  }
   return user;
 }

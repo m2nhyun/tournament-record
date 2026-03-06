@@ -6,6 +6,7 @@ import type { ClubTab } from "@/features/clubs/types/club";
 type ClubTabsProps = {
   activeTab: ClubTab;
   onChange: (tab: ClubTab) => void;
+  canCreateClub?: boolean;
 };
 
 const tabs: Array<{ key: ClubTab; label: string; icon: typeof LayoutGrid }> = [
@@ -14,10 +15,23 @@ const tabs: Array<{ key: ClubTab; label: string; icon: typeof LayoutGrid }> = [
   { key: "create", label: "클럽 만들기", icon: Plus },
 ];
 
-export function ClubTabs({ activeTab, onChange }: ClubTabsProps) {
+export function ClubTabs({
+  activeTab,
+  onChange,
+  canCreateClub = true,
+}: ClubTabsProps) {
+  const visibleTabs = canCreateClub
+    ? tabs
+    : tabs.filter((tab) => tab.key !== "create");
+
   return (
-    <div className="grid grid-cols-3 gap-2 rounded-xl bg-muted p-1">
-      {tabs.map((tab) => {
+    <div
+      className={cn(
+        "grid gap-2 rounded-xl bg-muted p-1",
+        visibleTabs.length === 3 ? "grid-cols-3" : "grid-cols-2",
+      )}
+    >
+      {visibleTabs.map((tab) => {
         const Icon = tab.icon;
         const active = activeTab === tab.key;
 

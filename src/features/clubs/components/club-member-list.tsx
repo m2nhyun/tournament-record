@@ -21,6 +21,7 @@ const roleLabelMap: Record<string, string> = {
   owner: "방장",
   manager: "매니저",
   member: "멤버",
+  guest: "게스트",
 };
 
 export function ClubMemberList({

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   getClubDetail,
   listClubMembers,
+  regenerateClubInviteCode,
   updateClubName,
   updateMyClubMemberSettings,
 } from "@/features/clubs/services/clubs";
@@ -87,6 +88,23 @@ export function useClubDetail(clubId: string) {
     [clubId, refresh, saving],
   );
 
+  const regenerateInviteCode = useCallback(async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      await regenerateClubInviteCode(clubId, 30);
+      setStatus({
+        type: "success",
+        message: "초대 코드가 재발급되었습니다. (30일 유효)",
+      });
+      await refresh();
+    } catch (error) {
+      setStatus({ type: "error", message: toMessage(error) });
+    } finally {
+      setSaving(false);
+    }
+  }, [clubId, refresh, saving]);
+
   return {
     club,
     members,
@@ -96,5 +114,6 @@ export function useClubDetail(clubId: string) {
     refresh,
     saveClubName,
     saveMySettings,
+    regenerateInviteCode,
   };
 }

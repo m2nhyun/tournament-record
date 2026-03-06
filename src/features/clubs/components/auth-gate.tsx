@@ -51,24 +51,6 @@ export function AuthGate({
         </p>
       ) : null}
 
-      <Button
-        className="w-full bg-[#FEE500] text-[#191600] hover:bg-[#f6de00]"
-        onClick={() => void onKakaoSignIn()}
-        disabled={loading}
-      >
-        {loading ? (
-          <span className="inline-flex items-center gap-2">
-            <Loader2 className="size-4 animate-spin" />
-            이동 중...
-          </span>
-        ) : (
-          <span className="inline-flex items-center gap-2">
-            <MessageCircle className="size-4" />
-            카카오로 시작하기
-          </span>
-        )}
-      </Button>
-
       <form
         onSubmit={handleSignIn}
         className="space-y-3 rounded-xl border bg-background p-4"
@@ -111,6 +93,24 @@ export function AuthGate({
           </Button>
         </div>
       </form>
+
+      <Button
+        className="w-full bg-[#FEE500] text-[#191600] hover:bg-[#f6de00]"
+        onClick={() => void onKakaoSignIn()}
+        disabled={loading}
+      >
+        {loading ? (
+          <span className="inline-flex items-center gap-2">
+            <Loader2 className="size-4 animate-spin" />
+            이동 중...
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-2">
+            <MessageCircle className="size-4" />
+            카카오로 시작하기
+          </span>
+        )}
+      </Button>
     </section>
   );
 }

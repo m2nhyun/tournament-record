@@ -1,5 +1,5 @@
 import { getSupabaseClient } from "@/lib/supabase/client";
-import { requireUser } from "@/features/auth/services/auth";
+import { requireRegisteredUser, requireUser } from "@/features/auth/services/auth";
 
 import type {
   ClubSummary,
@@ -12,6 +12,7 @@ type ClubEntity = {
   id: string;
   name: string;
   invite_code: string;
+  invite_expires_at: string;
   created_at: string;
 };
 
@@ -40,7 +41,7 @@ export async function listMyClubs(): Promise<ClubSummary[]> {
 
   const { data, error } = await getSupabaseClient()
     .from("club_members")
-    .select("role,nickname,clubs(id,name,invite_code,created_at)")
+    .select("role,nickname,clubs(id,name,invite_code,invite_expires_at,created_at)")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
@@ -55,6 +56,7 @@ export async function listMyClubs(): Promise<ClubSummary[]> {
         id: club.id,
         name: club.name,
         inviteCode: club.invite_code,
+        inviteExpiresAt: club.invite_expires_at,
         role: row.role,
         nickname: row.nickname,
         createdAt: club.created_at,
@@ -64,7 +66,7 @@ export async function listMyClubs(): Promise<ClubSummary[]> {
 }
 
 export async function createClub(input: { name: string; nickname: string }) {
-  const user = await requireUser();
+  const user = await requireRegisteredUser();
   const inviteCode = generateInviteCode();
 
   const { data: club, error: clubError } = await getSupabaseClient()
@@ -72,6 +74,9 @@ export async function createClub(input: { name: string; nickname: string }) {
     .insert({
       name: input.name.trim(),
       invite_code: inviteCode,
+      invite_expires_at: new Date(
+        Date.now() + 1000 * 60 * 60 * 24 * 30,
+      ).toISOString(),
       created_by: user.id,
     })
     .select("id")
@@ -99,14 +104,33 @@ export async function joinClub(input: {
   inviteCode: string;
   nickname: string;
 }) {
-  await requireUser();
+  await requireRegisteredUser();
 
-  const { error } = await getSupabaseClient().rpc("join_club_by_invite", {
+  const { data, error } = await getSupabaseClient().rpc("join_club_by_invite", {
     p_invite_code: input.inviteCode.trim().toUpperCase(),
     p_nickname: input.nickname.trim(),
   });
 
   if (error) throw error;
+  return data as string;
+}
+
+export async function joinClubAsGuest(input: {
+  inviteCode: string;
+  nickname: string;
+}) {
+  await requireUser();
+
+  const { data, error } = await getSupabaseClient().rpc(
+    "join_club_by_invite_as_guest",
+    {
+      p_invite_code: input.inviteCode.trim().toUpperCase(),
+      p_nickname: input.nickname.trim(),
+    },
+  );
+
+  if (error) throw error;
+  return data as string;
 }
 
 export async function getClubDetail(clubId: string): Promise<ClubDetail> {
@@ -114,7 +138,7 @@ export async function getClubDetail(clubId: string): Promise<ClubDetail> {
 
   const { data: club, error: clubError } = await getSupabaseClient()
     .from("clubs")
-    .select("id,name,invite_code,created_at")
+    .select("id,name,invite_code,invite_expires_at,created_at")
     .eq("id", clubId)
     .single();
 
@@ -137,6 +161,7 @@ export async function getClubDetail(clubId: string): Promise<ClubDetail> {
     id: club.id,
     name: club.name,
     inviteCode: club.invite_code,
+    inviteExpiresAt: club.invite_expires_at,
     createdAt: club.created_at,
     myRole: membership.role as ClubRole,
     myNickname: membership.nickname,
@@ -195,6 +220,9 @@ function mapClubSettingsError(error: unknown): Error {
   if (message.includes("Only owner can update club name")) {
     return new Error("클럽장만 클럽 이름을 변경할 수 있습니다.");
   }
+  if (message.includes("Only owner can regenerate invite code")) {
+    return new Error("클럽장만 초대 코드를 재발급할 수 있습니다.");
+  }
 
   if (message.includes("Not a club member")) {
     return new Error("클럽 멤버만 닉네임을 변경할 수 있습니다.");
@@ -250,4 +278,23 @@ export async function updateMyClubMemberSettings(
     },
   );
   if (error) throw mapClubSettingsError(error);
+}
+
+export async function regenerateClubInviteCode(clubId: string, daysValid = 30) {
+  await requireUser();
+
+  const { data, error } = await getSupabaseClient().rpc(
+    "regenerate_club_invite_code",
+    {
+      p_club_id: clubId,
+      p_days_valid: daysValid,
+    },
+  );
+  if (error) throw mapClubSettingsError(error);
+
+  const row = Array.isArray(data) ? data[0] : data;
+  return {
+    inviteCode: String(row?.invite_code ?? ""),
+    inviteExpiresAt: String(row?.invite_expires_at ?? ""),
+  };
 }

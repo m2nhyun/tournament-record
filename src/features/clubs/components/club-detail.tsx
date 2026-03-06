@@ -1,7 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Copy, Pencil, PlusCircle, Users } from "lucide-react";
+import {
+  ArrowLeft,
+  Copy,
+  Pencil,
+  PlusCircle,
+  RefreshCw,
+  Share2,
+  Users,
+} from "lucide-react";
 import { useCallback, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -22,11 +30,20 @@ const roleLabelMap: Record<string, string> = {
   owner: "방장",
   manager: "매니저",
   member: "멤버",
+  guest: "게스트",
 };
 
 export function ClubDetailView({ clubId }: ClubDetailViewProps) {
-  const { club, members, loading, status, saving, saveClubName, saveMySettings } =
-    useClubDetail(clubId);
+  const {
+    club,
+    members,
+    loading,
+    status,
+    saving,
+    saveClubName,
+    saveMySettings,
+    regenerateInviteCode,
+  } = useClubDetail(clubId);
   const [copied, setCopied] = useState(false);
   const [openNameDialog, setOpenNameDialog] = useState(false);
 
@@ -39,6 +56,37 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
     } catch {
       /* clipboard not available */
     }
+  }, [club]);
+
+  const copyInviteLink = useCallback(async () => {
+    if (!club || typeof window === "undefined") return;
+    const inviteUrl = `${window.location.origin}/join/${club.inviteCode}`;
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* clipboard not available */
+    }
+  }, [club]);
+
+  const shareInviteToKakao = useCallback(async () => {
+    if (!club || typeof window === "undefined") return;
+    const inviteUrl = `${window.location.origin}/join/${club.inviteCode}`;
+    const shareText = `[${club.name}] 클럽 초대 링크\n${inviteUrl}`;
+
+    if (navigator.share) {
+      await navigator.share({
+        title: `${club.name} 초대`,
+        text: shareText,
+        url: inviteUrl,
+      });
+      return;
+    }
+
+    await navigator.clipboard.writeText(shareText);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }, [club]);
 
   if (loading) {
@@ -105,29 +153,67 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
               <p className="font-mono text-sm font-semibold tracking-wider">
                 {club.inviteCode}
               </p>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                유효기간: {new Date(club.inviteExpiresAt).toLocaleDateString("ko-KR")}
+              </p>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void copyInviteCode()}
-            >
-              <Copy className="size-3.5" />
-              {copied ? "복사됨" : "복사"}
-            </Button>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void copyInviteCode()}
+              >
+                <Copy className="size-3.5" />
+                {copied ? "복사됨" : "코드 복사"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void copyInviteLink()}
+              >
+                <Copy className="size-3.5" />
+                링크 복사
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  void shareInviteToKakao().catch(() => {
+                    /* user canceled share */
+                  });
+                }}
+              >
+                <Share2 className="size-3.5" />
+                카카오톡 공유
+              </Button>
+              {club.myRole === "owner" ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={saving}
+                  onClick={() => void regenerateInviteCode()}
+                >
+                  <RefreshCw className="size-3.5" />
+                  재발급
+                </Button>
+              ) : null}
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      <div className="flex gap-2">
-        <Button
-          className="flex-1 bg-[var(--brand)] text-white hover:opacity-90"
-          asChild
-        >
-          <Link href={`/clubs/${clubId}/matches/new`}>
-            <PlusCircle className="size-4" />새 경기 기록
-          </Link>
-        </Button>
-      </div>
+      {club.myRole !== "guest" ? (
+        <div className="flex gap-2">
+          <Button
+            className="flex-1 bg-[var(--brand)] text-white hover:opacity-90"
+            asChild
+          >
+            <Link href={`/clubs/${clubId}/matches/new`}>
+              <PlusCircle className="size-4" />새 경기 기록
+            </Link>
+          </Button>
+        </div>
+      ) : null}
 
       <section className="space-y-3">
         <h2 className="flex items-center gap-2 text-lg font-semibold">

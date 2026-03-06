@@ -1,5 +1,5 @@
 import { getSupabaseClient } from "@/lib/supabase/client";
-import { requireUser } from "@/features/auth/services/auth";
+import { requireRegisteredUser, requireUser } from "@/features/auth/services/auth";
 import { writeAuditLog } from "@/features/matches/services/audit";
 import type {
   MatchCreationData,
@@ -65,7 +65,7 @@ export async function createMatch(
   clubId: string,
   data: MatchCreationData,
 ): Promise<string> {
-  const user = await requireUser();
+  const user = await requireRegisteredUser();
 
   const { data: match, error: matchError } = await getSupabaseClient()
     .from("matches")

@@ -126,3 +126,24 @@
   - `--color-green-primary`, `--color-green-light`
   - `--color-red-primary`, `--color-red-light`
 - 관련 가이드를 `docs/10-history-ui-guidelines.md`로 문서화
+
+## 2026-03-06
+
+### Invite Flow & Guest Policy
+
+- 원클릭 초대 링크 페이지 추가: `/join/[inviteCode]`
+- 초대 링크 진입 후 `카카오/이메일/게스트` 선택 참가 플로우 추가
+- 클럽 상세에 `링크 복사`, `카카오톡 공유` 액션 추가
+- 초대 코드 만료일(`invite_expires_at`) 도입, 방장(owner) 전용 재발급 RPC 연동
+
+### Permission Hardening
+
+- `club_member_role`에 `guest` 추가
+- 게스트는 클럽 참가는 가능하되 경기 생성/수정은 불가하도록 정책 강화
+- 경기 생성은 정회원(owner/manager/member)만 허용
+- 경기 수정/결과 수정은 `owner/manager/생성자`만 허용
+
+### Auth/Onboarding
+
+- 이메일 로그인/회원가입 경로를 홈 인증 게이트에서 유지
+- 게스트 사용자는 홈에서 `클럽 만들기` 탭 비노출

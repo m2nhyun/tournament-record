@@ -1,4 +1,4 @@
-export type ClubRole = "owner" | "manager" | "member";
+export type ClubRole = "owner" | "manager" | "member" | "guest";
 
 export type ClubSummary = {
   id: string;
@@ -6,6 +6,7 @@ export type ClubSummary = {
   inviteCode: string;
   role: ClubRole;
   nickname: string;
+  inviteExpiresAt: string;
   createdAt: string;
 };
 
@@ -15,6 +16,7 @@ export type ClubDetail = {
   id: string;
   name: string;
   inviteCode: string;
+  inviteExpiresAt: string;
   createdAt: string;
   myRole: ClubRole;
   myNickname: string;

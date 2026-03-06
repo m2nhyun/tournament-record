@@ -37,6 +37,7 @@ export function ClubDashboard() {
     password,
     setPassword,
     isGuestModeEnabled,
+    isAnonymousUser,
   } = useClubDashboard();
 
   if (busyType === "loading") {
@@ -79,7 +80,13 @@ export function ClubDashboard() {
         />
       ) : null}
 
-      {user ? <ClubTabs activeTab={activeTab} onChange={setActiveTab} /> : null}
+      {user ? (
+        <ClubTabs
+          activeTab={activeTab}
+          onChange={setActiveTab}
+          canCreateClub={!isAnonymousUser}
+        />
+      ) : null}
 
       {user && activeTab === "list" ? (
         <section className="space-y-3">
@@ -99,7 +106,7 @@ export function ClubDashboard() {
         />
       ) : null}
 
-      {user && activeTab === "create" ? (
+      {user && !isAnonymousUser && activeTab === "create" ? (
         <CreateClubForm
           name={createName}
           nickname={createNickname}
