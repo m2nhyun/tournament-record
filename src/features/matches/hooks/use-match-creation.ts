@@ -10,6 +10,7 @@ import type {
   PlayerAssignment,
   SetScore,
 } from "@/features/matches/types/match";
+import { canRecordMatch as canRecordMatchByRole } from "@/features/matches/utils/match-permissions";
 
 export type CreationStep = "type" | "players" | "score";
 
@@ -106,7 +107,7 @@ export function useMatchCreation(clubId: string) {
 
   const requiredPerSide = matchType === "singles" ? 1 : 2;
   const myMembership = members.find((member) => member.isMe) ?? null;
-  const canRecordMatch = myMembership?.role !== "guest";
+  const canRecordMatch = canRecordMatchByRole(myMembership);
   const canCreateAnyMatch = members.length >= 2;
   const canUseDoubles = members.length >= 4;
   const selectedTypeMemberRequirementMet =

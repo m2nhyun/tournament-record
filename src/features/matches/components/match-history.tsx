@@ -18,6 +18,7 @@ import { LoadingSpinner } from "@/components/feedback/loading-spinner";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { MatchList } from "@/features/matches/components/match-list";
 import { useMatchList } from "@/features/matches/hooks/use-match-list";
+import { filterMatchesByDateAndOpponent } from "@/features/matches/utils/match-history-filter";
 import { AppBar } from "@/components/layout/app-bar";
 
 type MatchHistoryViewProps = {
@@ -31,25 +32,15 @@ export function MatchHistoryView({ clubId }: MatchHistoryViewProps) {
   const [viewMode, setViewMode] = useState<"card" | "list">("card");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
-  const filteredMatches = useMemo(() => {
-    const opponent = opponentQuery.trim().toLowerCase();
-    return matches.filter((match) => {
-      if (playedOn) {
-        const date = new Date(match.playedAt);
-        const yyyy = date.getFullYear();
-        const mm = String(date.getMonth() + 1).padStart(2, "0");
-        const dd = String(date.getDate()).padStart(2, "0");
-        const dateKey = `${yyyy}-${mm}-${dd}`;
-        if (dateKey !== playedOn) return false;
-      }
-
-      if (!opponent) return true;
-      const names = [...match.side1Players, ...match.side2Players]
-        .join(" ")
-        .toLowerCase();
-      return names.includes(opponent);
-    });
-  }, [matches, opponentQuery, playedOn]);
+  const filteredMatches = useMemo(
+    () =>
+      filterMatchesByDateAndOpponent({
+        matches,
+        playedOn,
+        opponentQuery,
+      }),
+    [matches, opponentQuery, playedOn],
+  );
 
   if (loading) {
     return <LoadingSpinner title="로딩 중" message="경기 기록을 불러오는 중..." />;
