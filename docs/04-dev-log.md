@@ -193,3 +193,5 @@
 - 로컬 Codex CLI(`0.112.0`) 기준 `multi_agent` feature를 실제 활성화하고, `AGENTS.md`에 활성화/확인/사용 패턴 문서화
 - Codex global MCP에 `playwright`, `context7`, `exa`를 등록하고 저장소 기준 사용 우선순위를 `AGENTS.md`에 반영
 - GitHub 공식 MCP를 `GITHUB_TOKEN` bearer auth 방식으로 등록하고, PR/이슈 연동 용도를 `AGENTS.md`에 추가
+- 프로젝트 전용 시크릿은 `direnv`(`.envrc` + `.envrc.local`)로 주입하는 방향으로 정리
+- `~/.zshrc`의 전역 `GITHUB_TOKEN` export를 제거하고, 이 저장소에서만 `direnv`로 GitHub MCP 인증을 주입하도록 정리

@@ -499,6 +499,7 @@ codex --enable multi_agent
 - 최신 문서나 외부 레퍼런스가 필요할 때만 `exa`를 쓴다.
 - 공식 문서가 있는 주제는 `exa`보다 `context7` 또는 공식 사이트를 우선한다.
 - `github` MCP는 `GITHUB_TOKEN`이 설정되어 있어야 인증된 작업이 가능하다.
+- `github` MCP의 인증은 `direnv`로 주입된 `GITHUB_TOKEN`을 기준으로 사용한다.
 
 ### 12.4 Stage 4: Real-Time Monitoring
 
@@ -573,6 +574,8 @@ codex --enable multi_agent
 - `AGENTS.md`를 루트 실행 규칙으로 사용한다.
 - Codex global config에서 `multi_agent` feature가 활성화되어 있다.
 - Codex global MCP에 `playwright`, `context7`, `exa`, `github`가 등록되어 있다.
+- 이 저장소에서는 `direnv`로 `.env.local`과 `.envrc.local`을 함께 로드한다.
+- `GITHUB_TOKEN`은 전역 `~/.zshrc`가 아니라 `.envrc.local`로 관리한다.
 - 이 저장소에서는 multi-agent를 “많은 에이전트를 무조건 띄우는 기능”으로 보지 않는다.
 - 우선순위는 아래와 같다.
   1. 병렬 탐색
@@ -596,6 +599,37 @@ codex --enable multi_agent -C /Users/minhyun/Desktop/tournament-record
 - “관련 파일을 병렬로 읽고 구현/문서/테스트 영향까지 한 번에 정리해”
 - “프론트엔드, 서비스, 검증 관점으로 나눠서 먼저 분석한 뒤 수정해”
 - “병렬 탐색 후 가장 작은 안전한 수정으로 구현해”
+
+로컬 시크릿 원칙:
+- 프로젝트 전용 토큰/키는 가능하면 `direnv`로 주입한다.
+- 권장 파일 구성:
+  - `.envrc`: 프로젝트 진입점 역할
+  - `.envrc.local`: 민감한 로컬 시크릿 저장
+  - `.env.local`: 앱 런타임 env
+- 예: `GITHUB_TOKEN`은 `~/.zshrc` 전역 export보다 이 저장소의 `.envrc.local`로 관리하는 편이 낫다.
+- 현재 `.envrc`는 아래 구성을 사용한다.
+
+```bash
+dotenv_if_exists .env.local
+source_env_if_exists .envrc.local
+```
+
+- `.envrc.local`은 `.gitignore`에 포함되어야 한다.
+- 새 시크릿을 넣은 뒤에는 `direnv allow`로 반영한다.
+- 이 저장소에 진입한 상태에서만 `GITHUB_TOKEN`이 로드되도록 유지한다.
+
+GitHub MCP 기본 진입 순서:
+
+```bash
+cd /Users/minhyun/Desktop/tournament-record
+direnv allow
+codex -C /Users/minhyun/Desktop/tournament-record
+```
+
+운영 메모:
+- GitHub MCP 서버 등록은 이미 끝나 있으므로, 실사용 조건은 `GITHUB_TOKEN` 로드 여부다.
+- 비파괴 조회(PR/이슈/리포 상태 확인)는 GitHub MCP 우선으로 처리한다.
+- 실제 GitHub 조회는 interactive Codex 세션에서 수행하는 것을 기본으로 한다.
 
 MCP 활용 예시:
 - “Supabase Auth 최신 문서를 확인하고 이메일 회원가입 흐름을 구현해”
