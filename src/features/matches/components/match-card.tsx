@@ -7,7 +7,8 @@ import type { MatchSummary } from "@/features/matches/types/match";
 import {
   compactScoreSummary,
   gameScoreSummary,
-  isRoundComplete,
+  hasIncompleteRound,
+  isMatchScoreConfirmed,
   resultMeta,
   summarizeOutcome,
 } from "@/features/matches/utils/match-helpers";
@@ -28,12 +29,13 @@ function formatDate(value: string) {
 export function MatchCard({ match, viewMode = "card" }: MatchCardProps) {
   const team1 = match.side1Players.join(" · ");
   const team2 = match.side2Players.join(" · ");
-  const hasInProgressRound = match.setScores.some((score) => !isRoundComplete(score));
+  const hasInProgressRound = hasIncompleteRound(match.setScores);
   const outcome = summarizeOutcome(match.setScores);
   const scoreSummary = gameScoreSummary(match.setScores);
   const result = resultMeta(match, match.setScores);
   const isList = viewMode === "list";
   const compactScore = compactScoreSummary(match);
+  const isConfirmed = isMatchScoreConfirmed(match.status);
 
   if (isList) {
     return (
@@ -41,7 +43,7 @@ export function MatchCard({ match, viewMode = "card" }: MatchCardProps) {
         <article
           className={[
             "rounded-xl border px-4 py-3 shadow-[0_2px_10px_rgba(15,15,15,0.05)] transition-colors active:opacity-95",
-            `${result.listBgClass} hover:brightness-[0.99]`,
+            `${isConfirmed ? result.listBgClass : "bg-background"} hover:brightness-[0.99]`,
           ].join(" ")}
         >
           <p className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-sm">
@@ -74,7 +76,7 @@ export function MatchCard({ match, viewMode = "card" }: MatchCardProps) {
                 <MatchStatusBadge status={match.status} />
                 {hasInProgressRound ? (
                   <span className="rounded bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
-                    예외 기록
+                    미완료 게임 포함
                   </span>
                 ) : null}
               </div>

@@ -26,6 +26,7 @@ create table if not exists public.club_members (
 
 create type public.match_type as enum ('singles', 'doubles');
 create type public.match_status as enum ('draft', 'submitted', 'confirmed', 'disputed');
+create type public.match_confirmation_decision as enum ('pending', 'approved', 'rejected');
 
 create table if not exists public.matches (
   id uuid primary key default gen_random_uuid(),
@@ -60,6 +61,19 @@ create table if not exists public.match_results (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.match_confirmations (
+  id uuid primary key default gen_random_uuid(),
+  match_id uuid not null references public.matches(id) on delete cascade,
+  club_member_id uuid not null references public.club_members(id) on delete cascade,
+  user_id uuid references auth.users(id) on delete set null,
+  side smallint not null check (side in (1, 2)),
+  decision public.match_confirmation_decision not null default 'pending',
+  decided_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(match_id, club_member_id)
+);
+
 create table if not exists public.audit_logs (
   id uuid primary key default gen_random_uuid(),
   club_id uuid not null references public.clubs(id) on delete cascade,
@@ -74,6 +88,7 @@ create table if not exists public.audit_logs (
 create index if not exists idx_club_members_club on public.club_members(club_id);
 create index if not exists idx_matches_club_played_at on public.matches(club_id, played_at desc);
 create index if not exists idx_match_players_match on public.match_players(match_id);
+create index if not exists idx_match_confirmations_match on public.match_confirmations(match_id);
 create index if not exists idx_audit_logs_club_created_at on public.audit_logs(club_id, created_at desc);
 
 create or replace function public.set_updated_at()
@@ -99,6 +114,11 @@ for each row execute function public.set_updated_at();
 drop trigger if exists match_results_set_updated_at on public.match_results;
 create trigger match_results_set_updated_at
 before update on public.match_results
+for each row execute function public.set_updated_at();
+
+drop trigger if exists match_confirmations_set_updated_at on public.match_confirmations;
+create trigger match_confirmations_set_updated_at
+before update on public.match_confirmations
 for each row execute function public.set_updated_at();
 
 create or replace function public.is_club_member(target_club_id uuid)
@@ -137,6 +157,7 @@ alter table public.club_members enable row level security;
 alter table public.matches enable row level security;
 alter table public.match_players enable row level security;
 alter table public.match_results enable row level security;
+alter table public.match_confirmations enable row level security;
 alter table public.audit_logs enable row level security;
 
 drop policy if exists clubs_select_member on public.clubs;
@@ -287,6 +308,52 @@ create policy audit_logs_select_member
 on public.audit_logs for select
 to authenticated
 using (public.is_club_member(club_id));
+
+drop policy if exists match_confirmations_select_member on public.match_confirmations;
+create policy match_confirmations_select_member
+on public.match_confirmations for select
+to authenticated
+using (
+  exists (
+    select 1
+    from public.matches m
+    where m.id = match_id
+      and public.is_club_member(m.club_id)
+  )
+);
+
+drop policy if exists match_confirmations_insert_manager on public.match_confirmations;
+create policy match_confirmations_insert_manager
+on public.match_confirmations for insert
+to authenticated
+with check (
+  exists (
+    select 1
+    from public.matches m
+    where m.id = match_id
+      and public.can_manage_match(m.club_id, m.created_by)
+  )
+);
+
+drop policy if exists match_confirmations_delete_manager on public.match_confirmations;
+create policy match_confirmations_delete_manager
+on public.match_confirmations for delete
+to authenticated
+using (
+  exists (
+    select 1
+    from public.matches m
+    where m.id = match_id
+      and public.can_manage_match(m.club_id, m.created_by)
+  )
+);
+
+drop policy if exists match_confirmations_update_target_user on public.match_confirmations;
+create policy match_confirmations_update_target_user
+on public.match_confirmations for update
+to authenticated
+using (user_id = auth.uid())
+with check (user_id = auth.uid());
 
 drop policy if exists audit_logs_insert_member on public.audit_logs;
 create policy audit_logs_insert_member

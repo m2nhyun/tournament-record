@@ -10,6 +10,10 @@ export function isRoundComplete(score: SetScore) {
   return winner === target + 1 && loser === target;
 }
 
+export function hasIncompleteRound(setScores: SetScore[]) {
+  return setScores.some((score) => !isRoundComplete(score));
+}
+
 export function summarizeOutcome(setScores: SetScore[]) {
   let side1Wins = 0;
   let side2Wins = 0;
@@ -32,7 +36,19 @@ export function compactScoreSummary(match: MatchSummary) {
   return `${side1Wins}:${side2Wins}`;
 }
 
+export function isMatchScoreConfirmed(status: MatchSummary["status"]) {
+  return status === "confirmed";
+}
+
 export function resultMeta(match: MatchSummary, setScores: SetScore[]) {
+  if (match.status !== "confirmed") {
+    return {
+      label: match.status === "disputed" ? "재검토" : "대기",
+      badgeVariant: "warning" as const,
+      listBgClass: "bg-background",
+    };
+  }
+
   const outcome = summarizeOutcome(setScores);
   if (match.currentUserSide === null) {
     return {

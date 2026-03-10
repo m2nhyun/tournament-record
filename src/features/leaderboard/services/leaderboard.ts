@@ -79,7 +79,7 @@ export async function getClubLeaderboard(
       "id,status,match_results(score_summary,set_scores),match_players(side,club_member_id,club_members(nickname))",
     )
     .eq("club_id", clubId)
-    .in("status", ["submitted", "confirmed"]);
+    .eq("status", "confirmed");
 
   if (error) throw error;
 

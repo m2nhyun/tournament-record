@@ -83,7 +83,7 @@ export function ScoreInput({
                 <span
                   className={`text-[11px] ${complete ? "text-emerald-600" : "text-amber-600"}`}
                 >
-                  {complete ? "완료" : "진행/중단"}
+                  {complete ? "완료" : "미완료"}
                 </span>
                 <button
                   type="button"

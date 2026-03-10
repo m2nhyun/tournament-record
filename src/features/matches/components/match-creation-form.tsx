@@ -122,8 +122,8 @@ export function MatchCreationForm({ clubId, matchId }: MatchCreationFormProps) {
           type="success"
           message={
             isEditMode
-              ? "경기 기록이 수정되었습니다!"
-              : "경기가 성공적으로 기록되었습니다!"
+              ? "경기 기록이 수정되었고 다시 상대 확인 대기 상태가 되었습니다."
+              : "경기가 저장되었고 상대 확인 요청을 보냈습니다."
           }
         />
         <div className="flex gap-2">

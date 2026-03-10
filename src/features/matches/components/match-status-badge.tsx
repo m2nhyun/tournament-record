@@ -9,9 +9,9 @@ const statusConfig: Record<
   }
 > = {
   draft: { label: "임시저장", variant: "default" },
-  submitted: { label: "기록됨", variant: "success" },
-  confirmed: { label: "기록됨", variant: "success" },
-  disputed: { label: "이의제기", variant: "warning" },
+  submitted: { label: "상대 확인 대기", variant: "warning" },
+  confirmed: { label: "확정", variant: "success" },
+  disputed: { label: "확인 거절", variant: "destructive" },
 };
 
 type MatchStatusBadgeProps = {

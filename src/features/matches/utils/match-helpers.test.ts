@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   compactScoreSummary,
+  hasIncompleteRound,
   gameScoreSummary,
+  isMatchScoreConfirmed,
   isRoundComplete,
   resultMeta,
   summarizeOutcome,
@@ -35,6 +37,18 @@ describe("match-helpers", () => {
     expect(isRoundComplete({ set: 1, side1: 5, side2: 4, gamesToWin: 4 })).toBe(true);
   });
 
+  it("미완료 게임 포함 여부를 판정한다", () => {
+    expect(
+      hasIncompleteRound([
+        { set: 1, side1: 6, side2: 4, gamesToWin: 6 },
+        { set: 2, side1: 3, side2: 2, gamesToWin: 6 },
+      ]),
+    ).toBe(true);
+    expect(
+      hasIncompleteRound([{ set: 1, side1: 4, side2: 2, gamesToWin: 4 }]),
+    ).toBe(false);
+  });
+
   it("세트 배열에서 승수 요약과 게임 문자열을 만든다", () => {
     const setScores: SetScore[] = [
       { set: 1, side1: 6, side2: 4, gamesToWin: 6 },
@@ -52,8 +66,14 @@ describe("match-helpers", () => {
       { set: 2, side1: 6, side2: 3, gamesToWin: 6 },
     ];
 
-    const side1Win = resultMeta(makeMatch({ currentUserSide: 1 }), setScores);
-    const side2Lose = resultMeta(makeMatch({ currentUserSide: 2 }), setScores);
+    const side1Win = resultMeta(
+      makeMatch({ currentUserSide: 1, status: "confirmed" }),
+      setScores,
+    );
+    const side2Lose = resultMeta(
+      makeMatch({ currentUserSide: 2, status: "confirmed" }),
+      setScores,
+    );
 
     expect(side1Win.label).toBe("승");
     expect(side2Lose.label).toBe("패");
@@ -65,10 +85,22 @@ describe("match-helpers", () => {
       { set: 2, side1: 6, side2: 3, gamesToWin: 6 },
     ];
 
-    const unrelated = resultMeta(makeMatch({ currentUserSide: null }), setScores);
+    const unrelated = resultMeta(
+      makeMatch({ currentUserSide: null, status: "confirmed" }),
+      setScores,
+    );
 
     expect(unrelated.label).toBe("기록");
     expect(unrelated.listBgClass).toBe("bg-background");
+  });
+
+  it("미확정 경기는 중립 상태로 표시한다", () => {
+    const pending = resultMeta(makeMatch({ status: "submitted" }), [
+      { set: 1, side1: 6, side2: 4, gamesToWin: 6 },
+    ]);
+
+    expect(pending.label).toBe("대기");
+    expect(pending.listBgClass).toBe("bg-background");
   });
 
   it("리스트 점수는 세트 결과 우선으로 표시한다", () => {
@@ -85,5 +117,11 @@ describe("match-helpers", () => {
 
     expect(compactScoreSummary(withSets)).toBe("2:1");
     expect(compactScoreSummary(withoutSets)).toBe("3:0");
+  });
+
+  it("확정 상태만 반영 대상으로 취급한다", () => {
+    expect(isMatchScoreConfirmed("confirmed")).toBe(true);
+    expect(isMatchScoreConfirmed("submitted")).toBe(false);
+    expect(isMatchScoreConfirmed("disputed")).toBe(false);
   });
 });

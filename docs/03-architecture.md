@@ -40,6 +40,10 @@
   - 경기-멤버 매핑(히스토리 보존 핵심 FK)
 - `match_results`
   - 게임 점수 배열(`set_scores`) + 요약
+  - `submitted_by`, `confirmed_by`, `confirmed_at`
+- `match_confirmations`
+  - 상대 팀 확인 대상/승인 상태(`pending | approved | rejected`)
+  - 상대 확인이 있어야 `matches.status = confirmed`
 - `audit_logs`
   - 운영/변경 추적 로그
 
@@ -60,6 +64,7 @@
 - 경기 권한:
   - 생성: `owner/manager/member`만
   - 수정/결과 수정: `owner/manager/생성자`
+  - 결과 확정: 확인 대상 전원의 승인 필요
   - 게스트: 조회/참가만, 생성/수정 불가
 
 ## UI Layout Contract

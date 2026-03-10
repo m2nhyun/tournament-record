@@ -1,6 +1,7 @@
 export type MatchType = "singles" | "doubles";
 
 export type MatchStatus = "draft" | "submitted" | "confirmed" | "disputed";
+export type MatchConfirmationDecision = "pending" | "approved" | "rejected";
 
 export type SetScore = {
   set: number;
@@ -23,6 +24,16 @@ export type MatchCreationData = {
   playedAt: string;
   players: PlayerAssignment[];
   setScores: SetScore[];
+};
+
+export type MatchConfirmation = {
+  id: string;
+  clubMemberId: string;
+  nickname: string;
+  side: 1 | 2;
+  userId: string | null;
+  decision: MatchConfirmationDecision;
+  decidedAt: string | null;
 };
 
 export type MatchSummary = {
@@ -48,11 +59,17 @@ export type MatchDetail = {
   createdBy: string;
   createdAt: string;
   canEdit: boolean;
+  canApprove: boolean;
+  canReject: boolean;
+  currentUserSide: 1 | 2 | null;
   result: {
     scoreSummary: string;
     setScores: SetScore[];
     submittedBy: string;
+    confirmedBy: string | null;
+    confirmedAt: string | null;
   } | null;
+  confirmations: MatchConfirmation[];
   players: {
     side: 1 | 2;
     position: number;

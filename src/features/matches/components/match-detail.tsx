@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Pencil, User, Users } from "lucide-react";
+import { Check, Pencil, User, Users, X } from "lucide-react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +11,7 @@ import { LoadingSpinner } from "@/components/feedback/loading-spinner";
 import { MatchStatusBadge } from "@/features/matches/components/match-status-badge";
 import { useMatchDetail } from "@/features/matches/hooks/use-match-detail";
 import { AppBar } from "@/components/layout/app-bar";
+import { approveMatch, rejectMatch } from "@/features/matches/services/matches";
 
 type MatchDetailViewProps = {
   matchId: string;
@@ -44,7 +46,46 @@ function overallScore(setScores: { side1: number; side2: number }[]): {
 }
 
 export function MatchDetailView({ matchId, clubId }: MatchDetailViewProps) {
-  const { match, loading, error } = useMatchDetail(matchId);
+  const { match, loading, error, refresh } = useMatchDetail(matchId);
+  const [actionStatus, setActionStatus] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+  const [submittingAction, setSubmittingAction] = useState(false);
+
+  async function handleConfirmation(action: "approve" | "reject") {
+    setSubmittingAction(true);
+    setActionStatus(null);
+
+    try {
+      if (action === "approve") {
+        const result = await approveMatch(matchId);
+        setActionStatus({
+          type: "success",
+          message: result.confirmed
+            ? "모든 상대 확인이 완료되어 경기 기록이 확정되었습니다."
+            : `내 확인이 반영되었습니다. 아직 ${result.pendingCount}명의 상대 확인이 남아 있습니다.`,
+        });
+      } else {
+        await rejectMatch(matchId);
+        setActionStatus({
+          type: "success",
+          message: "경기 결과 확인을 거절했고 기록을 다시 검토해야 합니다.",
+        });
+      }
+      await refresh();
+    } catch (actionError) {
+      setActionStatus({
+        type: "error",
+        message:
+          actionError instanceof Error
+            ? actionError.message
+            : "경기 확인 처리 중 오류가 발생했습니다.",
+      });
+    } finally {
+      setSubmittingAction(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -95,6 +136,11 @@ export function MatchDetailView({ matchId, clubId }: MatchDetailViewProps) {
         }}
       />
       <div className="px-4">
+        {actionStatus ? (
+          <div className="mb-4">
+            <StatusBox type={actionStatus.type} message={actionStatus.message} />
+          </div>
+        ) : null}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between gap-2">
@@ -111,6 +157,12 @@ export function MatchDetailView({ matchId, clubId }: MatchDetailViewProps) {
             <p className="text-sm text-muted-foreground">
               {formatDateTime(match.playedAt)}
             </p>
+
+            {match.status === "submitted" ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                확인 대상 전원이 승인해야 경기 결과가 확정됩니다.
+              </div>
+            ) : null}
 
             {match.result ? (
               <div className="rounded-lg bg-muted/30 p-4">
@@ -166,6 +218,63 @@ export function MatchDetailView({ matchId, clubId }: MatchDetailViewProps) {
                     </tbody>
                   </table>
                 </div>
+              </div>
+            ) : null}
+
+            {match.confirmations.length > 0 ? (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground">
+                  상대 확인 상태
+                </p>
+                <div className="space-y-2">
+                  {match.confirmations.map((confirmation) => (
+                    <div
+                      key={confirmation.id}
+                      className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm"
+                    >
+                      <span>{confirmation.nickname}</span>
+                      <span className="text-muted-foreground">
+                        {confirmation.decision === "pending"
+                          ? "확인 대기"
+                          : confirmation.decision === "approved"
+                            ? "확인 완료"
+                            : "거절"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {match.canApprove || match.canReject ? (
+              <div className="flex gap-2">
+                {match.canReject ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1 border-red-200 text-red-600 hover:bg-red-50"
+                    disabled={submittingAction}
+                    onClick={() => {
+                      void handleConfirmation("reject");
+                    }}
+                  >
+                    <X className="size-4" />
+                    거절
+                  </Button>
+                ) : null}
+                {match.canApprove ? (
+                  <Button
+                    type="button"
+                    className="flex-1 bg-[var(--brand)] text-white hover:opacity-90"
+                    disabled={submittingAction}
+                    onClick={() => {
+                      void handleConfirmation("approve");
+                    }}
+                  >
+                    <Check className="size-4" />
+                    결과 확인
+                  </Button>
+                ) : null}
               </div>
             ) : null}
           </CardContent>

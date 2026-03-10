@@ -158,3 +158,14 @@
 
 - 주요 화면을 `AppBar + content(px-4)` 패턴으로 통일
 - `LoadingSpinner`를 공통 중앙 정렬 + `title/message` 구조로 통일
+
+## 2026-03-10
+
+### Match Save / Confirmation Flow
+
+- 미완료 게임도 저장 가능하도록 경기 저장 검증 완화
+- 게임 입력의 미완료 상태 카피를 `진행/중단`에서 `미완료`로 정리
+- 경기 등록/수정 시 즉시 확정 대신 `submitted`로 저장하도록 변경
+- 상대 팀 확인용 `match_confirmations` 테이블 및 승인/거절 액션 도입
+- 상대 확인 완료 시 `confirmed`, 거절 시 `disputed`로 전환
+- 리더보드는 `confirmed` 경기만 반영하도록 조정

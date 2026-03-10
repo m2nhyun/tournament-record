@@ -3,6 +3,8 @@ import { requireUser } from "@/features/auth/services/auth";
 import type { ClubRole } from "@/features/clubs/types/club";
 import { writeAuditLog } from "@/features/matches/services/audit";
 import type {
+  MatchConfirmation,
+  MatchConfirmationDecision,
   MatchCreationData,
   MatchSummary,
   MatchDetail,
@@ -11,6 +13,20 @@ import type {
 
 function buildScoreSummary(setScores: SetScore[]): string {
   return setScores.map((s) => `${s.side1}-${s.side2}`).join(", ");
+}
+
+function determineWinningSide(setScores: SetScore[]): 1 | 2 | null {
+  let side1Wins = 0;
+  let side2Wins = 0;
+
+  for (const score of setScores) {
+    if (score.side1 > score.side2) side1Wins += 1;
+    else if (score.side2 > score.side1) side2Wins += 1;
+  }
+
+  if (side1Wins > side2Wins) return 1;
+  if (side2Wins > side1Wins) return 2;
+  return null;
 }
 
 function normalizeSetScores(value: unknown): SetScore[] {
@@ -62,6 +78,69 @@ function normalizeSetScores(value: unknown): SetScore[] {
     .filter((score): score is SetScore => score !== null);
 }
 
+async function replaceMatchConfirmations(
+  matchId: string,
+  players: MatchCreationData["players"],
+  setScores: SetScore[],
+  submitterUserId: string,
+) {
+  const supabase = getSupabaseClient();
+  const { error: deleteConfirmationsError } = await supabase
+    .from("match_confirmations")
+    .delete()
+    .eq("match_id", matchId);
+
+  if (deleteConfirmationsError) throw deleteConfirmationsError;
+
+  const { data: targetMembers, error: targetMembersError } = await supabase
+    .from("club_members")
+    .select("id,user_id")
+    .in(
+      "id",
+      players.map((player) => player.clubMemberId),
+    );
+
+  if (targetMembersError) throw targetMembersError;
+
+  const enrichedPlayers = players.map((player) => {
+    const matchedMember = (targetMembers ?? []).find(
+      (member) => member.id === player.clubMemberId,
+    );
+
+    return {
+      ...player,
+      userId: matchedMember?.user_id ?? null,
+    };
+  });
+
+  const winningSide = determineWinningSide(setScores);
+  const submitterSide =
+    enrichedPlayers.find((player) => player.userId === submitterUserId)?.side ?? null;
+
+  const targetPlayers = enrichedPlayers.filter((player) => {
+    if (player.userId === submitterUserId) return false;
+    if (winningSide !== null) return player.side !== winningSide;
+    if (submitterSide !== null) return player.side !== submitterSide;
+    return true;
+  });
+
+  if (targetPlayers.length === 0) return;
+
+  const { error: insertConfirmationsError } = await supabase
+    .from("match_confirmations")
+    .insert(
+      targetPlayers.map((player) => ({
+        match_id: matchId,
+        club_member_id: player.clubMemberId,
+        user_id: player.userId,
+        side: player.side,
+        decision: "pending" as const,
+      })),
+    );
+
+  if (insertConfirmationsError) throw insertConfirmationsError;
+}
+
 export async function createMatch(
   clubId: string,
   data: MatchCreationData,
@@ -78,7 +157,7 @@ export async function createMatch(
     .insert({
       club_id: clubId,
       match_type: data.matchType,
-      status: "confirmed",
+      status: "submitted",
       played_at: data.playedAt,
       created_by: user.id,
     })
@@ -114,6 +193,8 @@ export async function createMatch(
     });
 
   if (resultError) throw resultError;
+
+  await replaceMatchConfirmations(match.id, data.players, data.setScores, user.id);
 
   await writeAuditLog({
     clubId,
@@ -153,7 +234,7 @@ export async function updateMatch(
     .from("matches")
     .update({
       match_type: data.matchType,
-      status: "confirmed",
+      status: "submitted",
       played_at: data.playedAt,
     })
     .eq("id", matchId);
@@ -196,6 +277,18 @@ export async function updateMatch(
 
   if (resultError) throw resultError;
 
+  const { error: resetConfirmationError } = await getSupabaseClient()
+    .from("match_results")
+    .update({
+      confirmed_by: null,
+      confirmed_at: null,
+    })
+    .eq("match_id", matchId);
+
+  if (resetConfirmationError) throw resetConfirmationError;
+
+  await replaceMatchConfirmations(matchId, data.players, data.setScores, user.id);
+
   await writeAuditLog({
     clubId: existingMatch.club_id,
     actorUserId: user.id,
@@ -206,6 +299,130 @@ export async function updateMatch(
   });
 
   return matchId;
+}
+
+async function updateMatchConfirmationDecision(
+  matchId: string,
+  decision: MatchConfirmationDecision,
+): Promise<{ confirmed: boolean; pendingCount: number }> {
+  const user = await requireUser();
+  if (user.is_anonymous) {
+    throw new Error("게스트는 경기 확인을 처리할 수 없습니다.");
+  }
+
+  const supabase = getSupabaseClient();
+  const { data: confirmation, error: confirmationError } = await supabase
+    .from("match_confirmations")
+    .select("id,match_id,club_member_id,decision")
+    .eq("match_id", matchId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (confirmationError || !confirmation) {
+    throw confirmationError ?? new Error("처리할 경기 확인 요청을 찾을 수 없습니다.");
+  }
+
+  if (confirmation.decision !== "pending") {
+    throw new Error("이미 처리된 경기 확인 요청입니다.");
+  }
+
+  const decidedAt = new Date().toISOString();
+  const { error: updateError } = await supabase
+    .from("match_confirmations")
+    .update({
+      decision,
+      decided_at: decidedAt,
+    })
+    .eq("id", confirmation.id);
+
+  if (updateError) throw updateError;
+
+  let confirmed = false;
+  let pendingCount = 0;
+  if (decision === "approved") {
+    const { data: remainingConfirmations, error: remainingConfirmationsError } =
+      await supabase
+        .from("match_confirmations")
+        .select("decision")
+        .eq("match_id", matchId);
+
+    if (remainingConfirmationsError) throw remainingConfirmationsError;
+
+    pendingCount = (remainingConfirmations ?? []).filter(
+      (row) => row.decision === "pending",
+    ).length;
+
+    const allApproved =
+      (remainingConfirmations ?? []).length > 0 &&
+      (remainingConfirmations ?? []).every((row) => row.decision === "approved");
+
+    if (allApproved) {
+      const { error: matchUpdateError } = await supabase
+        .from("matches")
+        .update({ status: "confirmed" })
+        .eq("id", matchId);
+
+      if (matchUpdateError) throw matchUpdateError;
+
+      const { error: resultUpdateError } = await supabase
+        .from("match_results")
+        .update({
+          confirmed_by: user.id,
+          confirmed_at: decidedAt,
+        })
+        .eq("match_id", matchId);
+
+      if (resultUpdateError) throw resultUpdateError;
+      confirmed = true;
+    } else {
+      const { error: matchUpdateError } = await supabase
+        .from("matches")
+        .update({ status: "submitted" })
+        .eq("id", matchId);
+
+      if (matchUpdateError) throw matchUpdateError;
+    }
+  } else {
+    const { error: matchUpdateError } = await supabase
+      .from("matches")
+      .update({ status: "disputed" })
+      .eq("id", matchId);
+
+    if (matchUpdateError) throw matchUpdateError;
+  }
+
+  const { data: matchRow, error: matchRowError } = await supabase
+    .from("matches")
+    .select("club_id")
+    .eq("id", matchId)
+    .single();
+
+  if (matchRowError || !matchRow) {
+    throw matchRowError ?? new Error("경기 정보를 찾을 수 없습니다.");
+  }
+
+  await writeAuditLog({
+    clubId: matchRow.club_id,
+    actorUserId: user.id,
+    action: decision === "approved" ? "match.confirmed" : "match.disputed",
+    entityType: "match",
+    entityId: matchId,
+    payload: { confirmationId: confirmation.id, clubMemberId: confirmation.club_member_id },
+  });
+
+  return { confirmed, pendingCount };
+}
+
+export async function approveMatch(
+  matchId: string,
+): Promise<{ confirmed: boolean; pendingCount: number }> {
+  return updateMatchConfirmationDecision(matchId, "approved");
+}
+
+export async function rejectMatch(
+  matchId: string,
+): Promise<{ confirmed: boolean; pendingCount: number }> {
+  return updateMatchConfirmationDecision(matchId, "rejected");
 }
 
 export async function deleteMatch(matchId: string): Promise<void> {
@@ -265,8 +482,8 @@ type MatchRow = {
 
 function normalizeClubMember(
   cm:
-    | { nickname: string; user_id: string }
-    | { nickname: string; user_id: string }[]
+    | { nickname: string; user_id: string | null }
+    | { nickname: string; user_id: string | null }[]
     | null,
 ): { nickname: string; userId: string | null } {
   if (!cm) return { nickname: "?", userId: null };
@@ -277,14 +494,6 @@ function normalizeClubMember(
     };
   }
   return { nickname: cm.nickname, userId: cm.user_id };
-}
-
-function normalizeNickname(
-  cm: { nickname: string } | { nickname: string }[] | null,
-): string {
-  if (!cm) return "?";
-  if (Array.isArray(cm)) return cm[0]?.nickname ?? "?";
-  return cm.nickname;
 }
 
 function pickFirstResult<T extends Record<string, unknown>>(
@@ -358,18 +567,37 @@ type MatchDetailRow = {
         score_summary: string;
         set_scores?: unknown;
         submitted_by: string;
+        confirmed_by: string | null;
+        confirmed_at: string | null;
       }
     | {
         score_summary: string;
         set_scores?: unknown;
         submitted_by: string;
+        confirmed_by: string | null;
+        confirmed_at: string | null;
       }[]
     | null;
+  match_confirmations: {
+    id: string;
+    side: number;
+    decision: MatchConfirmationDecision;
+    decided_at: string | null;
+    user_id: string | null;
+    club_member_id: string;
+    club_members:
+      | { nickname: string; user_id: string | null }
+      | { nickname: string; user_id: string | null }[]
+      | null;
+  }[];
   match_players: {
     side: number;
     position: number;
     club_member_id: string;
-    club_members: { nickname: string } | { nickname: string }[] | null;
+    club_members:
+      | { nickname: string; user_id: string | null }
+      | { nickname: string; user_id: string | null }[]
+      | null;
   }[];
 };
 
@@ -379,7 +607,7 @@ export async function getMatchDetail(matchId: string): Promise<MatchDetail> {
   const { data, error } = await getSupabaseClient()
     .from("matches")
     .select(
-      "id,club_id,match_type,status,played_at,created_by,created_at,match_results(score_summary,set_scores,submitted_by),match_players(side,position,club_member_id,club_members(nickname))",
+      "id,club_id,match_type,status,played_at,created_by,created_at,match_results(score_summary,set_scores,submitted_by,confirmed_by,confirmed_at),match_confirmations(id,side,decision,decided_at,user_id,club_member_id,club_members(nickname,user_id)),match_players(side,position,club_member_id,club_members(nickname,user_id))",
     )
     .eq("id", matchId)
     .single();
@@ -408,18 +636,45 @@ export async function getMatchDetail(matchId: string): Promise<MatchDetail> {
           scoreSummary: firstResult.score_summary,
           setScores: normalizeSetScores(firstResult.set_scores),
           submittedBy: firstResult.submitted_by,
+          confirmedBy: firstResult.confirmed_by,
+          confirmedAt: firstResult.confirmed_at,
         }
       : null;
   const myRole = membership.role as ClubRole;
   const canEdit =
     row.created_by === user.id || myRole === "owner" || myRole === "manager";
 
-  const players = row.match_players.map((mp) => ({
-    side: mp.side as 1 | 2,
-    position: mp.position,
-    nickname: normalizeNickname(mp.club_members),
-    clubMemberId: mp.club_member_id,
-  }));
+  let currentUserSide: 1 | 2 | null = null;
+  const players = row.match_players.map((mp) => {
+    const member = normalizeClubMember(mp.club_members);
+    if (member.userId === user.id) {
+      currentUserSide = mp.side as 1 | 2;
+    }
+    return {
+      side: mp.side as 1 | 2,
+      position: mp.position,
+      nickname: member.nickname,
+      clubMemberId: mp.club_member_id,
+    };
+  });
+
+  const confirmations: MatchConfirmation[] = row.match_confirmations.map((confirmation) => {
+    const member = normalizeClubMember(confirmation.club_members);
+    return {
+      id: confirmation.id,
+      clubMemberId: confirmation.club_member_id,
+      nickname: member.nickname,
+      side: confirmation.side as 1 | 2,
+      userId: member.userId,
+      decision: confirmation.decision,
+      decidedAt: confirmation.decided_at,
+    };
+  });
+
+  const myConfirmation = confirmations.find(
+    (confirmation) =>
+      confirmation.userId === user.id && confirmation.decision === "pending",
+  );
 
   return {
     id: row.id,
@@ -430,7 +685,11 @@ export async function getMatchDetail(matchId: string): Promise<MatchDetail> {
     createdBy: row.created_by,
     createdAt: row.created_at,
     canEdit,
+    canApprove: Boolean(myConfirmation) && row.status === "submitted",
+    canReject: Boolean(myConfirmation) && row.status === "submitted",
+    currentUserSide,
     result,
+    confirmations,
     players,
   };
 }
