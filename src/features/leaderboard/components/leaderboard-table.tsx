@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/feedback/empty-state";
 import { useLeaderboard } from "@/features/leaderboard/hooks/use-leaderboard";
 import type { LeaderboardEntry } from "@/features/leaderboard/types/leaderboard";
 import { AppBar } from "@/components/layout/app-bar";
+import { ClubSwitcherAction } from "@/components/layout/club-switcher-action";
 
 type LeaderboardViewProps = {
   clubId: string;
@@ -60,10 +61,8 @@ export function LeaderboardView({ clubId }: LeaderboardViewProps) {
     <div className="space-y-2">
       <AppBar
         title="리더보드"
-        showBack
-        onBack={() => {
-          window.location.href = `/clubs/${clubId}`;
-        }}
+        showBack={false}
+        actions={<ClubSwitcherAction />}
       />
       <div className="space-y-4 px-4">
         {error ? <StatusBox type="error" message={error} /> : null}

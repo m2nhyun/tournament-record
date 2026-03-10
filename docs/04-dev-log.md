@@ -169,3 +169,18 @@
 - 상대 팀 확인용 `match_confirmations` 테이블 및 승인/거절 액션 도입
 - 상대 확인 완료 시 `confirmed`, 거절 시 `disputed`로 전환
 - 리더보드는 `confirmed` 경기만 반영하도록 조정
+
+### Documentation Alignment
+
+- 루트 `AGENTS.md`를 추가해 작업 규칙과 문서 관리 규칙을 중앙화
+- `README.md`에 게스트 참가/경기 확인 플로우/확정 경기 기준 리더보드 반영
+- `docs/01-product-canvas.md`에 상대 확인 기반 신뢰도 가설과 지표 반영
+- `docs/05-automation.md`에 match confirmation 관련 필수 SQL 및 운영 규칙 반영
+- `docs/08-ux-tasks.md`에 완료된 경기 확인 플로우와 남은 재제출 UX 과제 정리
+- `docs/10-history-ui-guidelines.md`에 `submitted`/`disputed` 중립 표현 규칙 반영
+
+### Club Navigation UX
+
+- 클럽 탭성 화면(`홈`, `새 경기`, `히스토리`, `리더보드`) 상단에서 뒤로가기를 제거
+- 상단 우측에 `다른 클럽` 버튼을 추가해 홈 대시보드로 이동 가능하게 조정
+- 탭형 화면은 뒤로가기보다 전역 이동 액션을 우선하는 패턴으로 통일

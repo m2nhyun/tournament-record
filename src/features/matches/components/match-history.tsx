@@ -20,6 +20,7 @@ import { MatchList } from "@/features/matches/components/match-list";
 import { useMatchList } from "@/features/matches/hooks/use-match-list";
 import { filterMatchesByDateAndOpponent } from "@/features/matches/utils/match-history-filter";
 import { AppBar } from "@/components/layout/app-bar";
+import { ClubSwitcherAction } from "@/components/layout/club-switcher-action";
 
 type MatchHistoryViewProps = {
   clubId: string;
@@ -50,10 +51,8 @@ export function MatchHistoryView({ clubId }: MatchHistoryViewProps) {
     <div className="flex flex-col gap-2">
       <AppBar
         title="경기 히스토리"
-        showBack
-        onBack={() => {
-          window.location.href = `/clubs/${clubId}`;
-        }}
+        showBack={false}
+        actions={<ClubSwitcherAction />}
       />
       <div className="space-y-3 px-4">
         {error ? <StatusBox type="error" message={error} /> : null}

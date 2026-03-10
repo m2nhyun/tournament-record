@@ -21,6 +21,7 @@ import { MatchTypeSelector } from "@/features/matches/components/match-type-sele
 import { PlayerSelector } from "@/features/matches/components/player-selector";
 import { ScoreInput } from "@/features/matches/components/score-input";
 import { AppBar } from "@/components/layout/app-bar";
+import { ClubSwitcherAction } from "@/components/layout/club-switcher-action";
 import {
   useMatchCreation,
   type CreationStep,
@@ -154,10 +155,8 @@ export function MatchCreationForm({ clubId, matchId }: MatchCreationFormProps) {
       <div className="mx-auto w-full max-w-xl space-y-4">
         <AppBar
           title={isEditMode ? "경기 수정" : "새 경기 기록"}
-          showBack
-          onBack={() => {
-            window.location.href = `/clubs/${clubId}`;
-          }}
+          showBack={false}
+          actions={<ClubSwitcherAction />}
         />
         <div className="px-4">
           <EmptyState
@@ -179,10 +178,8 @@ export function MatchCreationForm({ clubId, matchId }: MatchCreationFormProps) {
       <div className="mx-auto w-full max-w-xl space-y-4">
         <AppBar
           title={isEditMode ? "경기 수정" : "새 경기 기록"}
-          showBack
-          onBack={() => {
-            window.location.href = `/clubs/${clubId}`;
-          }}
+          showBack={false}
+          actions={<ClubSwitcherAction />}
         />
         <div className="px-4">
           <EmptyState
@@ -203,10 +200,8 @@ export function MatchCreationForm({ clubId, matchId }: MatchCreationFormProps) {
     <div className="mx-auto w-full max-w-xl space-y-4">
       <AppBar
         title={isEditMode ? "경기 수정" : "새 경기 기록"}
-        showBack
-        onBack={() => {
-          window.location.href = `/clubs/${clubId}`;
-        }}
+        showBack={false}
+        actions={<ClubSwitcherAction />}
       />
       <div className="space-y-4 px-4">
         {/* Step indicator */}

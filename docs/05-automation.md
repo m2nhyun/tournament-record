@@ -14,6 +14,7 @@
 - Supabase Dashboard Auth 설정(Provider/Redirect)
 - Vercel 환경변수 관리
 - SQL Editor 수동 반영(현재 운영 정책)
+- SQL 반영 후 `docs/04-dev-log.md` 기록
 
 ## Auth Modes
 
@@ -76,6 +77,7 @@ npm run automation:check # env + smoke + verify 일괄 실행
 ## Temporary Policy (Manual DB Migration)
 
 - 원칙: DB 변경은 Supabase `SQL Editor` 수동 실행을 기본으로 유지한다.
+- 코드/문서/SQL은 같은 변경 세트로 관리하고, SQL 적용 전까지 기능 완료로 보지 않는다.
 
 실행 순서:
 1. `supabase/migrations/*.sql`에서 대상 파일 선택
@@ -83,6 +85,7 @@ npm run automation:check # env + smoke + verify 일괄 실행
 3. 검증 쿼리 실행(함수/테이블/정책 생성 확인)
 4. 앱 기능 재테스트
 5. `docs/04-dev-log.md`에 실행 일시와 적용 파일 기록
+6. 관련 문서(`docs/03-architecture.md`, `docs/05-automation.md`, 필요 시 `README.md`) 최신 상태 확인
 
 ## Required SQL (Current Baseline)
 
@@ -97,3 +100,24 @@ npm run automation:check # env + smoke + verify 일괄 실행
 - `club_members.is_active`, `left_at`
 - 멤버 소프트 삭제 함수 `remove_club_member`
 - active 멤버 기준 권한 함수 갱신
+
+3. `20260310120000_add_match_delete_policy.sql`
+- 경기 삭제 정책 보강
+- match 관리 권한과 삭제 권한 일치
+
+4. `20260310133000_add_match_confirmations.sql`
+- `match_confirmations` 테이블 추가
+- 확인 대상 승인/거절 상태(`pending | approved | rejected`) 도입
+- 상대 확인 기반 경기 확정 흐름 지원
+
+## Match Confirmation Operations
+
+- 경기 저장 직후 기본 상태는 `submitted`다.
+- 확인 대상 전원이 승인해야 `confirmed`로 전환된다.
+- 한 명이라도 거절하면 `disputed`로 전환된다.
+- 리더보드는 `confirmed` 경기만 집계한다.
+- 이 플로우를 바꾸면 아래 문서를 함께 갱신한다.
+  - `docs/03-architecture.md`
+  - `docs/09-keep-rules.md`
+  - `docs/10-history-ui-guidelines.md`
+  - `docs/04-dev-log.md`

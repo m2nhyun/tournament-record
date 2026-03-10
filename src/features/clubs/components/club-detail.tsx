@@ -17,6 +17,7 @@ import { StatusBox } from "@/components/feedback/status-box";
 import { LoadingSpinner } from "@/components/feedback/loading-spinner";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { AppBar } from "@/components/layout/app-bar";
+import { ClubSwitcherAction } from "@/components/layout/club-switcher-action";
 import { ClubMemberList } from "@/features/clubs/components/club-member-list";
 import { ClubNameEditModal } from "@/features/clubs/components/club-name-edit-modal";
 import { useClubDetail } from "@/features/clubs/hooks/use-club-detail";
@@ -65,7 +66,7 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
   if (status?.type === "error") {
     return (
       <div className="space-y-4">
-        <AppBar title="클럽" showBack />
+        <AppBar title="클럽" showBack={false} actions={<ClubSwitcherAction />} />
         <div className="space-y-4 px-4">
           <StatusBox type="error" message={status.message} />
           <Button variant="outline" asChild>
@@ -82,7 +83,11 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
 
   return (
     <div className="space-y-6">
-      <AppBar title={club.name} showBack />
+      <AppBar
+        title={club.name}
+        showBack={false}
+        actions={<ClubSwitcherAction />}
+      />
       <div className="space-y-6 px-4">
         <Card>
           <CardHeader>
