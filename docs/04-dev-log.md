@@ -191,3 +191,5 @@
 - `AGENTS.md`에 역할 분리, 병렬 실행, MCP, 실시간 상태 추적, 자동화에 대한 저장소 전용 도입 원칙 추가
 - 범용 생산성 조언을 그대로 복사하지 않고 `tournament-record` 기준 우선순위와 운영 규칙으로 재정리
 - 로컬 Codex CLI(`0.112.0`) 기준 `multi_agent` feature를 실제 활성화하고, `AGENTS.md`에 활성화/확인/사용 패턴 문서화
+- Codex global MCP에 `playwright`, `context7`, `exa`를 등록하고 저장소 기준 사용 우선순위를 `AGENTS.md`에 반영
+- GitHub 공식 MCP를 `GITHUB_TOKEN` bearer auth 방식으로 등록하고, PR/이슈 연동 용도를 `AGENTS.md`에 추가

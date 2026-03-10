@@ -484,13 +484,15 @@ type MatchRow = {
 type PendingConfirmationRow = {
   id: string;
   match_id: string;
-  matches: {
-    id: string;
-    club_id: string;
-    played_at: string;
-    match_type: string;
-    status: string;
-  } | null;
+  matches:
+    | {
+        id: string;
+        club_id: string;
+        played_at: string;
+        match_type: string;
+        status: string;
+      }[]
+    | null;
 };
 
 function normalizeClubMember(
@@ -588,7 +590,10 @@ export async function listPendingMatchConfirmations(
   if (error) throw error;
 
   return ((data ?? []) as PendingConfirmationRow[])
-    .filter((row) => row.matches !== null)
+    .map((row) => ({
+      ...row,
+      matches: Array.isArray(row.matches) ? row.matches[0] ?? null : row.matches,
+    }))
     .map((row) => ({
       id: row.id,
       matchId: row.match_id,

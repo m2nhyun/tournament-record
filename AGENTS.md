@@ -467,6 +467,39 @@ codex --enable multi_agent
 - 민감한 자격증명이나 production 권한이 필요한 도구는 별도 검토 전 기본 활성화하지 않는다.
 - 브라우저 자동화 도구를 쓰면 재현 시나리오를 `docs/08-ux-tasks.md` 또는 별도 QA 문서에 남긴다.
 
+현재 등록된 MCP:
+- `playwright`
+  - transport: stdio
+  - command: `npx @playwright/mcp@latest`
+  - 용도: 로그인, 초대 링크, 경기 생성, 승인/거절 플로우의 실제 브라우저 회귀 점검
+- `context7`
+  - transport: streamable HTTP
+  - url: `https://mcp.context7.com/mcp`
+  - 용도: Next.js, Supabase, Radix/shadcn 등 라이브러리/프레임워크 공식 문서 확인
+- `exa`
+  - transport: streamable HTTP
+  - url: `https://mcp.exa.ai/mcp`
+  - 용도: 최신 문서, 공지, 외부 레퍼런스 탐색
+- `github`
+  - transport: streamable HTTP
+  - url: `https://api.githubcopilot.com/mcp/`
+  - auth: `GITHUB_TOKEN` bearer token
+  - 용도: PR, 이슈, 리포지토리 상태 확인 및 GitHub 작업 연동
+
+이 저장소에서의 기본 우선순위:
+1. 구현 정확도: `context7`
+2. 실제 사용자 흐름 검증: `playwright`
+3. 저장소 작업 연동: `github`
+4. 최신 외부 자료 탐색: `exa`
+
+사용 규칙:
+- 구현 중 라이브러리/프레임워크 API가 헷갈리면 `context7`를 먼저 본다.
+- UI/UX 변경 후 실제 브라우저 회귀가 중요하면 `playwright`를 사용한다.
+- PR, 이슈, 변경 상태 조회가 필요하면 `github`를 사용한다.
+- 최신 문서나 외부 레퍼런스가 필요할 때만 `exa`를 쓴다.
+- 공식 문서가 있는 주제는 `exa`보다 `context7` 또는 공식 사이트를 우선한다.
+- `github` MCP는 `GITHUB_TOKEN`이 설정되어 있어야 인증된 작업이 가능하다.
+
 ### 12.4 Stage 4: Real-Time Monitoring
 
 목표:
@@ -539,6 +572,7 @@ codex --enable multi_agent
 
 - `AGENTS.md`를 루트 실행 규칙으로 사용한다.
 - Codex global config에서 `multi_agent` feature가 활성화되어 있다.
+- Codex global MCP에 `playwright`, `context7`, `exa`, `github`가 등록되어 있다.
 - 이 저장소에서는 multi-agent를 “많은 에이전트를 무조건 띄우는 기능”으로 보지 않는다.
 - 우선순위는 아래와 같다.
   1. 병렬 탐색
@@ -562,3 +596,9 @@ codex --enable multi_agent -C /Users/minhyun/Desktop/tournament-record
 - “관련 파일을 병렬로 읽고 구현/문서/테스트 영향까지 한 번에 정리해”
 - “프론트엔드, 서비스, 검증 관점으로 나눠서 먼저 분석한 뒤 수정해”
 - “병렬 탐색 후 가장 작은 안전한 수정으로 구현해”
+
+MCP 활용 예시:
+- “Supabase Auth 최신 문서를 확인하고 이메일 회원가입 흐름을 구현해”
+- “Playwright로 초대 링크 참가와 경기 승인 흐름을 실제로 재현해”
+- “GitHub MCP로 현재 PR/이슈 상태를 확인하고 작업 범위를 연결해”
+- “Exa로 최신 OpenAI/Codex 설정 문서를 찾아 반영해”
