@@ -208,6 +208,12 @@ to authenticated
 using (public.is_club_member(club_id))
 with check (public.is_club_member(club_id));
 
+drop policy if exists matches_delete_member on public.matches;
+create policy matches_delete_member
+on public.matches for delete
+to authenticated
+using (public.can_manage_match(club_id, created_by));
+
 drop policy if exists match_players_select_member on public.match_players;
 create policy match_players_select_member
 on public.match_players for select

@@ -59,6 +59,18 @@ describe("match-helpers", () => {
     expect(side2Lose.label).toBe("패");
   });
 
+  it("내가 참가하지 않은 경기는 중립 표기로 처리한다", () => {
+    const setScores: SetScore[] = [
+      { set: 1, side1: 6, side2: 4, gamesToWin: 6 },
+      { set: 2, side1: 6, side2: 3, gamesToWin: 6 },
+    ];
+
+    const unrelated = resultMeta(makeMatch({ currentUserSide: null }), setScores);
+
+    expect(unrelated.label).toBe("기록");
+    expect(unrelated.listBgClass).toBe("bg-background");
+  });
+
   it("리스트 점수는 세트 결과 우선으로 표시한다", () => {
     const withSets = makeMatch({
       setScores: [

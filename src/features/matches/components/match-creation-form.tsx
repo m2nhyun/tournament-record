@@ -43,10 +43,7 @@ const stepNumbers: Record<CreationStep, number> = {
   score: 3,
 };
 
-export function MatchCreationForm({
-  clubId,
-  matchId,
-}: MatchCreationFormProps) {
+export function MatchCreationForm({ clubId, matchId }: MatchCreationFormProps) {
   const {
     step,
     members,
@@ -100,7 +97,8 @@ export function MatchCreationForm({
 
   if (deletedMatch) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 p-4">
+        <AppBar />
         <StatusBox type="success" message="경기가 삭제되었습니다." />
         <div className="flex gap-2">
           <Button variant="outline" className="flex-1" asChild>
@@ -119,7 +117,7 @@ export function MatchCreationForm({
 
   if (createdMatchId) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 p-4">
         <StatusBox
           type="success"
           message={
@@ -146,7 +144,9 @@ export function MatchCreationForm({
   }
 
   if (loadingMembers) {
-    return <LoadingSpinner title="로딩 중" message="멤버 정보를 불러오는 중..." />;
+    return (
+      <LoadingSpinner title="로딩 중" message="멤버 정보를 불러오는 중..." />
+    );
   }
 
   if (!canCreateAnyMatch) {
@@ -358,7 +358,8 @@ export function MatchCreationForm({
       >
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            삭제하면 선수 배정과 점수 기록도 함께 사라집니다. 이 작업은 되돌릴 수 없습니다.
+            삭제하면 선수 배정과 점수 기록도 함께 사라집니다. 이 작업은 되돌릴
+            수 없습니다.
           </p>
           <div className="flex gap-2">
             <Button

@@ -34,7 +34,15 @@ export function compactScoreSummary(match: MatchSummary) {
 
 export function resultMeta(match: MatchSummary, setScores: SetScore[]) {
   const outcome = summarizeOutcome(setScores);
-  const mySide = match.currentUserSide ?? 1;
+  if (match.currentUserSide === null) {
+    return {
+      label: "기록",
+      badgeVariant: "default" as const,
+      listBgClass: "bg-background",
+    };
+  }
+
+  const mySide = match.currentUserSide;
   const myWins = mySide === 1 ? outcome.side1Wins : outcome.side2Wins;
   const opponentWins = mySide === 1 ? outcome.side2Wins : outcome.side1Wins;
 
@@ -60,4 +68,3 @@ export function resultMeta(match: MatchSummary, setScores: SetScore[]) {
     listBgClass: "bg-[var(--red-light)]",
   };
 }
-

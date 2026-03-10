@@ -30,9 +30,10 @@ function formatGameCell(sideGames: number, point?: string) {
   return `${sideGames} (${point})`;
 }
 
-function overallScore(
-  setScores: { side1: number; side2: number }[],
-): { side1: number; side2: number } {
+function overallScore(setScores: { side1: number; side2: number }[]): {
+  side1: number;
+  side2: number;
+} {
   let side1Wins = 0;
   let side2Wins = 0;
   for (const s of setScores) {
@@ -46,7 +47,9 @@ export function MatchDetailView({ matchId, clubId }: MatchDetailViewProps) {
   const { match, loading, error } = useMatchDetail(matchId);
 
   if (loading) {
-    return <LoadingSpinner title="로딩 중" message="경기 정보를 불러오는 중..." />;
+    return (
+      <LoadingSpinner title="로딩 중" message="경기 정보를 불러오는 중..." />
+    );
   }
 
   if (error) {
@@ -56,9 +59,7 @@ export function MatchDetailView({ matchId, clubId }: MatchDetailViewProps) {
         <div className="space-y-4 px-4">
           <StatusBox type="error" message={error} />
           <Button variant="outline" asChild>
-            <Link href={`/clubs/${clubId}`}>
-              클럽 홈으로
-            </Link>
+            <Link href={`/clubs/${clubId}`}>클럽 홈으로</Link>
           </Button>
         </div>
       </div>
@@ -114,7 +115,9 @@ export function MatchDetailView({ matchId, clubId }: MatchDetailViewProps) {
             {match.result ? (
               <div className="rounded-lg bg-muted/30 p-4">
                 <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-                  <div className="text-sm font-semibold">{team1Name || "팀 A"}</div>
+                  <div className="text-sm font-semibold">
+                    {team1Name || "팀 A"}
+                  </div>
                   <p className="font-mono text-2xl font-bold text-[var(--brand)]">
                     {finalScore.side1} : {finalScore.side2}
                   </p>
@@ -128,7 +131,9 @@ export function MatchDetailView({ matchId, clubId }: MatchDetailViewProps) {
             {/* Set scores table */}
             {match.result && match.result.setScores.length > 0 ? (
               <div className="space-y-2">
-                <p className="text-xs font-semibold text-muted-foreground">게임 상세</p>
+                <p className="text-xs font-semibold text-muted-foreground">
+                  게임 상세
+                </p>
                 <div className="overflow-hidden rounded-lg border">
                   <table className="w-full text-sm">
                     <thead>
