@@ -160,7 +160,18 @@ export function MatchDetailView({ matchId, clubId }: MatchDetailViewProps) {
 
             {match.status === "submitted" ? (
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-                확인 대상 전원이 승인해야 경기 결과가 확정됩니다.
+                {match.canApprove || match.canReject
+                  ? "내 확인 요청이 도착했습니다. 아래에서 승인 또는 거절할 수 있습니다."
+                  : "확인 대상 전원이 승인해야 경기 결과가 확정됩니다."}
+              </div>
+            ) : null}
+
+            {match.status === "submitted" &&
+            !match.canApprove &&
+            !match.canReject &&
+            match.confirmations.length > 0 ? (
+              <div className="rounded-lg border bg-muted/30 p-3 text-sm text-muted-foreground">
+                이 화면에서는 현재 확인 상태만 볼 수 있습니다. 승인 버튼은 확인 요청을 받은 상대 팀에게만 노출됩니다.
               </div>
             ) : null}
 

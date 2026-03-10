@@ -36,6 +36,14 @@ export type MatchConfirmation = {
   decidedAt: string | null;
 };
 
+export type PendingMatchConfirmationSummary = {
+  id: string;
+  matchId: string;
+  matchType: MatchType;
+  matchStatus: MatchStatus;
+  playedAt: string;
+};
+
 export type MatchSummary = {
   id: string;
   clubId: string;

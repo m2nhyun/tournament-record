@@ -8,6 +8,7 @@ import type {
   MatchCreationData,
   MatchSummary,
   MatchDetail,
+  PendingMatchConfirmationSummary,
   SetScore,
 } from "@/features/matches/types/match";
 
@@ -480,6 +481,18 @@ type MatchRow = {
   }[];
 };
 
+type PendingConfirmationRow = {
+  id: string;
+  match_id: string;
+  matches: {
+    id: string;
+    club_id: string;
+    played_at: string;
+    match_type: string;
+    status: string;
+  } | null;
+};
+
 function normalizeClubMember(
   cm:
     | { nickname: string; user_id: string | null }
@@ -552,6 +565,37 @@ export async function listClubMatches(clubId: string): Promise<MatchSummary[]> {
       createdAt: row.created_at,
     };
   });
+}
+
+export async function listPendingMatchConfirmations(
+  clubId: string,
+): Promise<PendingMatchConfirmationSummary[]> {
+  const user = await requireUser();
+  if (user.is_anonymous) {
+    return [];
+  }
+
+  const { data, error } = await getSupabaseClient()
+    .from("match_confirmations")
+    .select(
+      "id,match_id,matches!inner(id,club_id,played_at,match_type,status)",
+    )
+    .eq("user_id", user.id)
+    .eq("decision", "pending")
+    .eq("matches.club_id", clubId)
+    .order("played_at", { ascending: false, referencedTable: "matches" });
+
+  if (error) throw error;
+
+  return ((data ?? []) as PendingConfirmationRow[])
+    .filter((row) => row.matches !== null)
+    .map((row) => ({
+      id: row.id,
+      matchId: row.match_id,
+      matchType: row.matches?.match_type as PendingMatchConfirmationSummary["matchType"],
+      matchStatus: row.matches?.status as PendingMatchConfirmationSummary["matchStatus"],
+      playedAt: row.matches?.played_at ?? new Date().toISOString(),
+    }));
 }
 
 type MatchDetailRow = {
@@ -665,7 +709,7 @@ export async function getMatchDetail(matchId: string): Promise<MatchDetail> {
       clubMemberId: confirmation.club_member_id,
       nickname: member.nickname,
       side: confirmation.side as 1 | 2,
-      userId: member.userId,
+      userId: confirmation.user_id,
       decision: confirmation.decision,
       decidedAt: confirmation.decided_at,
     };

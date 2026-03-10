@@ -17,10 +17,10 @@ import { StatusBox } from "@/components/feedback/status-box";
 import { LoadingSpinner } from "@/components/feedback/loading-spinner";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { MatchList } from "@/features/matches/components/match-list";
+import { MatchConfirmationInboxAction } from "@/features/matches/components/match-confirmation-inbox-action";
 import { useMatchList } from "@/features/matches/hooks/use-match-list";
 import { filterMatchesByDateAndOpponent } from "@/features/matches/utils/match-history-filter";
 import { AppBar } from "@/components/layout/app-bar";
-import { ClubSwitcherAction } from "@/components/layout/club-switcher-action";
 
 type MatchHistoryViewProps = {
   clubId: string;
@@ -52,7 +52,7 @@ export function MatchHistoryView({ clubId }: MatchHistoryViewProps) {
       <AppBar
         title="경기 히스토리"
         showBack={false}
-        actions={<ClubSwitcherAction />}
+        actions={<MatchConfirmationInboxAction clubId={clubId} />}
       />
       <div className="space-y-3 px-4">
         {error ? <StatusBox type="error" message={error} /> : null}
