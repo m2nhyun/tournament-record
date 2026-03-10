@@ -384,6 +384,34 @@ npm run automation:check
 목표:
 - 순차 작업을 줄이고 독립적인 탐색/검증을 병렬화한다.
 
+현재 Codex CLI 적용 상태:
+- 로컬 환경의 `codex-cli 0.112.0` 기준 `multi_agent` feature를 사용한다.
+- 이 환경에서는 별도 `/experimental` 토글 UI 대신 feature flag 방식으로 활성화한다.
+- 현재 글로벌 설정 파일 `~/.codex/config.toml`에 아래가 반영되어 있다.
+
+```toml
+[features]
+multi_agent = true
+```
+
+확인 명령:
+
+```bash
+codex features list
+```
+
+활성화 명령:
+
+```bash
+codex features enable multi_agent
+```
+
+일회성 활성화:
+
+```bash
+codex --enable multi_agent
+```
+
 실행 규칙:
 - 파일 읽기, 로그 확인, 영향 범위 분석은 가능한 한 병렬화한다.
 - 구현은 한 흐름으로 유지하되, 탐색과 검증은 병렬로 분리한다.
@@ -396,6 +424,19 @@ npm run automation:check
 - 파일 탐색: `multi_tool_use.parallel`
 - 검증: 가능하면 `test`, `lint`, `build`를 상황에 맞게 병렬 또는 연속 실행
 - 문서 업데이트: 기능 구현 후가 아니라 같은 작업 범위 안에서 병행 검토
+
+프롬프트 지침:
+- multi-agent는 “켜는 명령”보다 “병렬 분해하기 좋은 작업 지시”가 중요하다.
+- 아래 형태의 요청을 우선 사용한다.
+  - 관련 파일을 병렬로 읽고 영향 범위를 먼저 정리
+  - 구현/테스트/문서 영향을 나눠 확인
+  - 프론트/서비스/검증 관점으로 병렬 분석
+
+이 저장소에서 특히 적합한 작업:
+- 인증 흐름 변경 전 영향 범위 분석
+- Supabase/RLS 포함 기능 수정 전 코드 + 문서 + SQL 점검
+- 경기 기록/확인 플로우 회귀 점검
+- 문서 최신화 대상 탐색
 
 주의:
 - 병렬화는 탐색과 확인에 쓰고, 충돌 가능한 파일 편집은 단일 흐름으로 처리한다.
@@ -491,3 +532,33 @@ npm run automation:check
 - 권한/확정/게스트 정책이 안 깨지는가
 - 병렬 탐색과 검증을 잘 활용하는가
 - 자동화 후보를 꾸준히 문서화하는가
+
+## 14. Current Tooling State
+
+2026-03-10 현재 기준:
+
+- `AGENTS.md`를 루트 실행 규칙으로 사용한다.
+- Codex global config에서 `multi_agent` feature가 활성화되어 있다.
+- 이 저장소에서는 multi-agent를 “많은 에이전트를 무조건 띄우는 기능”으로 보지 않는다.
+- 우선순위는 아래와 같다.
+  1. 병렬 탐색
+  2. 병렬 검증
+  3. 문서 영향 동시 점검
+  4. 충돌 없는 범위에서만 역할 분리
+
+현재 기본 시작 패턴:
+
+```bash
+codex -C /Users/minhyun/Desktop/tournament-record
+```
+
+필요 시 feature를 명시적으로 포함:
+
+```bash
+codex --enable multi_agent -C /Users/minhyun/Desktop/tournament-record
+```
+
+작업 요청 문구 예시:
+- “관련 파일을 병렬로 읽고 구현/문서/테스트 영향까지 한 번에 정리해”
+- “프론트엔드, 서비스, 검증 관점으로 나눠서 먼저 분석한 뒤 수정해”
+- “병렬 탐색 후 가장 작은 안전한 수정으로 구현해”
