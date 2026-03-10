@@ -47,6 +47,7 @@ export type MatchDetail = {
   playedAt: string;
   createdBy: string;
   createdAt: string;
+  canEdit: boolean;
   result: {
     scoreSummary: string;
     setScores: SetScore[];

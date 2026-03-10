@@ -1,4 +1,4 @@
-import { Minus, Plus } from "lucide-react";
+import { Minus, Plus, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -13,6 +13,7 @@ type ScoreInputProps = {
   ) => void;
   onAddSet: () => void;
   onRemoveLastSet: () => void;
+  onRemoveSet: (setIndex: number) => void;
   gamesToWin: 4 | 6;
   onChangeGamesToWin: (value: 4 | 6) => void;
   side1Label?: string;
@@ -36,6 +37,7 @@ export function ScoreInput({
   onUpdate,
   onAddSet,
   onRemoveLastSet,
+  onRemoveSet,
   gamesToWin,
   onChangeGamesToWin,
   side1Label = "팀 A",
@@ -77,11 +79,21 @@ export function ScoreInput({
               <p className="text-xs font-medium text-muted-foreground">
                 게임 {score.set}
               </p>
-              <span
-                className={`text-[11px] ${complete ? "text-emerald-600" : "text-amber-600"}`}
-              >
-                {complete ? "완료" : "진행/중단"}
-              </span>
+              <div className="flex items-center gap-2">
+                <span
+                  className={`text-[11px] ${complete ? "text-emerald-600" : "text-amber-600"}`}
+                >
+                  {complete ? "완료" : "진행/중단"}
+                </span>
+                <button
+                  type="button"
+                  className="inline-flex size-7 items-center justify-center rounded-md border text-muted-foreground hover:bg-accent"
+                  onClick={() => onRemoveSet(index)}
+                  aria-label={`게임 ${score.set} 삭제`}
+                >
+                  <Trash2 className="size-3.5" />
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -152,6 +164,12 @@ export function ScoreInput({
           </div>
         );
       })}
+
+      {setScores.length === 0 ? (
+        <div className="rounded-lg border border-dashed px-3 py-4 text-center text-sm text-muted-foreground">
+          남아 있는 게임이 없습니다. 새 게임을 추가하거나 경기를 삭제할 수 있습니다.
+        </div>
+      ) : null}
 
       <div className="flex gap-2">
         <Button

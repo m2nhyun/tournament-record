@@ -6,7 +6,6 @@ import {
   Pencil,
   PlusCircle,
   RefreshCw,
-  Share2,
   Users,
 } from "lucide-react";
 import { useCallback, useState } from "react";
@@ -57,37 +56,6 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
     } catch {
       /* clipboard not available */
     }
-  }, [club]);
-
-  const copyInviteLink = useCallback(async () => {
-    if (!club || typeof window === "undefined") return;
-    const inviteUrl = `${window.location.origin}/join/${club.inviteCode}`;
-    try {
-      await navigator.clipboard.writeText(inviteUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      /* clipboard not available */
-    }
-  }, [club]);
-
-  const shareInviteToKakao = useCallback(async () => {
-    if (!club || typeof window === "undefined") return;
-    const inviteUrl = `${window.location.origin}/join/${club.inviteCode}`;
-    const shareText = `[${club.name}] 클럽 초대 링크\n${inviteUrl}`;
-
-    if (navigator.share) {
-      await navigator.share({
-        title: `${club.name} 초대`,
-        text: shareText,
-        url: inviteUrl,
-      });
-      return;
-    }
-
-    await navigator.clipboard.writeText(shareText);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   }, [club]);
 
   if (loading) {
@@ -161,26 +129,6 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
                 >
                   <Copy className="size-3.5" />
                   {copied ? "복사됨" : "코드 복사"}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => void copyInviteLink()}
-                >
-                  <Copy className="size-3.5" />
-                  링크 복사
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    void shareInviteToKakao().catch(() => {
-                      /* user canceled share */
-                    });
-                  }}
-                >
-                  <Share2 className="size-3.5" />
-                  카카오톡 공유
                 </Button>
                 {club.myRole === "owner" ? (
                   <Button

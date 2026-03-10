@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { User, Users } from "lucide-react";
+import { Pencil, User, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -79,6 +79,16 @@ export function MatchDetailView({ matchId, clubId }: MatchDetailViewProps) {
       <AppBar
         title="경기 상세"
         showBack
+        actions={
+          match.canEdit ? (
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/clubs/${clubId}/matches/${matchId}/edit`}>
+                <Pencil className="size-3.5" />
+                수정
+              </Link>
+            </Button>
+          ) : null
+        }
         onBack={() => {
           window.location.href = `/clubs/${clubId}/history`;
         }}

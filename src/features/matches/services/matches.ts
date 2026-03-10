@@ -1,5 +1,6 @@
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { requireUser } from "@/features/auth/services/auth";
+import type { ClubRole } from "@/features/clubs/types/club";
 import { writeAuditLog } from "@/features/matches/services/audit";
 import type {
   MatchCreationData,
@@ -124,6 +125,122 @@ export async function createMatch(
   });
 
   return match.id;
+}
+
+export async function updateMatch(
+  matchId: string,
+  data: MatchCreationData,
+): Promise<string> {
+  const user = await requireUser();
+  if (user.is_anonymous) {
+    throw new Error(
+      "게스트는 경기 기록을 수정할 수 없습니다. 카카오/이메일 로그인 후 이용해주세요.",
+    );
+  }
+
+  const { data: existingMatch, error: existingMatchError } =
+    await getSupabaseClient()
+      .from("matches")
+      .select("id,club_id")
+      .eq("id", matchId)
+      .single();
+
+  if (existingMatchError || !existingMatch) {
+    throw existingMatchError ?? new Error("경기를 찾을 수 없습니다.");
+  }
+
+  const { error: matchError } = await getSupabaseClient()
+    .from("matches")
+    .update({
+      match_type: data.matchType,
+      status: "confirmed",
+      played_at: data.playedAt,
+    })
+    .eq("id", matchId);
+
+  if (matchError) throw matchError;
+
+  const { error: deletePlayersError } = await getSupabaseClient()
+    .from("match_players")
+    .delete()
+    .eq("match_id", matchId);
+
+  if (deletePlayersError) throw deletePlayersError;
+
+  const playerRows = data.players.map((player) => ({
+    match_id: matchId,
+    club_member_id: player.clubMemberId,
+    side: player.side,
+    position: player.position,
+  }));
+
+  const { error: playerError } = await getSupabaseClient()
+    .from("match_players")
+    .insert(playerRows);
+
+  if (playerError) throw playerError;
+
+  const scoreSummary = buildScoreSummary(data.setScores);
+
+  const { error: resultError } = await getSupabaseClient()
+    .from("match_results")
+    .upsert(
+      {
+        match_id: matchId,
+        score_summary: scoreSummary,
+        set_scores: data.setScores,
+        submitted_by: user.id,
+      },
+      { onConflict: "match_id" },
+    );
+
+  if (resultError) throw resultError;
+
+  await writeAuditLog({
+    clubId: existingMatch.club_id,
+    actorUserId: user.id,
+    action: "match.updated",
+    entityType: "match",
+    entityId: matchId,
+    payload: { matchType: data.matchType, scoreSummary },
+  });
+
+  return matchId;
+}
+
+export async function deleteMatch(matchId: string): Promise<void> {
+  const user = await requireUser();
+  if (user.is_anonymous) {
+    throw new Error(
+      "게스트는 경기 기록을 삭제할 수 없습니다. 카카오/이메일 로그인 후 이용해주세요.",
+    );
+  }
+
+  const { data: existingMatch, error: existingMatchError } =
+    await getSupabaseClient()
+      .from("matches")
+      .select("id,club_id")
+      .eq("id", matchId)
+      .single();
+
+  if (existingMatchError || !existingMatch) {
+    throw existingMatchError ?? new Error("경기를 찾을 수 없습니다.");
+  }
+
+  const { error: deleteError } = await getSupabaseClient()
+    .from("matches")
+    .delete()
+    .eq("id", matchId);
+
+  if (deleteError) throw deleteError;
+
+  await writeAuditLog({
+    clubId: existingMatch.club_id,
+    actorUserId: user.id,
+    action: "match.deleted",
+    entityType: "match",
+    entityId: matchId,
+  });
 }
 
 type MatchRow = {
@@ -257,7 +374,7 @@ type MatchDetailRow = {
 };
 
 export async function getMatchDetail(matchId: string): Promise<MatchDetail> {
-  await requireUser();
+  const user = await requireUser();
 
   const { data, error } = await getSupabaseClient()
     .from("matches")
@@ -272,6 +389,18 @@ export async function getMatchDetail(matchId: string): Promise<MatchDetail> {
   }
 
   const row = data as MatchDetailRow;
+  const { data: membership, error: membershipError } = await getSupabaseClient()
+    .from("club_members")
+    .select("role")
+    .eq("club_id", row.club_id)
+    .eq("user_id", user.id)
+    .eq("is_active", true)
+    .single();
+
+  if (membershipError || !membership) {
+    throw membershipError ?? new Error("해당 클럽의 멤버가 아닙니다.");
+  }
+
   const firstResult = pickFirstResult(row.match_results);
   const result =
     firstResult
@@ -281,6 +410,9 @@ export async function getMatchDetail(matchId: string): Promise<MatchDetail> {
           submittedBy: firstResult.submitted_by,
         }
       : null;
+  const myRole = membership.role as ClubRole;
+  const canEdit =
+    row.created_by === user.id || myRole === "owner" || myRole === "manager";
 
   const players = row.match_players.map((mp) => ({
     side: mp.side as 1 | 2,
@@ -297,6 +429,7 @@ export async function getMatchDetail(matchId: string): Promise<MatchDetail> {
     playedAt: row.played_at,
     createdBy: row.created_by,
     createdAt: row.created_at,
+    canEdit,
     result,
     players,
   };

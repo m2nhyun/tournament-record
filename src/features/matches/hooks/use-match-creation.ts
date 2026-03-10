@@ -3,7 +3,12 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { listClubMembers } from "@/features/clubs/services/clubs";
-import { createMatch } from "@/features/matches/services/matches";
+import {
+  createMatch,
+  deleteMatch,
+  getMatchDetail,
+  updateMatch,
+} from "@/features/matches/services/matches";
 import type { ClubMember } from "@/features/clubs/types/club";
 import type {
   MatchType,
@@ -50,13 +55,15 @@ function isValidSetScore(score: SetScore, defaultGamesToWin: 4 | 6) {
   return false;
 }
 
-export function useMatchCreation(clubId: string) {
+export function useMatchCreation(clubId: string, matchId?: string) {
   const [step, setStep] = useState<CreationStep>("type");
   const [members, setMembers] = useState<ClubMember[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [status, setStatus] = useState<StatusState | null>(null);
   const [createdMatchId, setCreatedMatchId] = useState<string | null>(null);
+  const [deletedMatch, setDeletedMatch] = useState(false);
 
   // Step 1: match type
   const [matchType, setMatchType] = useState<MatchType>("singles");
@@ -76,13 +83,58 @@ export function useMatchCreation(clubId: string) {
       gamesToWin: 6,
     },
   ]);
+  const isEditMode = Boolean(matchId);
 
   useEffect(() => {
     let cancelled = false;
     setLoadingMembers(true);
-    listClubMembers(clubId)
-      .then((data) => {
-        if (!cancelled) setMembers(data);
+    Promise.all([
+      listClubMembers(clubId),
+      matchId ? getMatchDetail(matchId) : Promise.resolve(null),
+    ])
+      .then(([memberData, matchData]) => {
+        if (cancelled) return;
+
+        setMembers(memberData);
+
+        if (!matchData) return;
+
+        setMatchType(matchData.matchType);
+        setPlayedAt(matchData.playedAt.slice(0, 10));
+        setSide1Ids(
+          matchData.players
+            .filter((player) => player.side === 1)
+            .sort((a, b) => a.position - b.position)
+            .map((player) => player.clubMemberId),
+        );
+        setSide2Ids(
+          matchData.players
+            .filter((player) => player.side === 2)
+            .sort((a, b) => a.position - b.position)
+            .map((player) => player.clubMemberId),
+        );
+
+        const initialScores: SetScore[] =
+          matchData.result?.setScores.length
+            ? matchData.result.setScores.map((score, index) => ({
+                ...score,
+                set: index + 1,
+                gamesToWin:
+                  score.gamesToWin ??
+                  matchData.result?.setScores[0]?.gamesToWin ??
+                  6,
+              }))
+            : [
+                {
+                  set: 1,
+                  side1: 0,
+                  side2: 0,
+                  gamesToWin: 6,
+                },
+              ];
+
+        setGamesToWin(initialScores[0]?.gamesToWin === 4 ? 4 : 6);
+        setSetScores(initialScores);
       })
       .catch((err) => {
         if (!cancelled) setStatus({ type: "error", message: toMessage(err) });
@@ -93,7 +145,7 @@ export function useMatchCreation(clubId: string) {
     return () => {
       cancelled = true;
     };
-  }, [clubId]);
+  }, [clubId, matchId]);
 
   useEffect(() => {
     if (members.length < 4 && matchType === "doubles") {
@@ -208,6 +260,14 @@ export function useMatchCreation(clubId: string) {
     setSetScores((prev) => (prev.length > 1 ? prev.slice(0, -1) : prev));
   }, []);
 
+  const removeSet = useCallback((setIndex: number) => {
+    setSetScores((prev) =>
+      prev
+        .filter((_, index) => index !== setIndex)
+        .map((score, index) => ({ ...score, set: index + 1 })),
+    );
+  }, []);
+
   const updateSetScore = useCallback(
     (
       setIndex: number,
@@ -256,17 +316,27 @@ export function useMatchCreation(clubId: string) {
         }),
       ];
 
-      const matchId = await createMatch(clubId, {
-        matchType,
-        playedAt: new Date(playedAt).toISOString(),
-        players,
-        setScores,
-      });
+      const savedMatchId =
+        isEditMode && matchId
+          ? await updateMatch(matchId, {
+              matchType,
+              playedAt: new Date(playedAt).toISOString(),
+              players,
+              setScores,
+            })
+          : await createMatch(clubId, {
+              matchType,
+              playedAt: new Date(playedAt).toISOString(),
+              players,
+              setScores,
+            });
 
-      setCreatedMatchId(matchId);
+      setCreatedMatchId(savedMatchId);
       setStatus({
         type: "success",
-        message: "경기가 성공적으로 기록되었습니다!",
+        message: isEditMode
+          ? "경기 기록이 수정되었습니다!"
+          : "경기가 성공적으로 기록되었습니다!",
       });
     } catch (error) {
       setStatus({ type: "error", message: toMessage(error) });
@@ -279,18 +349,43 @@ export function useMatchCreation(clubId: string) {
     side2Ids,
     members,
     clubId,
+    isEditMode,
+    matchId,
     matchType,
     playedAt,
     setScores,
   ]);
+
+  const deleteCurrentMatch = useCallback(async () => {
+    if (!isEditMode || !matchId || deleting) return;
+
+    setDeleting(true);
+    setStatus(null);
+
+    try {
+      await deleteMatch(matchId);
+      setDeletedMatch(true);
+      setStatus({
+        type: "success",
+        message: "경기가 삭제되었습니다.",
+      });
+    } catch (error) {
+      setStatus({ type: "error", message: toMessage(error) });
+    } finally {
+      setDeleting(false);
+    }
+  }, [deleting, isEditMode, matchId]);
 
   return {
     step,
     members,
     loadingMembers,
     submitting,
+    deleting,
     status,
     createdMatchId,
+    deletedMatch,
+    isEditMode,
 
     matchType,
     setMatchType,
@@ -307,6 +402,7 @@ export function useMatchCreation(clubId: string) {
     setGamesToWin: updateGamesToWin,
     addSet,
     removeLastSet,
+    removeSet,
     updateSetScore,
 
     canGoToPlayers,
@@ -319,5 +415,6 @@ export function useMatchCreation(clubId: string) {
     goToScore,
     goBack,
     submit,
+    deleteCurrentMatch,
   };
 }

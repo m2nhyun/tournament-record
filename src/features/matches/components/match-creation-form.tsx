@@ -6,9 +6,12 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
+  Trash2,
   Users,
 } from "lucide-react";
+import { useState } from "react";
 
+import { Modal } from "@/components/common/modal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBox } from "@/components/feedback/status-box";
@@ -25,6 +28,7 @@ import {
 
 type MatchCreationFormProps = {
   clubId: string;
+  matchId?: string;
 };
 
 const stepLabels: Record<CreationStep, string> = {
@@ -39,14 +43,20 @@ const stepNumbers: Record<CreationStep, number> = {
   score: 3,
 };
 
-export function MatchCreationForm({ clubId }: MatchCreationFormProps) {
+export function MatchCreationForm({
+  clubId,
+  matchId,
+}: MatchCreationFormProps) {
   const {
     step,
     members,
     loadingMembers,
     submitting,
+    deleting,
     status,
     createdMatchId,
+    deletedMatch,
+    isEditMode,
     matchType,
     setMatchType,
     playedAt,
@@ -63,6 +73,7 @@ export function MatchCreationForm({ clubId }: MatchCreationFormProps) {
     setGamesToWin,
     addSet,
     removeLastSet,
+    removeSet,
     updateSetScore,
     canGoToPlayers,
     canGoToScore,
@@ -71,7 +82,9 @@ export function MatchCreationForm({ clubId }: MatchCreationFormProps) {
     goToScore,
     goBack,
     submit,
-  } = useMatchCreation(clubId);
+    deleteCurrentMatch,
+  } = useMatchCreation(clubId, matchId);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
 
   const side1Label =
     side1Ids
@@ -85,10 +98,36 @@ export function MatchCreationForm({ clubId }: MatchCreationFormProps) {
       .filter((name): name is string => Boolean(name))
       .join(" · ") || "팀 B";
 
+  if (deletedMatch) {
+    return (
+      <div className="space-y-4">
+        <StatusBox type="success" message="경기가 삭제되었습니다." />
+        <div className="flex gap-2">
+          <Button variant="outline" className="flex-1" asChild>
+            <Link href={`/clubs/${clubId}`}>클럽 홈</Link>
+          </Button>
+          <Button
+            className="flex-1 bg-[var(--brand)] text-white hover:opacity-90"
+            asChild
+          >
+            <Link href={`/clubs/${clubId}/history`}>경기 히스토리</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   if (createdMatchId) {
     return (
       <div className="space-y-4">
-        <StatusBox type="success" message="경기가 성공적으로 기록되었습니다!" />
+        <StatusBox
+          type="success"
+          message={
+            isEditMode
+              ? "경기 기록이 수정되었습니다!"
+              : "경기가 성공적으로 기록되었습니다!"
+          }
+        />
         <div className="flex gap-2">
           <Button variant="outline" className="flex-1" asChild>
             <Link href={`/clubs/${clubId}`}>클럽 홈</Link>
@@ -114,7 +153,7 @@ export function MatchCreationForm({ clubId }: MatchCreationFormProps) {
     return (
       <div className="mx-auto w-full max-w-xl space-y-4">
         <AppBar
-          title="새 경기 기록"
+          title={isEditMode ? "경기 수정" : "새 경기 기록"}
           showBack
           onBack={() => {
             window.location.href = `/clubs/${clubId}`;
@@ -139,7 +178,7 @@ export function MatchCreationForm({ clubId }: MatchCreationFormProps) {
     return (
       <div className="mx-auto w-full max-w-xl space-y-4">
         <AppBar
-          title="새 경기 기록"
+          title={isEditMode ? "경기 수정" : "새 경기 기록"}
           showBack
           onBack={() => {
             window.location.href = `/clubs/${clubId}`;
@@ -163,7 +202,7 @@ export function MatchCreationForm({ clubId }: MatchCreationFormProps) {
   return (
     <div className="mx-auto w-full max-w-xl space-y-4">
       <AppBar
-        title="새 경기 기록"
+        title={isEditMode ? "경기 수정" : "새 경기 기록"}
         showBack
         onBack={() => {
           window.location.href = `/clubs/${clubId}`;
@@ -232,6 +271,7 @@ export function MatchCreationForm({ clubId }: MatchCreationFormProps) {
                 onUpdate={updateSetScore}
                 onAddSet={addSet}
                 onRemoveLastSet={removeLastSet}
+                onRemoveSet={removeSet}
                 gamesToWin={gamesToWin}
                 onChangeGamesToWin={setGamesToWin}
                 side1Label={side1Label}
@@ -273,21 +313,80 @@ export function MatchCreationForm({ clubId }: MatchCreationFormProps) {
           ) : null}
 
           {step === "score" ? (
-            <Button
-              className="flex-1 bg-[var(--brand)] text-white hover:opacity-90"
-              disabled={!canSubmit || submitting}
-              onClick={() => void submit()}
-            >
-              {submitting ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Check className="size-4" />
-              )}
-              {submitting ? "저장 중..." : "경기 저장"}
-            </Button>
+            isEditMode && setScores.length === 0 ? (
+              <Button
+                className="flex-1 border-red-200 text-red-600 hover:bg-red-50"
+                variant="outline"
+                disabled={deleting}
+                onClick={() => setOpenDeleteDialog(true)}
+              >
+                {deleting ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Trash2 className="size-4" />
+                )}
+                경기 삭제
+              </Button>
+            ) : (
+              <Button
+                className="flex-1 bg-[var(--brand)] text-white hover:opacity-90"
+                disabled={!canSubmit || submitting}
+                onClick={() => void submit()}
+              >
+                {submitting ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Check className="size-4" />
+                )}
+                {submitting
+                  ? isEditMode
+                    ? "수정 중..."
+                    : "저장 중..."
+                  : isEditMode
+                    ? "경기 수정"
+                    : "경기 저장"}
+              </Button>
+            )
           ) : null}
         </div>
       </div>
+
+      <Modal
+        open={openDeleteDialog}
+        onOpenChange={setOpenDeleteDialog}
+        title="경기를 삭제할까요?"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            삭제하면 선수 배정과 점수 기록도 함께 사라집니다. 이 작업은 되돌릴 수 없습니다.
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => setOpenDeleteDialog(false)}
+            >
+              취소
+            </Button>
+            <Button
+              className="flex-1 bg-red-600 text-white hover:bg-red-700"
+              disabled={deleting}
+              onClick={() => {
+                void deleteCurrentMatch().then(() => {
+                  setOpenDeleteDialog(false);
+                });
+              }}
+            >
+              {deleting ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Trash2 className="size-4" />
+              )}
+              삭제
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
