@@ -2,6 +2,7 @@ import { getSupabaseClient } from "@/lib/supabase/client";
 import { requireUser } from "@/features/auth/services/auth";
 import type { ClubRole } from "@/features/clubs/types/club";
 import { writeAuditLog } from "@/features/matches/services/audit";
+import { resolveMatchStatus } from "@/features/matches/utils/match-status";
 import type {
   MatchConfirmation,
   MatchConfirmationDecision,
@@ -724,18 +725,22 @@ export async function getMatchDetail(matchId: string): Promise<MatchDetail> {
     (confirmation) =>
       confirmation.userId === user.id && confirmation.decision === "pending",
   );
+  const resolvedStatus = resolveMatchStatus(
+    row.status as MatchDetail["status"],
+    confirmations,
+  );
 
   return {
     id: row.id,
     clubId: row.club_id,
     matchType: row.match_type as MatchDetail["matchType"],
-    status: row.status as MatchDetail["status"],
+    status: resolvedStatus,
     playedAt: row.played_at,
     createdBy: row.created_by,
     createdAt: row.created_at,
     canEdit,
-    canApprove: Boolean(myConfirmation) && row.status === "submitted",
-    canReject: Boolean(myConfirmation) && row.status === "submitted",
+    canApprove: Boolean(myConfirmation) && resolvedStatus === "submitted",
+    canReject: Boolean(myConfirmation) && resolvedStatus === "submitted",
     currentUserSide,
     result,
     confirmations,

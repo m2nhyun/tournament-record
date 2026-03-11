@@ -98,9 +98,14 @@ describe("match-helpers", () => {
     const pending = resultMeta(makeMatch({ status: "submitted" }), [
       { set: 1, side1: 6, side2: 4, gamesToWin: 6 },
     ]);
+    const disputed = resultMeta(makeMatch({ status: "disputed" }), [
+      { set: 1, side1: 4, side2: 6, gamesToWin: 6 },
+    ]);
 
-    expect(pending.label).toBe("대기");
+    expect(pending.label).toBe("기록됨");
     expect(pending.listBgClass).toBe("bg-background");
+    expect(disputed.label).toBe("재검토");
+    expect(disputed.listBgClass).toBe("bg-background");
   });
 
   it("리스트 점수는 세트 결과 우선으로 표시한다", () => {

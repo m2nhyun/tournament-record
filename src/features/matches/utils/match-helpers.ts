@@ -1,4 +1,5 @@
 import type { MatchSummary, SetScore } from "@/features/matches/types/match";
+import { getMatchStatusCopy } from "./match-status";
 
 export function isRoundComplete(score: SetScore) {
   const target = score.gamesToWin ?? 6;
@@ -42,9 +43,10 @@ export function isMatchScoreConfirmed(status: MatchSummary["status"]) {
 
 export function resultMeta(match: MatchSummary, setScores: SetScore[]) {
   if (match.status !== "confirmed") {
+    const statusCopy = getMatchStatusCopy(match.status);
     return {
-      label: match.status === "disputed" ? "재검토" : "대기",
-      badgeVariant: "warning" as const,
+      label: statusCopy.historyLabel,
+      badgeVariant: statusCopy.badgeVariant,
       listBgClass: "bg-background",
     };
   }

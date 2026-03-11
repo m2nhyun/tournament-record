@@ -12,6 +12,10 @@ import { MatchStatusBadge } from "@/features/matches/components/match-status-bad
 import { useMatchDetail } from "@/features/matches/hooks/use-match-detail";
 import { AppBar } from "@/components/layout/app-bar";
 import { approveMatch, rejectMatch } from "@/features/matches/services/matches";
+import {
+  getPendingConfirmationNames,
+  getRejectedConfirmationNames,
+} from "@/features/matches/utils/match-status";
 
 type MatchDetailViewProps = {
   matchId: string;
@@ -115,6 +119,12 @@ export function MatchDetailView({ matchId, clubId }: MatchDetailViewProps) {
   const team1Name = side1.map((p) => p.nickname).join(" · ");
   const team2Name = side2.map((p) => p.nickname).join(" · ");
   const finalScore = overallScore(match.result?.setScores ?? []);
+  const pendingConfirmers = getPendingConfirmationNames(match.confirmations);
+  const rejectedConfirmers = getRejectedConfirmationNames(match.confirmations);
+  const pendingSummary =
+    pendingConfirmers.length > 0 ? pendingConfirmers.join(", ") : "없음";
+  const rejectedSummary =
+    rejectedConfirmers.length > 0 ? rejectedConfirmers.join(", ") : "없음";
 
   return (
     <div className="space-y-4">
@@ -159,10 +169,17 @@ export function MatchDetailView({ matchId, clubId }: MatchDetailViewProps) {
             </p>
 
             {match.status === "submitted" ? (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-                {match.canApprove || match.canReject
-                  ? "내 확인 요청이 도착했습니다. 아래에서 승인 또는 거절할 수 있습니다."
-                  : "확인 대상 전원이 승인해야 경기 결과가 확정됩니다."}
+              <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                <p className="font-medium">
+                  {match.canApprove || match.canReject
+                    ? "내 확인 요청이 도착했습니다. 아래에서 승인 또는 거절할 수 있습니다."
+                    : "경기 기록은 저장되었고, 상대 확인이 끝나면 확정됩니다."}
+                </p>
+                {match.confirmations.length > 0 ? (
+                  <p className="text-xs text-amber-800">
+                    확인 대상: {pendingSummary}
+                  </p>
+                ) : null}
               </div>
             ) : null}
 
@@ -172,6 +189,24 @@ export function MatchDetailView({ matchId, clubId }: MatchDetailViewProps) {
             match.confirmations.length > 0 ? (
               <div className="rounded-lg border bg-muted/30 p-3 text-sm text-muted-foreground">
                 이 화면에서는 현재 확인 상태만 볼 수 있습니다. 승인 버튼은 확인 요청을 받은 상대 팀에게만 노출됩니다.
+              </div>
+            ) : null}
+
+            {match.status === "disputed" ? (
+              <div className="space-y-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-900">
+                <p className="font-medium">
+                  경기 결과에 이견이 있어 재검토가 필요합니다.
+                </p>
+                {match.confirmations.length > 0 ? (
+                  <p className="text-xs text-red-800">
+                    거절한 확인 대상: {rejectedSummary}
+                  </p>
+                ) : null}
+                <p className="text-xs text-red-800">
+                  {match.canEdit
+                    ? "점수나 선수 구성을 수정한 뒤 다시 저장하면 새 확인 요청이 전송됩니다."
+                    : "수정 권한이 있는 클럽장, 매니저 또는 기록 작성자가 다시 제출해야 합니다."}
+                </p>
               </div>
             ) : null}
 
@@ -287,6 +322,15 @@ export function MatchDetailView({ matchId, clubId }: MatchDetailViewProps) {
                   </Button>
                 ) : null}
               </div>
+            ) : null}
+
+            {match.status === "disputed" && match.canEdit ? (
+              <Button variant="outline" className="w-full" asChild>
+                <Link href={`/clubs/${clubId}/matches/${matchId}/edit`}>
+                  <Pencil className="size-4" />
+                  수정 후 다시 확인 요청
+                </Link>
+              </Button>
             ) : null}
           </CardContent>
         </Card>

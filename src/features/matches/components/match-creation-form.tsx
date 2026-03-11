@@ -53,6 +53,7 @@ export function MatchCreationForm({ clubId, matchId }: MatchCreationFormProps) {
     status,
     createdMatchId,
     deletedMatch,
+    loadedMatchStatus,
     isEditMode,
     matchType,
     setMatchType,
@@ -229,6 +230,13 @@ export function MatchCreationForm({ clubId, matchId }: MatchCreationFormProps) {
 
         {status ? (
           <StatusBox type={status.type} message={status.message} />
+        ) : null}
+
+        {isEditMode && loadedMatchStatus === "disputed" ? (
+          <StatusBox
+            type="info"
+            message="이 경기는 재검토 상태입니다. 점수나 선수 구성을 수정해 다시 저장하면 상대에게 새 확인 요청이 전송됩니다."
+          />
         ) : null}
 
         <Card>

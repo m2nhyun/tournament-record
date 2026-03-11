@@ -12,6 +12,7 @@ import {
 import type { ClubMember } from "@/features/clubs/types/club";
 import type {
   MatchType,
+  MatchStatus,
   PlayerAssignment,
   SetScore,
 } from "@/features/matches/types/match";
@@ -42,6 +43,7 @@ export function useMatchCreation(clubId: string, matchId?: string) {
   const [status, setStatus] = useState<StatusState | null>(null);
   const [createdMatchId, setCreatedMatchId] = useState<string | null>(null);
   const [deletedMatch, setDeletedMatch] = useState(false);
+  const [loadedMatchStatus, setLoadedMatchStatus] = useState<MatchStatus | null>(null);
 
   // Step 1: match type
   const [matchType, setMatchType] = useState<MatchType>("singles");
@@ -77,6 +79,7 @@ export function useMatchCreation(clubId: string, matchId?: string) {
 
         if (!matchData) return;
 
+        setLoadedMatchStatus(matchData.status);
         setMatchType(matchData.matchType);
         setPlayedAt(matchData.playedAt.slice(0, 10));
         setSide1Ids(
@@ -361,6 +364,7 @@ export function useMatchCreation(clubId: string, matchId?: string) {
     status,
     createdMatchId,
     deletedMatch,
+    loadedMatchStatus,
     isEditMode,
 
     matchType,
