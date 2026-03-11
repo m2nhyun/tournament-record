@@ -14,6 +14,10 @@ function matchDateKey(value: string) {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+function normalizedNames(names: string[]) {
+  return names.join(" ").toLowerCase();
+}
+
 export function filterMatchesByDateAndOpponent({
   matches,
   playedOn,
@@ -25,10 +29,13 @@ export function filterMatchesByDateAndOpponent({
     if (playedOn && matchDateKey(match.playedAt) !== playedOn) return false;
     if (!opponent) return true;
 
-    const names = [...match.side1Players, ...match.side2Players]
-      .join(" ")
-      .toLowerCase();
+    const opponentNames =
+      match.currentUserSide === 1
+        ? match.side2Players
+        : match.currentUserSide === 2
+          ? match.side1Players
+          : [...match.side1Players, ...match.side2Players];
+    const names = normalizedNames(opponentNames);
     return names.includes(opponent);
   });
 }
-

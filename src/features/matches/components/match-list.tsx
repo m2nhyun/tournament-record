@@ -8,13 +8,17 @@ import type { MatchSummary } from "@/features/matches/types/match";
 type MatchListProps = {
   matches: MatchSummary[];
   viewMode: "card" | "list";
+  resetKey: string;
 };
 
 const PAGE_SIZE = 16;
 
-export function MatchList({ matches, viewMode }: MatchListProps) {
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+export function MatchList({ matches, viewMode, resetKey }: MatchListProps) {
+  const [visibleCountByKey, setVisibleCountByKey] = useState<Record<string, number>>(
+    {},
+  );
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const visibleCount = visibleCountByKey[resetKey] ?? PAGE_SIZE;
 
   useEffect(() => {
     const node = sentinelRef.current;
@@ -25,14 +29,17 @@ export function MatchList({ matches, viewMode }: MatchListProps) {
       (entries) => {
         const first = entries[0];
         if (!first?.isIntersecting) return;
-        setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, matches.length));
+        setVisibleCountByKey((prev) => ({
+          ...prev,
+          [resetKey]: Math.min((prev[resetKey] ?? PAGE_SIZE) + PAGE_SIZE, matches.length),
+        }));
       },
       { rootMargin: "300px 0px" },
     );
 
     observer.observe(node);
     return () => observer.disconnect();
-  }, [matches.length, visibleCount]);
+  }, [matches.length, resetKey, visibleCount]);
 
   const visibleMatches = useMemo(
     () => matches.slice(0, visibleCount),

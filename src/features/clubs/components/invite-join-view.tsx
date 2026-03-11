@@ -181,6 +181,9 @@ export function InviteJoinView({ inviteCode }: InviteJoinViewProps) {
           <p className="text-sm text-muted-foreground">
             코드 <span className="font-mono font-semibold">{normalizedCode}</span>
           </p>
+          <p className="text-xs text-muted-foreground">
+            게스트는 조회/참가만 가능하고, 경기 저장과 수정은 정회원만 가능합니다.
+          </p>
         </section>
 
         <StatusBox type={status.type} message={status.message} />
@@ -226,7 +229,7 @@ export function InviteJoinView({ inviteCode }: InviteJoinViewProps) {
                   placeholder="8자 이상"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid gap-2 sm:grid-cols-2">
                 <Button type="submit" disabled={busy !== null}>
                   <Mail className="size-4" />
                   이메일 로그인

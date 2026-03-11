@@ -57,14 +57,14 @@ export function useClubDetail(clubId: string) {
       try {
         await updateClubName(clubId, name);
         setStatus({ type: "success", message: "클럽 이름이 변경되었습니다." });
-        await refresh();
+        setClub((prev) => (prev ? { ...prev, name: name.trim() } : prev));
       } catch (error) {
         setStatus({ type: "error", message: toMessage(error) });
       } finally {
         setSaving(false);
       }
     },
-    [clubId, refresh, saving],
+    [clubId, saving],
   );
 
   const saveMySettings = useCallback(
@@ -79,32 +79,55 @@ export function useClubDetail(clubId: string) {
       try {
         await updateMyClubMemberSettings(clubId, input);
         setStatus({ type: "success", message: "내 멤버 설정이 변경되었습니다." });
-        await refresh();
+        setClub((prev) =>
+          prev ? { ...prev, myNickname: input.nickname.trim() } : prev,
+        );
+        setMembers((prev) =>
+          prev.map((member) =>
+            member.isMe
+              ? {
+                  ...member,
+                  nickname: input.nickname.trim(),
+                  openKakaoProfile: input.openKakaoProfile,
+                  allowRecordSearch: input.allowRecordSearch,
+                  shareHistory: input.shareHistory,
+                }
+              : member,
+          ),
+        );
       } catch (error) {
         setStatus({ type: "error", message: toMessage(error) });
       } finally {
         setSaving(false);
       }
     },
-    [clubId, refresh, saving],
+    [clubId, saving],
   );
 
   const regenerateInviteCode = useCallback(async () => {
     if (saving) return;
     setSaving(true);
     try {
-      await regenerateClubInviteCode(clubId, 30);
+      const nextInvite = await regenerateClubInviteCode(clubId, 30);
       setStatus({
         type: "success",
         message: "초대 코드가 재발급되었습니다. (30일 유효)",
       });
-      await refresh();
+      setClub((prev) =>
+        prev
+          ? {
+              ...prev,
+              inviteCode: nextInvite.inviteCode,
+              inviteExpiresAt: nextInvite.inviteExpiresAt,
+            }
+          : prev,
+      );
     } catch (error) {
       setStatus({ type: "error", message: toMessage(error) });
     } finally {
       setSaving(false);
     }
-  }, [clubId, refresh, saving]);
+  }, [clubId, saving]);
 
   const removeMember = useCallback(
     async (memberId: string) => {
@@ -113,14 +136,14 @@ export function useClubDetail(clubId: string) {
       try {
         await removeClubMember(clubId, memberId);
         setStatus({ type: "success", message: "멤버를 클럽에서 제외했습니다." });
-        await refresh();
+        setMembers((prev) => prev.filter((member) => member.id !== memberId));
       } catch (error) {
         setStatus({ type: "error", message: toMessage(error) });
       } finally {
         setSaving(false);
       }
     },
-    [clubId, refresh, saving],
+    [clubId, saving],
   );
 
   return {

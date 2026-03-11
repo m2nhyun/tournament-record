@@ -74,11 +74,11 @@ export function MatchConfirmationInboxAction({
                         {item.matchType === "singles" ? "단식" : "복식"} 경기 확인
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {formatPlayedAt(item.playedAt)} · 상세에서 승인 또는 거절
+                        {formatPlayedAt(item.playedAt)} · 내 승인 필요
                       </p>
                     </div>
-                    <span className="text-xs font-medium text-[var(--brand)]">
-                      열기
+                    <span className="rounded-full bg-amber-50 px-2 py-1 text-[10px] font-semibold text-amber-800">
+                      확인 필요
                     </span>
                   </div>
                 </Link>

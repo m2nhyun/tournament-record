@@ -111,6 +111,8 @@ export function ClubDashboard() {
                 <ClubList
                   clubs={clubs}
                   onMoveJoin={() => setActiveTab("join")}
+                  onMoveCreate={() => setActiveTab("create")}
+                  canCreateClub={!isAnonymousUser}
                 />
               </motion.section>
             ) : null}

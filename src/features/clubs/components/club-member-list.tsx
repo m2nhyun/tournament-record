@@ -43,9 +43,11 @@ export function ClubMemberList({
           key={member.id}
           className="rounded-lg border bg-card px-3 py-2.5"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">{member.nickname}</span>
-            <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between gap-2">
+            <span className="min-w-0 truncate text-sm font-medium">
+              {member.nickname}
+            </span>
+            <div className="flex shrink-0 items-center gap-2">
               {member.isMe ? (
                 <Badge variant="warning" className="text-[10px]">
                   나

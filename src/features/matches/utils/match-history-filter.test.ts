@@ -51,6 +51,23 @@ describe("filterMatchesByDateAndOpponent", () => {
     expect(result.map((match) => match.id)).toEqual(["m2"]);
   });
 
+  it("내 팀 이름은 상대 검색에서 제외한다", () => {
+    const result = filterMatchesByDateAndOpponent({
+      matches: [
+        makeMatch({
+          id: "m3",
+          currentUserSide: 1,
+          side1Players: ["도미노"],
+          side2Players: ["알카라스"],
+        }),
+      ],
+      playedOn: "",
+      opponentQuery: "도미노",
+    });
+
+    expect(result).toEqual([]);
+  });
+
   it("날짜+상대 조건을 동시에 적용한다", () => {
     const result = filterMatchesByDateAndOpponent({
       matches,

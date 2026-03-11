@@ -16,9 +16,16 @@ function formatDate(value: string) {
 type ClubListProps = {
   clubs: ClubSummary[];
   onMoveJoin: () => void;
+  onMoveCreate: () => void;
+  canCreateClub: boolean;
 };
 
-export function ClubList({ clubs, onMoveJoin }: ClubListProps) {
+export function ClubList({
+  clubs,
+  onMoveJoin,
+  onMoveCreate,
+  canCreateClub,
+}: ClubListProps) {
   if (clubs.length === 0) {
     return (
       <div className="rounded-xl border-2 border-dashed border-border bg-muted/20 py-12 text-center">
@@ -26,9 +33,17 @@ export function ClubList({ clubs, onMoveJoin }: ClubListProps) {
         <p className="mb-4 text-sm text-muted-foreground">
           참여 중인 클럽이 없습니다.
         </p>
-        <Button variant="outline" onClick={onMoveJoin}>
-          클럽 참가하기
-        </Button>
+        <div className="flex flex-col items-center justify-center gap-2 px-4 sm:flex-row">
+          <Button variant="outline" onClick={onMoveJoin}>
+            초대 링크로 참가
+          </Button>
+          {canCreateClub ? (
+            <Button onClick={onMoveCreate}>새 클럽 만들기</Button>
+          ) : null}
+        </div>
+        <p className="mt-3 text-xs text-muted-foreground">
+          게스트는 참가만 가능하고, 클럽 생성은 정회원만 가능합니다.
+        </p>
       </div>
     );
   }

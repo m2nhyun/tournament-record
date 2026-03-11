@@ -7,7 +7,6 @@ import type { MatchSummary } from "@/features/matches/types/match";
 import {
   compactScoreSummary,
   gameScoreSummary,
-  hasIncompleteRound,
   isMatchScoreConfirmed,
   resultMeta,
   summarizeOutcome,
@@ -29,7 +28,6 @@ function formatDate(value: string) {
 export function MatchCard({ match, viewMode = "card" }: MatchCardProps) {
   const team1 = match.side1Players.join(" · ");
   const team2 = match.side2Players.join(" · ");
-  const hasInProgressRound = hasIncompleteRound(match.setScores);
   const outcome = summarizeOutcome(match.setScores);
   const scoreSummary = gameScoreSummary(match.setScores);
   const result = resultMeta(match, match.setScores);
@@ -74,11 +72,6 @@ export function MatchCard({ match, viewMode = "card" }: MatchCardProps) {
                   {match.matchType === "singles" ? "단식" : "복식"}
                 </span>
                 <MatchStatusBadge status={match.status} />
-                {hasInProgressRound ? (
-                  <span className="rounded bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
-                    미완료 게임 포함
-                  </span>
-                ) : null}
               </div>
               <p className="text-[11px] text-muted-foreground">{formatDate(match.playedAt)}</p>
               {match.setScores.length > 0 ? (

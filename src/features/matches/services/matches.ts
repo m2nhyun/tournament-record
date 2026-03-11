@@ -480,6 +480,9 @@ type MatchRow = {
       | { nickname: string; user_id: string }[]
       | null;
   }[];
+  match_confirmations: {
+    decision: MatchConfirmationDecision;
+  }[];
 };
 
 type PendingConfirmationRow = {
@@ -526,7 +529,7 @@ export async function listClubMatches(clubId: string): Promise<MatchSummary[]> {
   const { data, error } = await getSupabaseClient()
     .from("matches")
     .select(
-      "id,club_id,match_type,status,played_at,created_at,match_results(score_summary,set_scores),match_players(side,club_members(nickname,user_id))",
+      "id,club_id,match_type,status,played_at,created_at,match_results(score_summary,set_scores),match_players(side,club_members(nickname,user_id)),match_confirmations(decision)",
     )
     .eq("club_id", clubId)
     .order("played_at", { ascending: false });
@@ -558,7 +561,10 @@ export async function listClubMatches(clubId: string): Promise<MatchSummary[]> {
       id: row.id,
       clubId: row.club_id,
       matchType: row.match_type as MatchSummary["matchType"],
-      status: row.status as MatchSummary["status"],
+      status: resolveMatchStatus(
+        row.status as MatchSummary["status"],
+        row.match_confirmations ?? [],
+      ),
       playedAt: row.played_at,
       scoreSummary,
       setScores,

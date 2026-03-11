@@ -42,6 +42,10 @@ export function AuthGate({
         <p className="mt-1 text-sm text-muted-foreground">
           카카오 또는 이메일로 계정을 연결하면 기록이 계속 보존됩니다.
         </p>
+        <p className="mt-2 text-xs text-muted-foreground">
+          초대 링크로 게스트 참가도 가능하지만, 클럽 생성과 경기 저장은 정회원만
+          가능합니다.
+        </p>
       </div>
 
       {guestMode ? (
@@ -79,7 +83,7 @@ export function AuthGate({
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-2 pt-1">
+        <div className="grid gap-2 pt-1 sm:grid-cols-2">
           <Button type="submit" disabled={loading}>
             이메일 로그인
           </Button>

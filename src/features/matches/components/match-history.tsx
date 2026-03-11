@@ -42,6 +42,7 @@ export function MatchHistoryView({ clubId }: MatchHistoryViewProps) {
       }),
     [matches, opponentQuery, playedOn],
   );
+  const listResetKey = `${viewMode}:${playedOn}:${opponentQuery}`;
 
   if (loading) {
     return <LoadingSpinner title="로딩 중" message="경기 기록을 불러오는 중..." />;
@@ -71,8 +72,8 @@ export function MatchHistoryView({ clubId }: MatchHistoryViewProps) {
 
         {matches.length > 0 ? (
           <section className="space-y-3 pt-1">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Button
                   type="button"
                   size="sm"
@@ -141,9 +142,9 @@ export function MatchHistoryView({ clubId }: MatchHistoryViewProps) {
               />
             ) : (
               <MatchList
-                key={`${viewMode}:${playedOn}:${opponentQuery}:${filteredMatches.length}`}
                 matches={filteredMatches}
                 viewMode={viewMode}
+                resetKey={listResetKey}
               />
             )}
           </section>

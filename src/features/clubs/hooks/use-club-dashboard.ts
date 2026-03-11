@@ -119,11 +119,7 @@ export function useClubDashboard() {
   useEffect(() => {
     const client = getSupabaseClient();
     const { data: authListener } = client.auth.onAuthStateChange((event) => {
-      if (
-        event === "SIGNED_IN" ||
-        event === "SIGNED_OUT" ||
-        event === "TOKEN_REFRESHED"
-      ) {
+      if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
         void refreshClubs();
       }
     });

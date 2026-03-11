@@ -102,9 +102,9 @@ describe("match-helpers", () => {
       { set: 1, side1: 4, side2: 6, gamesToWin: 6 },
     ]);
 
-    expect(pending.label).toBe("기록됨");
+    expect(pending.label).toBe("미확정");
     expect(pending.listBgClass).toBe("bg-background");
-    expect(disputed.label).toBe("재검토");
+    expect(disputed.label).toBe("미확정");
     expect(disputed.listBgClass).toBe("bg-background");
   });
 

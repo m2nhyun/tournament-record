@@ -6,6 +6,7 @@ import {
   Pencil,
   PlusCircle,
   RefreshCw,
+  Share2,
   Users,
 } from "lucide-react";
 import { useCallback, useState } from "react";
@@ -45,17 +46,52 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
     regenerateInviteCode,
     removeMember,
   } = useClubDetail(clubId);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<"code" | "link" | null>(null);
   const [openNameDialog, setOpenNameDialog] = useState(false);
 
   const copyInviteCode = useCallback(async () => {
     if (!club) return;
     try {
       await navigator.clipboard.writeText(club.inviteCode);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setCopied("code");
+      setTimeout(() => setCopied(null), 2000);
     } catch {
       /* clipboard not available */
+    }
+  }, [club]);
+
+  const copyInviteLink = useCallback(async () => {
+    if (!club) return;
+    try {
+      const inviteLink = `${window.location.origin}/join/${club.inviteCode}`;
+      await navigator.clipboard.writeText(inviteLink);
+      setCopied("link");
+      setTimeout(() => setCopied(null), 2000);
+    } catch {
+      /* clipboard not available */
+    }
+  }, [club]);
+
+  const shareInviteLink = useCallback(async () => {
+    if (!club) return;
+    const inviteLink = `${window.location.origin}/join/${club.inviteCode}`;
+    const shareText = `${club.name} 클럽 초대 링크입니다.`;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: `${club.name} 초대`,
+          text: shareText,
+          url: inviteLink,
+        });
+        return;
+      }
+
+      await navigator.clipboard.writeText(inviteLink);
+      setCopied("link");
+      setTimeout(() => setCopied(null), 2000);
+    } catch {
+      /* share dismissed or clipboard unavailable */
     }
   }, [club]);
 
@@ -89,6 +125,10 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
         actions={<ClubSwitcherAction />}
       />
       <div className="space-y-6 px-4">
+        {status ? (
+          <StatusBox type={status.type} message={status.message} />
+        ) : null}
+
         <Card>
           <CardHeader>
             <div className="flex items-start justify-between gap-2">
@@ -116,8 +156,8 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
                 연필 아이콘을 눌러 클럽 이름을 수정할 수 있습니다.
               </div>
             ) : null}
-            <div className="flex items-center justify-between">
-              <div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
                 <p className="text-xs text-muted-foreground">참가 코드</p>
                 <p className="font-mono text-sm font-semibold tracking-wider">
                   {club.inviteCode}
@@ -126,14 +166,30 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
                   유효기간: {new Date(club.inviteExpiresAt).toLocaleDateString("ko-KR")}
                 </p>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => void copyInviteCode()}
                 >
                   <Copy className="size-3.5" />
-                  {copied ? "복사됨" : "코드 복사"}
+                  {copied === "code" ? "복사됨" : "코드 복사"}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void copyInviteLink()}
+                >
+                  <Copy className="size-3.5" />
+                  {copied === "link" ? "링크 복사됨" : "링크 복사"}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void shareInviteLink()}
+                >
+                  <Share2 className="size-3.5" />
+                  링크 공유
                 </Button>
                 {club.myRole === "owner" ? (
                   <Button
