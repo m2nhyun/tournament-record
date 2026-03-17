@@ -22,6 +22,7 @@ import { ClubSwitcherAction } from "@/components/layout/club-switcher-action";
 import { ClubMemberList } from "@/features/clubs/components/club-member-list";
 import { ClubNameEditModal } from "@/features/clubs/components/club-name-edit-modal";
 import { useClubDetail } from "@/features/clubs/hooks/use-club-detail";
+import { ClubScheduleList } from "@/features/schedules/components/club-schedule-list";
 
 type ClubDetailViewProps = {
   clubId: string;
@@ -208,7 +209,7 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
         </Card>
 
         {club.myRole !== "guest" ? (
-          <div className="flex gap-2">
+          <div className="grid gap-2 sm:grid-cols-2">
             <Button
               className="flex-1 bg-[var(--brand)] text-white hover:opacity-90"
               asChild
@@ -217,8 +218,15 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
                 <PlusCircle className="size-4" />새 경기 기록
               </Link>
             </Button>
+            <Button variant="outline" className="flex-1" asChild>
+              <Link href={`/clubs/${clubId}/matches/new?mode=schedule`}>
+                <PlusCircle className="size-4" />일정 잡기
+              </Link>
+            </Button>
           </div>
         ) : null}
+
+        <ClubScheduleList clubId={clubId} myRole={club.myRole} />
 
         <section className="space-y-3">
           <h2 className="flex items-center gap-2 text-lg font-semibold">

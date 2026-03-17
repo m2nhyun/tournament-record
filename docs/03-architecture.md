@@ -18,6 +18,7 @@
   - `auth`: 세션/로그인/로그아웃 책임
   - `clubs`: 클럽/멤버/초대 흐름
   - `matches`: 경기 생성/상세/히스토리
+  - `schedules`: 일정 생성/모집/참가
   - `leaderboard`: 전적 집계
 - `src/components/layout`: `AppShell`, `AppBar`, `BottomNav`
 - `src/components/feedback`: 로딩/상태/빈 상태 컴포넌트
@@ -44,6 +45,12 @@
 - `match_confirmations`
   - 상대 팀 확인 대상/승인 상태(`pending | approved | rejected`)
   - 상대 확인이 있어야 `matches.status = confirmed`
+- `match_schedules`
+  - 경기 기록과 분리된 일정/모집 엔티티
+  - 복식 타입(`men_doubles | women_doubles | open_doubles`), 일정 시각, 장소, 비용, 정원 관리
+- `match_schedule_participants`
+  - 일정 참가자 목록
+  - 개설자는 일정 생성 시 자동 참가
 - `audit_logs`
   - 운영/변경 추적 로그
 
@@ -65,7 +72,11 @@
   - 생성: `owner/manager/member`만
   - 수정/결과 수정: `owner/manager/생성자`
   - 결과 확정: 확인 대상 전원의 승인 필요
-  - 게스트: 조회/참가만, 생성/수정 불가
+  - 게스트: 경기 조회/참가만, 생성/수정 불가
+- 일정 권한:
+  - 일정 생성: `owner/manager/member`만
+  - 일정 참가: active 클럽 멤버면 가능(게스트 포함)
+  - 생성자는 자동 참가되며, 정원/마감 상태는 DB 함수로 보정
 
 ## UI Layout Contract
 

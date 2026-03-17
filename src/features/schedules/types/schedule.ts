@@ -1,0 +1,44 @@
+export type MatchScheduleFormat =
+  | "men_doubles"
+  | "women_doubles"
+  | "open_doubles";
+
+export type MatchScheduleStatus = "open" | "full" | "cancelled";
+
+export type MatchScheduleCreationData = {
+  format: MatchScheduleFormat;
+  scheduledAt: string;
+  location: string;
+  courtFee: number;
+  ballFee: number;
+  capacity: number;
+  notes: string;
+};
+
+export type MatchScheduleParticipant = {
+  clubMemberId: string;
+  nickname: string;
+  joinedAt: string;
+  isHost: boolean;
+  isMe: boolean;
+};
+
+export type MatchScheduleSummary = {
+  id: string;
+  clubId: string;
+  format: MatchScheduleFormat;
+  status: MatchScheduleStatus;
+  scheduledAt: string;
+  location: string;
+  courtFee: number;
+  ballFee: number;
+  capacity: number;
+  notes: string;
+  hostMemberId: string;
+  hostNickname: string;
+  participantCount: number;
+  remainingSlots: number;
+  isHost: boolean;
+  isParticipant: boolean;
+  participants: MatchScheduleParticipant[];
+};

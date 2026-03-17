@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import {
+  CalendarClock,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -25,10 +26,12 @@ import {
   useMatchCreation,
   type CreationStep,
 } from "@/features/matches/hooks/use-match-creation";
+import { MatchScheduleForm } from "@/features/schedules/components/match-schedule-form";
 
 type MatchCreationFormProps = {
   clubId: string;
   matchId?: string;
+  initialMode?: "record" | "schedule";
 };
 
 const stepLabels: Record<CreationStep, string> = {
@@ -43,7 +46,11 @@ const stepNumbers: Record<CreationStep, number> = {
   score: 3,
 };
 
-export function MatchCreationForm({ clubId, matchId }: MatchCreationFormProps) {
+export function MatchCreationForm({
+  clubId,
+  matchId,
+  initialMode = "record",
+}: MatchCreationFormProps) {
   const {
     step,
     members,
@@ -83,6 +90,9 @@ export function MatchCreationForm({ clubId, matchId }: MatchCreationFormProps) {
     deleteCurrentMatch,
   } = useMatchCreation(clubId, matchId);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [mode, setMode] = useState<"record" | "schedule">(
+    matchId ? "record" : initialMode,
+  );
 
   const side1Label =
     side1Ids
@@ -144,13 +154,13 @@ export function MatchCreationForm({ clubId, matchId }: MatchCreationFormProps) {
     );
   }
 
-  if (loadingMembers) {
+  if (mode === "record" && loadingMembers) {
     return (
       <LoadingSpinner title="로딩 중" message="멤버 정보를 불러오는 중..." />
     );
   }
 
-  if (!canCreateAnyMatch) {
+  if (mode === "record" && !canCreateAnyMatch) {
     return (
       <div className="mx-auto w-full max-w-xl space-y-4">
         <AppBar
@@ -172,7 +182,7 @@ export function MatchCreationForm({ clubId, matchId }: MatchCreationFormProps) {
     );
   }
 
-  if (!canRecordMatch) {
+  if (mode === "record" && !canRecordMatch) {
     return (
       <div className="mx-auto w-full max-w-xl space-y-4">
         <AppBar
@@ -197,157 +207,183 @@ export function MatchCreationForm({ clubId, matchId }: MatchCreationFormProps) {
   return (
     <div className="mx-auto w-full max-w-xl space-y-4">
       <AppBar
-        title={isEditMode ? "경기 수정" : "새 경기 기록"}
+        title={isEditMode ? "경기 수정" : "새 경기"}
         showBack={false}
       />
       <div className="space-y-4 px-4">
-        {/* Step indicator */}
-        <div className="flex items-center gap-2">
-          {(["type", "players", "score"] as CreationStep[]).map((s, i) => (
-            <div key={s} className="flex items-center gap-2">
-              {i > 0 ? <div className="h-px w-4 bg-border" /> : null}
-              <div
-                className={`flex size-7 items-center justify-center rounded-full text-xs font-semibold ${
-                  stepNumbers[step] >= stepNumbers[s]
-                    ? "bg-[var(--brand)] text-white"
-                    : "bg-muted text-muted-foreground"
-                }`}
-              >
-                {stepNumbers[s]}
-              </div>
-              <span
-                className={`text-xs ${
-                  step === s
-                    ? "font-semibold text-foreground"
-                    : "text-muted-foreground"
-                }`}
-              >
-                {stepLabels[s]}
-              </span>
+        {!isEditMode ? (
+          <div className="grid grid-cols-2 gap-2 rounded-2xl border bg-muted/20 p-1">
+            <Button
+              type="button"
+              variant={mode === "record" ? "default" : "outline"}
+              className={mode === "record" ? "bg-[var(--brand)] text-white hover:opacity-90" : "border-0"}
+              onClick={() => setMode("record")}
+            >
+              경기 기록
+            </Button>
+            <Button
+              type="button"
+              variant={mode === "schedule" ? "default" : "outline"}
+              className={mode === "schedule" ? "bg-[var(--brand)] text-white hover:opacity-90" : "border-0"}
+              onClick={() => setMode("schedule")}
+            >
+              <CalendarClock className="size-4" />
+              일정 잡기
+            </Button>
+          </div>
+        ) : null}
+
+        {mode === "record" ? (
+          <>
+            <div className="flex items-center gap-2">
+              {(["type", "players", "score"] as CreationStep[]).map((s, i) => (
+                <div key={s} className="flex items-center gap-2">
+                  {i > 0 ? <div className="h-px w-4 bg-border" /> : null}
+                  <div
+                    className={`flex size-7 items-center justify-center rounded-full text-xs font-semibold ${
+                      stepNumbers[step] >= stepNumbers[s]
+                        ? "bg-[var(--brand)] text-white"
+                        : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {stepNumbers[s]}
+                  </div>
+                  <span
+                    className={`text-xs ${
+                      step === s
+                        ? "font-semibold text-foreground"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {stepLabels[s]}
+                  </span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
 
-        {status ? (
-          <StatusBox type={status.type} message={status.message} />
-        ) : null}
+            {status ? (
+              <StatusBox type={status.type} message={status.message} />
+            ) : null}
 
-        {isEditMode && loadedMatchStatus === "disputed" ? (
-          <StatusBox
-            type="info"
-            message="이 경기는 재검토 상태입니다. 점수나 선수 구성을 수정해 다시 저장하면 상대에게 새 확인 요청이 전송됩니다."
-          />
-        ) : null}
-
-        <Card>
-          <CardHeader>
-            <CardTitle>{stepLabels[step]}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {step === "type" ? (
-              <MatchTypeSelector
-                matchType={matchType}
-                playedAt={playedAt}
-                canUseDoubles={canUseDoubles}
-                onChangeType={setMatchType}
-                onChangeDate={setPlayedAt}
+            {isEditMode && loadedMatchStatus === "disputed" ? (
+              <StatusBox
+                type="info"
+                message="이 경기는 재검토 상태입니다. 점수나 선수 구성을 수정해 다시 저장하면 상대에게 새 확인 요청이 전송됩니다."
               />
             ) : null}
 
-            {step === "players" ? (
-              <PlayerSelector
-                members={members}
-                side1Ids={side1Ids}
-                side2Ids={side2Ids}
-                requiredPerSide={requiredPerSide}
-                onToggle={togglePlayer}
-              />
-            ) : null}
+            <Card>
+              <CardHeader>
+                <CardTitle>{stepLabels[step]}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {step === "type" ? (
+                  <MatchTypeSelector
+                    matchType={matchType}
+                    playedAt={playedAt}
+                    canUseDoubles={canUseDoubles}
+                    onChangeType={setMatchType}
+                    onChangeDate={setPlayedAt}
+                  />
+                ) : null}
 
-            {step === "score" ? (
-              <ScoreInput
-                setScores={setScores}
-                onUpdate={updateSetScore}
-                onAddSet={addSet}
-                onRemoveLastSet={removeLastSet}
-                onRemoveSet={removeSet}
-                gamesToWin={gamesToWin}
-                onChangeGamesToWin={setGamesToWin}
-                side1Label={side1Label}
-                side2Label={side2Label}
-              />
-            ) : null}
-          </CardContent>
-        </Card>
+                {step === "players" ? (
+                  <PlayerSelector
+                    members={members}
+                    side1Ids={side1Ids}
+                    side2Ids={side2Ids}
+                    requiredPerSide={requiredPerSide}
+                    onToggle={togglePlayer}
+                  />
+                ) : null}
 
-        {/* Navigation buttons */}
-        <div className="flex gap-2">
-          {step !== "type" ? (
-            <Button variant="outline" className="flex-1" onClick={goBack}>
-              <ChevronLeft className="size-4" />
-              이전
-            </Button>
-          ) : null}
+                {step === "score" ? (
+                  <ScoreInput
+                    setScores={setScores}
+                    onUpdate={updateSetScore}
+                    onAddSet={addSet}
+                    onRemoveLastSet={removeLastSet}
+                    onRemoveSet={removeSet}
+                    gamesToWin={gamesToWin}
+                    onChangeGamesToWin={setGamesToWin}
+                    side1Label={side1Label}
+                    side2Label={side2Label}
+                  />
+                ) : null}
+              </CardContent>
+            </Card>
 
-          {step === "type" ? (
-            <Button
-              className="w-full bg-[var(--brand)] text-white hover:opacity-90"
-              disabled={!canGoToPlayers}
-              onClick={goToPlayers}
-            >
-              다음
-              <ChevronRight className="size-4" />
-            </Button>
-          ) : null}
+            <div className="flex gap-2">
+              {step !== "type" ? (
+                <Button variant="outline" className="flex-1" onClick={goBack}>
+                  <ChevronLeft className="size-4" />
+                  이전
+                </Button>
+              ) : null}
 
-          {step === "players" ? (
-            <Button
-              className="flex-1 bg-[var(--brand)] text-white hover:opacity-90"
-              disabled={!canGoToScore}
-              onClick={goToScore}
-            >
-              다음
-              <ChevronRight className="size-4" />
-            </Button>
-          ) : null}
+              {step === "type" ? (
+                <Button
+                  className="w-full bg-[var(--brand)] text-white hover:opacity-90"
+                  disabled={!canGoToPlayers}
+                  onClick={goToPlayers}
+                >
+                  다음
+                  <ChevronRight className="size-4" />
+                </Button>
+              ) : null}
 
-          {step === "score" ? (
-            isEditMode && setScores.length === 0 ? (
-              <Button
-                className="flex-1 border-red-200 text-red-600 hover:bg-red-50"
-                variant="outline"
-                disabled={deleting}
-                onClick={() => setOpenDeleteDialog(true)}
-              >
-                {deleting ? (
-                  <Loader2 className="size-4 animate-spin" />
+              {step === "players" ? (
+                <Button
+                  className="flex-1 bg-[var(--brand)] text-white hover:opacity-90"
+                  disabled={!canGoToScore}
+                  onClick={goToScore}
+                >
+                  다음
+                  <ChevronRight className="size-4" />
+                </Button>
+              ) : null}
+
+              {step === "score" ? (
+                isEditMode && setScores.length === 0 ? (
+                  <Button
+                    className="flex-1 border-red-200 text-red-600 hover:bg-red-50"
+                    variant="outline"
+                    disabled={deleting}
+                    onClick={() => setOpenDeleteDialog(true)}
+                  >
+                    {deleting ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="size-4" />
+                    )}
+                    경기 삭제
+                  </Button>
                 ) : (
-                  <Trash2 className="size-4" />
-                )}
-                경기 삭제
-              </Button>
-            ) : (
-              <Button
-                className="flex-1 bg-[var(--brand)] text-white hover:opacity-90"
-                disabled={!canSubmit || submitting}
-                onClick={() => void submit()}
-              >
-                {submitting ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <Check className="size-4" />
-                )}
-                {submitting
-                  ? isEditMode
-                    ? "수정 중..."
-                    : "저장 중..."
-                  : isEditMode
-                    ? "경기 수정"
-                    : "경기 저장"}
-              </Button>
-            )
-          ) : null}
-        </div>
+                  <Button
+                    className="flex-1 bg-[var(--brand)] text-white hover:opacity-90"
+                    disabled={!canSubmit || submitting}
+                    onClick={() => void submit()}
+                  >
+                    {submitting ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Check className="size-4" />
+                    )}
+                    {submitting
+                      ? isEditMode
+                        ? "수정 중..."
+                        : "저장 중..."
+                      : isEditMode
+                        ? "경기 수정"
+                        : "경기 저장"}
+                  </Button>
+                )
+              ) : null}
+            </div>
+          </>
+        ) : (
+          <MatchScheduleForm clubId={clubId} />
+        )}
       </div>
 
       <Modal
