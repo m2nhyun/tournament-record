@@ -94,6 +94,17 @@ export function useMatchScheduleCreation(clubId: string) {
   const canCreateSchedule = canRecordMatchByRole(myMembership);
   const participantCount = 1;
   const remainingSlots = Math.max(0, Number(capacity || "0") - participantCount);
+  const totalFee = Number(courtFee || "0") + Number(ballFee || "0");
+  const estimatedFeePerPerson =
+    Number.isFinite(totalFee) && Number(capacity) > 0
+      ? Math.ceil(totalFee / Number(capacity))
+      : 0;
+
+  useEffect(() => {
+    if (status?.type === "error") {
+      setStatus(null);
+    }
+  }, [ballFee, capacity, courtFee, date, format, location, notes, status, time]);
 
   const submit = useCallback(async () => {
     if (submitting) return;
@@ -105,6 +116,15 @@ export function useMatchScheduleCreation(clubId: string) {
 
     if (!date || !time) {
       setStatus({ type: "error", message: "날짜와 시간을 모두 선택해주세요." });
+      return;
+    }
+
+    const scheduledAt = new Date(`${date}T${time}:00`);
+    if (Number.isNaN(scheduledAt.getTime())) {
+      setStatus({
+        type: "error",
+        message: "선택한 날짜 또는 시간이 올바르지 않습니다. 다시 확인해주세요.",
+      });
       return;
     }
 
@@ -147,7 +167,7 @@ export function useMatchScheduleCreation(clubId: string) {
     try {
       const payload: MatchScheduleCreationData = {
         format,
-        scheduledAt: new Date(`${date}T${time}:00`).toISOString(),
+        scheduledAt: scheduledAt.toISOString(),
         location: normalizedLocation,
         courtFee: normalizedCourtFee,
         ballFee: normalizedBallFee,
@@ -204,6 +224,7 @@ export function useMatchScheduleCreation(clubId: string) {
     setNotes,
     participantCount,
     remainingSlots,
+    estimatedFeePerPerson,
     submit,
   };
 }
