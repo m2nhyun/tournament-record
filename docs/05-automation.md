@@ -6,6 +6,7 @@
 
 자동화됨:
 - 코드 품질 체크(`lint`, `build`)
+- `cmux browser` 기반 페이지 스모크 체크
 - Supabase 연결 스모크 체크
 - Supabase 마이그레이션 dry-run / apply
 - GitHub Actions CI(푸시/PR 시 자동 검증)
@@ -58,6 +59,7 @@ export SUPABASE_DB_URL='postgresql://postgres:<password>@db.<project-ref>.supaba
 ## 명령어
 
 ```bash
+npm run browser:check   # cmux browser로 페이지 접속/스냅샷 확인
 npm run env:check        # 앱 필수 env 확인
 npm run db:smoke         # Supabase 연결 스모크 체크
 npm run db:push:dry      # 원격 DB 반영 예정 마이그레이션 확인
@@ -69,10 +71,26 @@ npm run automation:check # env + smoke + verify 일괄 실행
 ## 권장 실행 순서
 
 1. `npm run env:check`
-2. `npm run db:smoke`
-3. `npm run db:push:dry`
-4. `npm run db:push`
-5. `npm run verify`
+2. `npm run browser:check` (UI/라우트 변경 시)
+3. `npm run db:smoke`
+4. `npm run db:push:dry`
+5. `npm run db:push`
+6. `npm run verify`
+
+## Browser QA (cmux)
+
+- 기본 브라우저 QA는 `cmux browser`를 사용한다.
+- 기본 대상은 `http://localhost:3000`이고, 필요 시 아래 env로 작업 라우트를 지정한다.
+
+```bash
+CMUX_BROWSER_URL=http://localhost:3000/clubs/<clubId>/schedules/<scheduleId> \
+CMUX_BROWSER_EXPECT_TEXT="참가자" \
+npm run browser:check
+```
+
+- 스크립트는 현재 cmux workspace의 browser surface를 재사용하고, 없으면 새 surface를 만든다.
+- 확인 결과로 workspace, surface, title, url, compact snapshot을 출력한다.
+- 인증이나 fixture가 없어 목표 라우트를 완전히 재현하지 못하면, 그 blocker를 작업 결과에 명시한다.
 
 ## Temporary Policy (Manual DB Migration)
 
@@ -121,3 +139,14 @@ npm run automation:check # env + smoke + verify 일괄 실행
   - `docs/09-keep-rules.md`
   - `docs/10-history-ui-guidelines.md`
   - `docs/04-dev-log.md`
+
+## Schema Change Notice
+
+- 아래 항목이 바뀌면 작업 종료 시 사용자에게 명시적으로 알린다.
+  - `supabase/migrations/*.sql`
+  - `supabase/schema.sql`
+  - RPC / RLS / enum / trigger / index
+- 보고 형식은 최소 아래를 포함한다.
+  - 스키마 변경 있음/없음
+  - 변경 파일
+  - 사용자 수동 반영 필요 여부

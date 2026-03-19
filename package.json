@@ -10,6 +10,7 @@
     "test:watch": "vitest",
     "lint": "eslint",
     "verify": "npm run lint && npm run build",
+    "browser:check": "bash scripts/automation/cmux-browser-check.sh",
     "env:check": "bash scripts/automation/check-env.sh",
     "db:smoke": "bash scripts/automation/smoke-db.sh",
     "db:push:dry": "bash scripts/automation/db-push.sh --dry-run",

@@ -42,3 +42,8 @@ export type MatchScheduleSummary = {
   isParticipant: boolean;
   participants: MatchScheduleParticipant[];
 };
+
+export type MatchScheduleDetail = MatchScheduleSummary & {
+  linkedMatchId: string | null;
+  estimatedFeePerPerson: number;
+};

@@ -187,9 +187,11 @@
 1. 관련 테스트 실행
 2. `npm run lint`
 3. 필요 시 `npm run build`
-4. 문서 갱신
+4. UI/라우트 변경 시 `cmux browser` 기반 페이지 확인
+5. 문서 갱신
 
 검증을 하지 못했다면 이유를 명확히 남긴다.
+브라우저 확인이 막히면 왜 재현이 막혔는지(예: 로그인/fixture 부재, cmux 미연결)를 사용자에게 바로 남긴다.
 
 ## 7. Documentation Management Rules
 
@@ -277,6 +279,7 @@
 npm run test
 npm run lint
 npm run build
+npm run browser:check
 ```
 
 운영/자동화 관련:
@@ -291,6 +294,16 @@ npm run automation:check
 주의:
 - DB 마이그레이션은 dry-run을 우선한다.
 - 운영 기준 실제 반영은 문서화된 수동 절차를 따른다.
+- UI/라우트 변경 후에는 `cmux browser`로 실제 페이지 접속까지 확인한다.
+- `npm run browser:check`는 기본적으로 `http://localhost:3000`을 확인하고, 필요 시 아래 env로 대상 라우트를 바꾼다.
+
+```bash
+CMUX_BROWSER_URL=http://localhost:3000/clubs/<clubId>/schedules/<scheduleId> \
+CMUX_BROWSER_EXPECT_TEXT="참가자" \
+npm run browser:check
+```
+
+- `supabase/migrations/*.sql`, `supabase/schema.sql`, RPC/RLS/enum/trigger/index 변경이 있으면 작업 종료 시 사용자에게 “스키마 변경 있음”을 명시적으로 알린다.
 
 ## 9. Change Checklists
 

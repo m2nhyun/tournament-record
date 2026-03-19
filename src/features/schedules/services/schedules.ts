@@ -4,6 +4,7 @@ import { mapScheduleError } from "@/features/schedules/services/schedule-error";
 
 import type {
   MatchScheduleCreationData,
+  MatchScheduleDetail,
   MatchScheduleParticipant,
   MatchScheduleSummary,
 } from "@/features/schedules/types/schedule";
@@ -14,6 +15,7 @@ type ScheduleRow = {
   host_member_id: string;
   format: MatchScheduleSummary["format"];
   status: MatchScheduleSummary["status"];
+  linked_match_id: string | null;
   scheduled_at: string;
   location: string;
   court_fee: number;
@@ -40,6 +42,43 @@ function pickOne<T>(value: T | T[] | null | undefined): T | null {
   if (!value) return null;
   if (Array.isArray(value)) return value[0] ?? null;
   return value;
+}
+
+function toScheduleSummary(
+  row: ScheduleRow,
+  userId: string,
+  participantMap: Map<string, MatchScheduleParticipant[]>,
+): MatchScheduleSummary {
+  const host = pickOne(row.host_member);
+  const participantsForSchedule = (participantMap.get(row.id) ?? []).map(
+    (participant) => ({
+      ...participant,
+      isHost: participant.clubMemberId === row.host_member_id,
+    }),
+  );
+  const participantCount = participantsForSchedule.length;
+
+  return {
+    id: row.id,
+    clubId: row.club_id,
+    format: row.format,
+    status: row.status,
+    scheduledAt: row.scheduled_at,
+    location: row.location,
+    courtFee: row.court_fee,
+    ballFee: row.ball_fee,
+    capacity: row.capacity,
+    notes: row.notes,
+    hostMemberId: row.host_member_id,
+    hostNickname: host?.nickname ?? "알 수 없음",
+    participantCount,
+    remainingSlots: Math.max(0, row.capacity - participantCount),
+    isHost:
+      row.host_member_id ===
+      participantsForSchedule.find((item) => item.isMe)?.clubMemberId,
+    isParticipant: participantsForSchedule.some((participant) => participant.isMe),
+    participants: participantsForSchedule,
+  } satisfies MatchScheduleSummary;
 }
 
 export async function createMatchSchedule(
@@ -106,6 +145,7 @@ export async function listUpcomingMatchSchedules(
       host_member_id,
       format,
       status,
+      linked_match_id,
       scheduled_at,
       location,
       court_fee,
@@ -161,34 +201,89 @@ export async function listUpcomingMatchSchedules(
     participantMap.set(row.schedule_id, group);
   });
 
-  return scheduleRows.map((row) => {
-    const host = pickOne(row.host_member);
-    const participantsForSchedule = (participantMap.get(row.id) ?? []).map(
-      (participant) => ({
-        ...participant,
-        isHost: participant.clubMemberId === row.host_member_id,
-      }),
-    );
-    const participantCount = participantsForSchedule.length;
+  return scheduleRows.map((row) => toScheduleSummary(row, user.id, participantMap));
+}
 
-    return {
-      id: row.id,
-      clubId: row.club_id,
-      format: row.format,
-      status: row.status,
-      scheduledAt: row.scheduled_at,
-      location: row.location,
-      courtFee: row.court_fee,
-      ballFee: row.ball_fee,
-      capacity: row.capacity,
-      notes: row.notes,
-      hostMemberId: row.host_member_id,
-      hostNickname: host?.nickname ?? "알 수 없음",
-      participantCount,
-      remainingSlots: Math.max(0, row.capacity - participantCount),
-      isHost: row.host_member_id === participantsForSchedule.find((item) => item.isMe)?.clubMemberId,
-      isParticipant: participantsForSchedule.some((participant) => participant.isMe),
-      participants: participantsForSchedule,
-    } satisfies MatchScheduleSummary;
+export async function getMatchScheduleDetail(
+  clubId: string,
+  scheduleId: string,
+): Promise<MatchScheduleDetail> {
+  const user = await requireUser();
+  const supabase = getSupabaseClient();
+
+  const { data: schedule, error: scheduleError } = await supabase
+    .from("match_schedules")
+    .select(
+      `
+      id,
+      club_id,
+      host_member_id,
+      format,
+      status,
+      linked_match_id,
+      scheduled_at,
+      location,
+      court_fee,
+      ball_fee,
+      capacity,
+      notes,
+      host_member:club_members!match_schedules_host_member_id_fkey(id,nickname,user_id)
+    `,
+    )
+    .eq("id", scheduleId)
+    .eq("club_id", clubId)
+    .single();
+
+  if (scheduleError || !schedule) {
+    throw mapScheduleError(scheduleError ?? new Error("일정을 찾을 수 없습니다."));
+  }
+
+  const { data: participants, error: participantError } = await supabase
+    .from("match_schedule_participants")
+    .select(
+      `
+      schedule_id,
+      club_member_id,
+      created_at,
+      member:club_members!match_schedule_participants_club_member_id_fkey(id,nickname,user_id)
+    `,
+    )
+    .eq("schedule_id", scheduleId)
+    .order("created_at", { ascending: true });
+
+  if (participantError) throw mapScheduleError(participantError);
+
+  const participantMap = new Map<string, MatchScheduleParticipant[]>();
+
+  ((participants ?? []) as ParticipantRow[]).forEach((row) => {
+    const member = pickOne(row.member);
+    if (!member) return;
+
+    const nextParticipant: MatchScheduleParticipant = {
+      clubMemberId: row.club_member_id,
+      nickname: member.nickname,
+      joinedAt: row.created_at,
+      isHost: false,
+      isMe: member.user_id === user.id,
+    };
+
+    const group = participantMap.get(row.schedule_id) ?? [];
+    group.push(nextParticipant);
+    participantMap.set(row.schedule_id, group);
   });
+
+  const summary = toScheduleSummary(
+    schedule as ScheduleRow,
+    user.id,
+    participantMap,
+  );
+  const totalFee = summary.courtFee + summary.ballFee;
+  const estimatedFeePerPerson =
+    summary.capacity > 0 ? Math.ceil(totalFee / summary.capacity) : 0;
+
+  return {
+    ...summary,
+    linkedMatchId: (schedule as ScheduleRow).linked_match_id,
+    estimatedFeePerPerson,
+  };
 }

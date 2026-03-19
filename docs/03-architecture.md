@@ -14,6 +14,7 @@
   - `/auth/callback`: OAuth 콜백
   - `/join/[inviteCode]`: 원클릭 초대 링크 참가
   - `/clubs/[clubId]/*`: 클럽 상세/히스토리/리더보드/경기
+  - `/clubs/[clubId]/schedules/[scheduleId]`: 일정 상세/참가 현황
 - `src/features/*`: 기능 단위 모듈 (components/hooks/services/types)
   - `auth`: 세션/로그인/로그아웃 책임
   - `clubs`: 클럽/멤버/초대 흐름

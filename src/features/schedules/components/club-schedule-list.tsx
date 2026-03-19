@@ -125,7 +125,12 @@ export function ClubScheduleList({ clubId, myRole }: ClubScheduleListProps) {
                     ))}
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Button variant="outline" className="flex-1" asChild>
+                      <Link href={`/clubs/${clubId}/schedules/${schedule.id}`}>
+                        상세 보기
+                      </Link>
+                    </Button>
                     {canJoin ? (
                       <Button
                         className="flex-1 bg-[var(--brand)] text-white hover:opacity-90"
