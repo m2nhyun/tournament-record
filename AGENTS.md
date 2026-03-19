@@ -379,6 +379,179 @@ npm run automation:check
   - 출력물 기대치
   - 충돌 가능한 기존 규칙
 
+#### Default Agent Roles
+
+현재 이 저장소의 기본 커스텀 서브에이전트는 `.codex/agents/` 아래 TOML로 관리한다.
+역할은 겹치지 않게 두고, 같은 파일을 여러 에이전트가 동시에 수정하지 않는 것을 원칙으로 한다.
+
+- `impl`
+  - 역할: 기능 코드를 작성하고 수정하는 유일한 구현 주체
+  - 책임 범위: `src/features/*`, `src/components/*`, 필요 시 관련 `src/app/*`
+  - 먼저 읽을 것: `AGENTS.md` 3장, `docs/03-architecture.md`, 대상 코드
+  - 해야 할 것:
+    - 기존 패턴을 먼저 확인하고 그 패턴을 따른다
+    - 타입/서비스/UI/카피에서 용어를 통일한다
+    - 서비스 계층 권한 체크와 경기 상태 전이 규칙을 유지한다
+  - 하면 안 되는 것:
+    - `docs/*.md` 직접 수정
+    - SQL 필요 여부를 단독 결정
+    - 게스트 권한 확대
+    - 광범위한 `try/catch`, silent failure 삽입
+  - 출력물 기대치:
+    - 변경된 `src/` 파일 목록
+    - 변경 이유 한 줄 요약
+    - `DB/RLS impact: yes/no`
+
+- `db-review`
+  - 역할: Supabase schema/RLS/RPC/trigger 영향 병렬 검토
+  - 책임 범위: `supabase/schema.sql`, `supabase/migrations/*.sql`, 권한 모델 검토
+  - 먼저 읽을 것: `supabase/schema.sql`, 최근 migration, `docs/03-architecture.md`, `docs/05-automation.md`
+  - 해야 할 것:
+    - impl 결과를 기준으로 DB 영향 여부를 판정한다
+    - 필요하면 migration 초안을 제안한다
+    - 프론트만 수정되고 DB가 빠진 상태를 플래그한다
+  - 하면 안 되는 것:
+    - 운영 DB 직접 반영
+    - 게스트/RLS 완화 방향의 단독 결정
+    - `src/` 코드 직접 수정
+  - 출력물 기대치:
+    - `impact 없음` 또는 `impact 있음`
+    - 필요 SQL 초안과 영향받는 정책 목록
+    - `docs/03-architecture.md`, `docs/05-automation.md` 갱신 플래그
+
+- `ux`
+  - 역할: 디자인 시스템과 UX 가이드라인을 기준으로 UI를 구현
+  - 책임 범위: 컴포넌트 구조, 상호작용, 표시 우선순위
+  - 먼저 읽을 것: `docs/02-design-system.md`, `docs/10-history-ui-guidelines.md`, `src/app/globals.css`, `AGENTS.md` 3.4/3.5
+  - 해야 할 것:
+    - `AppBar + content(px-4)` 레이아웃 유지
+    - 편집은 연필 아이콘 + 모달/다이얼로그 패턴 유지
+    - 테니스 디자인 토큰을 우선 사용
+    - 320px 모바일 기준 표시를 확인한다
+  - 하면 안 되는 것:
+    - 인라인 편집 폼 추가
+    - 임의 색상 하드코딩
+    - `AppShell`에 페이지 패딩 책임 추가
+  - 출력물 기대치:
+    - 변경된 컴포넌트 파일 목록
+    - 320px 확인 여부
+    - 토큰 이탈 여부
+    - `docs/02-design-system.md` / `docs/10-history-ui-guidelines.md` 갱신 플래그
+
+- `doc-sync`
+  - 역할: 구현 결과를 문서로 동기화하고 용어 정합성을 유지
+  - 책임 범위: `docs/*.md`, 필요 시 `README.md`
+  - 먼저 읽을 것: `AGENTS.md` 7장, 7.2 매트릭스, impl/ux/db-review 결과 요약
+  - 해야 할 것:
+    - 변경 유형에 따라 갱신 대상 문서를 결정한다
+    - 의미 있는 변경은 항상 `docs/04-dev-log.md`에 기록한다
+    - 문서 간 용어 충돌과 stale backlog를 찾는다
+  - 하면 안 되는 것:
+    - `src/`, `supabase/` 코드 수정
+    - 문서 갱신을 후순위로 미루기
+  - 출력물 기대치:
+    - 갱신된 문서 목록과 요약
+    - 검토했지만 수정하지 않은 문서와 이유
+    - 용어 불일치 리포트
+
+- `qa`
+  - 역할: 테스트/린트/빌드/DB smoke 결과를 해석해 블로킹 여부를 판정
+  - 책임 범위: 검증 실행과 판정, 수정은 하지 않음
+  - 해야 할 것:
+    - `npm run test`
+    - `npm run lint`
+    - `npm run build`
+    - DB 변경 시 `npm run db:smoke`
+    - 실패를 타입/린트/빌드/테스트/DB로 분류하고 담당을 지정한다
+  - 하면 안 되는 것:
+    - 소스 코드 직접 수정
+    - 실패를 묵인하거나 우회
+  - 출력물 기대치:
+    - `통과` 또는 `블로킹`
+    - 블로킹이면 에러 유형, 위치, 담당 에이전트
+    - 통과면 다음 단계 진행 가능 신호
+
+#### Agent Team Flow
+
+기본 흐름은 아래 순서를 따른다.
+
+```text
+작업 시작
+  ├─ impl      코드 작성/수정
+  ├─ db-review DB/RLS 영향 병렬 확인
+  ├─ ux        UI/UX 전용 수정이 있을 때 병렬 또는 후속 투입
+  ├─ doc-sync  문서 영향 반영
+  └─ qa        검증 및 블로킹 판정
+```
+
+운영 규칙:
+- 구현 파일 편집은 가능한 한 `impl` 또는 `ux` 중 한 에이전트만 맡는다.
+- `db-review`는 권한, 상태 전이, RPC, migration 가능성이 있는 작업에서 반드시 병행한다.
+- `doc-sync`는 구현이 끝난 뒤가 아니라 변경 범위가 드러나는 즉시 병행 검토할 수 있다.
+- `qa`는 직접 수정하지 않고 실패 원인을 분류해 구현 역할로 되돌린다.
+- 서브에이전트 호출 시에는 역할, 책임 범위, 읽어야 할 문서, 출력물 기대치를 함께 준다.
+
+#### Prompt Templates
+
+실제 호출용 템플릿은 `.codex/subagent-prompts.md`에 둔다.
+
+- 목적:
+  - 에이전트별 고정 프롬프트 틀을 재사용해 호출 품질을 일정하게 유지
+  - 작업 목표, 읽을 문서, 수정 가능 범위, 출력 형식을 빠뜨리지 않게 강제
+- 사용 규칙:
+  - 먼저 템플릿을 복사한 뒤 작업 범위와 파일 경로만 채워 넣는다
+  - `impl`와 `ux`는 동시에 같은 파일을 수정하지 않는다
+  - DB/RLS 리스크가 조금이라도 있으면 `db-review` 템플릿을 같이 사용한다
+  - 의미 있는 변경이면 `doc-sync`, 구현 완료 후에는 `qa` 템플릿을 기본 후속 단계로 붙인다
+- 기본 참조 문서:
+  - `.codex/subagent-prompts.md`
+  - `.codex/agents/*.toml`
+
+#### Default Startup Protocol
+
+이 저장소에서는 사용자가 매번 “impl를 써라”, “db-review를 붙여라” 같은 지시를 반복하지 않아도 된다.
+Codex는 이 저장소에서 작업 요청을 받으면 아래 절차를 기본 동작으로 간주한다.
+
+기본 원칙:
+- 먼저 관련 코드와 문서를 병렬로 읽고 영향 범위를 정리한다.
+- 그 다음 작업 성격에 맞는 서브에이전트 조합을 스스로 선택한다.
+- 구현, 문서, 검증을 한 묶음 작업으로 본다.
+- 같은 파일은 한 시점에 하나의 구현 에이전트만 수정한다.
+
+자동 분해 규칙:
+- 기본 기능 변경
+  - `impl -> doc-sync -> qa`
+- 권한, 상태 전이, RPC, migration, schema 영향 가능성이 있으면
+  - `impl + db-review -> doc-sync -> qa`
+- 순수 UI/UX 변경이면
+  - `ux -> doc-sync -> qa`
+- UI와 서비스가 함께 바뀌면
+  - 탐색 후 `impl`를 기본 실행자로 두고, UI 비중이 큰 경우에만 `ux`를 별도 후속으로 붙인다
+
+자동 판단 기준:
+- 아래 중 하나라도 해당하면 `db-review`를 기본 병행 대상으로 본다.
+  - 경기 상태 `submitted`, `confirmed`, `disputed` 처리 변경
+  - 멤버 역할, 게스트 권한, owner/manager/member/guest 정책 변경
+  - RPC, RLS, trigger, enum, index, migration 가능성
+  - 프론트 동작은 바뀌는데 저장/조회/권한의 DB 해석도 달라질 가능성
+- 아래 중 하나라도 해당하면 `doc-sync`를 기본 후속 단계로 본다.
+  - 사용자에게 보이는 기능/카피/UI 변경
+  - 권한 정책 변경
+  - DB 구조나 운영 절차 변경
+  - 용어 변경
+- 의미 있는 구현 변경이 끝나면 `qa`를 기본 후속 단계로 본다.
+
+사용자 요청 해석 규칙:
+- 사용자가 단순히 기능 수정을 요청하면, Codex는 먼저 위 기본 프로토콜을 적용한다.
+- 사용자가 명시적으로 역할 분리를 금지하지 않는 한, 병렬 탐색과 역할 분리를 허용된 기본값으로 본다.
+- 사용자가 “그냥 바로 고쳐”라고 말해도, 최소한의 병렬 탐색과 필요한 문서/검증 단계는 생략하지 않는다.
+- 사용자가 특정 역할만 지정해도, 블로킹 위험이 있으면 `db-review`, `doc-sync`, `qa` 필요성을 다시 판단한다.
+
+시작 시 행동 규칙:
+- `codex -C /Users/minhyun/Desktop/tournament-record`로 세션이 시작되면 이 `AGENTS.md`를 기본 작업 프로토콜로 해석한다.
+- 별도 프롬프트가 없더라도, 첫 실질 작업 요청부터 위 자동 분해 규칙을 적용한다.
+- 호출 문구는 자유서술이어도 되며, Codex가 `.codex/subagent-prompts.md` 템플릿에 맞춰 내부적으로 정리해 사용한다.
+
 ### 12.2 Stage 2: Agent Teams / Parallel Work
 
 목표:
