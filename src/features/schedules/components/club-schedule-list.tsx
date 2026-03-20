@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useClubSchedules } from "@/features/schedules/hooks/use-club-schedules";
 import {
-  formatScheduleDateTime,
+  formatScheduleDateTimeRange,
   formatWon,
   scheduleFormatLabels,
   scheduleStatusLabels,
@@ -83,12 +83,18 @@ export function ClubScheduleList({ clubId, myRole }: ClubScheduleListProps) {
                     <Badge>
                       {scheduleStatusLabels[schedule.status]}
                     </Badge>
+                    {!schedule.hostParticipates ? (
+                      <Badge variant="warning">개설자 미포함</Badge>
+                    ) : null}
                     <span className="text-xs text-muted-foreground">
                       개설 {schedule.hostNickname}
                     </span>
                   </div>
                   <CardTitle className="text-base">
-                    {formatScheduleDateTime(schedule.scheduledAt)}
+                    {formatScheduleDateTimeRange(
+                      schedule.scheduledAt,
+                      schedule.endsAt,
+                    )}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
@@ -117,12 +123,18 @@ export function ClubScheduleList({ clubId, myRole }: ClubScheduleListProps) {
                   </div>
 
                   <div className="flex flex-wrap gap-2">
-                    {schedule.participants.map((participant) => (
-                      <Badge key={participant.clubMemberId}>
-                        {participant.nickname}
-                        {participant.isHost ? " · 개설자" : ""}
-                      </Badge>
-                    ))}
+                    {schedule.participants.length > 0 ? (
+                      schedule.participants.map((participant) => (
+                        <Badge key={participant.clubMemberId}>
+                          {participant.nickname}
+                          {participant.isHost ? " · 개설자" : ""}
+                        </Badge>
+                      ))
+                    ) : (
+                      <span className="text-sm text-muted-foreground">
+                        아직 참가자가 없습니다.
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex flex-col gap-2 sm:flex-row">

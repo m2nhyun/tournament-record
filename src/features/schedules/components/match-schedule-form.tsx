@@ -40,21 +40,30 @@ const scheduleFormats: MatchScheduleFormat[] = [
   "open_doubles",
 ];
 
-function formatSchedulePreview(date: string, time: string) {
-  if (!date || !time) return "날짜와 시간을 선택해주세요.";
+function formatSchedulePreview(date: string, startTime: string, endTime: string) {
+  if (!date || !startTime || !endTime) return "날짜와 시간을 선택해주세요.";
 
-  const value = new Date(`${date}T${time}:00`);
-  if (Number.isNaN(value.getTime())) {
+  const startValue = new Date(`${date}T${startTime}:00`);
+  const endValue = new Date(`${date}T${endTime}:00`);
+  if (
+    Number.isNaN(startValue.getTime()) ||
+    Number.isNaN(endValue.getTime()) ||
+    endValue.getTime() <= startValue.getTime()
+  ) {
     return "선택한 일정 정보를 다시 확인해주세요.";
   }
 
-  return new Intl.DateTimeFormat("ko-KR", {
+  const dateLabel = new Intl.DateTimeFormat("ko-KR", {
     month: "long",
     day: "numeric",
     weekday: "short",
+  }).format(startValue);
+  const timeLabel = new Intl.DateTimeFormat("ko-KR", {
     hour: "numeric",
     minute: "2-digit",
-  }).format(value);
+  });
+
+  return `${dateLabel} ${timeLabel.format(startValue)} ~ ${timeLabel.format(endValue)}`;
 }
 
 function getQuickDateOptions() {
@@ -93,8 +102,11 @@ export function MatchScheduleForm({ clubId }: MatchScheduleFormProps) {
     setFormat,
     date,
     setDate,
-    time,
-    setTime,
+    selectedTimeSlots,
+    toggleTimeSlot,
+    startTime,
+    endTime,
+    setSelectedTimeSlots,
     location,
     setLocation,
     courtFee,
@@ -103,6 +115,12 @@ export function MatchScheduleForm({ clubId }: MatchScheduleFormProps) {
     setBallFee,
     capacity,
     setCapacity,
+    includeCourtFee,
+    setIncludeCourtFee,
+    includeBallFee,
+    setIncludeBallFee,
+    includeHost,
+    setIncludeHost,
     notes,
     setNotes,
     participantCount,
@@ -118,10 +136,12 @@ export function MatchScheduleForm({ clubId }: MatchScheduleFormProps) {
   }, []);
   const quickDateOptions = useMemo(() => getQuickDateOptions(), []);
   const schedulePreview = useMemo(
-    () => formatSchedulePreview(date, time),
-    [date, time],
+    () => formatSchedulePreview(date, startTime, endTime),
+    [date, startTime, endTime],
   );
-  const totalFee = Number(courtFee || "0") + Number(ballFee || "0");
+  const totalFee =
+    (includeCourtFee ? Number(courtFee || "0") : 0) +
+    (includeBallFee ? Number(ballFee || "0") : 0);
   const feeSummary =
     Number.isFinite(totalFee) && totalFee > 0
       ? `${formatWon(totalFee)} 예상, 1인 약 ${formatWon(estimatedFeePerPerson)}`
@@ -259,16 +279,6 @@ export function MatchScheduleForm({ clubId }: MatchScheduleFormProps) {
                 }}
                 disabled={{ before: minSelectableDate }}
               />
-              <div className="rounded-xl border bg-muted/20 p-3 text-sm">
-                <div className="flex items-center gap-2 font-medium">
-                  <CalendarClock className="size-4 text-[var(--brand)]" />
-                  {schedulePreview}
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  한 번에 한 일정만 열어두고 바로 공유할 수 있게 단일 일정 생성
-                  흐름으로 유지합니다.
-                </p>
-              </div>
             </div>
 
             <div className="grid gap-2">
@@ -278,27 +288,43 @@ export function MatchScheduleForm({ clubId }: MatchScheduleFormProps) {
                   <Button
                     key={option}
                     type="button"
-                    variant={time === option ? "default" : "outline"}
+                    variant={
+                      selectedTimeSlots.includes(option) ? "default" : "outline"
+                    }
                     className={
-                      time === option
+                      selectedTimeSlots.includes(option)
                         ? "bg-[var(--brand)] text-white hover:opacity-90"
                         : ""
                     }
-                    onClick={() => setTime(option)}
+                    onClick={() => toggleTimeSlot(option)}
                   >
                     <Clock3 className="size-3.5" />
                     {option}
                   </Button>
                 ))}
               </div>
+              <p className="text-xs text-muted-foreground">
+                시간 슬롯을 연속으로 눌러 범위를 만듭니다. 예를 들어 `12:00`,
+                `13:00`을 고르면 `12:00 ~ 14:00`로 저장됩니다. 이미 선택한
+                끝 슬롯을 다시 누르면 범위가 줄어듭니다.
+              </p>
               <div className="grid gap-2 rounded-2xl border bg-muted/20 p-3">
-                <Label htmlFor="schedule-time">직접 시간 입력</Label>
+                <Label htmlFor="schedule-time">직접 시작 시간 입력</Label>
                 <Input
                   id="schedule-time"
                   type="time"
-                  value={time}
-                  onChange={(event) => setTime(event.target.value)}
+                  data-testid="schedule-time-input"
+                  value={startTime}
+                  onChange={(event) =>
+                    setSelectedTimeSlots(
+                      event.target.value ? [event.target.value] : [],
+                    )
+                  }
                 />
+                <p className="text-xs text-muted-foreground">
+                  직접 입력 시 1시간 일정으로 시작하고, 이후 옆 시간대를 눌러 범위를
+                  늘릴 수 있습니다.
+                </p>
               </div>
             </div>
           </div>
@@ -326,35 +352,67 @@ export function MatchScheduleForm({ clubId }: MatchScheduleFormProps) {
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
-              <Label htmlFor="schedule-court-fee">코트 비용</Label>
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input
+                  type="checkbox"
+                  checked={includeCourtFee}
+                  onChange={(event) => {
+                    setIncludeCourtFee(event.target.checked);
+                    if (!event.target.checked) setCourtFee("0");
+                  }}
+                />
+                코트 비용 포함
+              </label>
               <Input
                 id="schedule-court-fee"
                 type="number"
                 min="0"
                 inputMode="numeric"
                 value={courtFee}
+                disabled={!includeCourtFee}
                 onChange={(event) => setCourtFee(event.target.value)}
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="schedule-ball-fee">캔볼 가격</Label>
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input
+                  type="checkbox"
+                  checked={includeBallFee}
+                  onChange={(event) => {
+                    setIncludeBallFee(event.target.checked);
+                    if (!event.target.checked) setBallFee("0");
+                  }}
+                />
+                캔볼 가격 포함
+              </label>
               <Input
                 id="schedule-ball-fee"
                 type="number"
                 min="0"
                 inputMode="numeric"
                 value={ballFee}
+                disabled={!includeBallFee}
                 onChange={(event) => setBallFee(event.target.value)}
               />
             </div>
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="schedule-capacity">모집 인원</Label>
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <input
+                type="checkbox"
+                checked={includeHost}
+                onChange={(event) => setIncludeHost(event.target.checked)}
+              />
+              본인 포함
+            </label>
+            <Label htmlFor="schedule-capacity">
+              모집 인원 {includeHost ? "(개설자 포함)" : "(개설자 제외)"}
+            </Label>
             <Input
               id="schedule-capacity"
               type="number"
-              min="2"
+              min={includeHost ? "2" : "1"}
               max="8"
               inputMode="numeric"
               value={capacity}
@@ -364,19 +422,30 @@ export function MatchScheduleForm({ clubId }: MatchScheduleFormProps) {
               <div className="flex items-center justify-between gap-3">
                 <span className="inline-flex items-center gap-2 text-muted-foreground">
                   <Users className="size-4" />
-                  본인 포함 {participantCount}명
+                  {includeHost ? "개설자 포함 시작" : "개설자 제외 시작"} {participantCount}
+                  명
                 </span>
                 <span className="font-semibold">
                   남은 자리 {remainingSlots}명
                 </span>
               </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                {includeHost
+                  ? "체크 상태에서는 개설자가 자동 참가자로 포함됩니다."
+                  : "체크를 끄면 개설자는 운영자로만 남고, 입력한 정원 전체를 모집 인원으로 사용합니다."}
+              </p>
             </div>
           </div>
 
           <div className="rounded-xl border border-dashed p-3 text-sm text-muted-foreground">
-            코트 {formatWon(Number(courtFee || "0"))} + 캔볼{" "}
-            {formatWon(Number(ballFee || "0"))}
+            코트 {formatWon(includeCourtFee ? Number(courtFee || "0") : 0)} +
+            캔볼 {formatWon(includeBallFee ? Number(ballFee || "0") : 0)}
             <div className="mt-1 font-medium text-foreground">{feeSummary}</div>
+            {!includeHost && totalFee > 0 ? (
+              <div className="mt-1 text-xs">
+                개설자 제외 기준 인당 비용을 바로 보여줍니다.
+              </div>
+            ) : null}
           </div>
 
           <div className="grid gap-2">
@@ -407,6 +476,7 @@ export function MatchScheduleForm({ clubId }: MatchScheduleFormProps) {
               <p className="text-xs text-muted-foreground">복식 타입 / 정원</p>
               <p className="mt-1 font-medium">
                 {scheduleFormatLabels[format]} · 총 {capacity || "0"}명
+                {includeHost ? " (개설자 포함)" : " (개설자 제외)"}
               </p>
             </div>
             <div className="rounded-xl border bg-muted/20 p-3">
@@ -427,8 +497,9 @@ export function MatchScheduleForm({ clubId }: MatchScheduleFormProps) {
               생성 후 바로 적용되는 내용
             </div>
             <p className="mt-2 text-muted-foreground">
-              개설자는 자동 참가 처리되고, 클럽 홈 upcoming 일정 카드에서 참가/취소와
-              남은 자리 수가 바로 갱신됩니다.
+              {includeHost
+                ? "개설자는 자동 참가 처리되고, 클럽 홈 upcoming 일정 카드에서 참가/취소와 남은 자리 수가 바로 갱신됩니다."
+                : "개설자는 운영자로만 생성되고, 클럽 홈 upcoming 일정 카드에서 모집 인원과 남은 자리 수가 바로 갱신됩니다."}
             </p>
           </div>
         </CardContent>
@@ -439,7 +510,11 @@ export function MatchScheduleForm({ clubId }: MatchScheduleFormProps) {
           <MapPin className="size-4" />
           생성 즉시 반영되는 규칙
         </div>
-        <p className="mt-2">개설자는 자동으로 참가자 1명으로 포함됩니다.</p>
+        <p className="mt-2">
+          {includeHost
+            ? "개설자는 자동으로 참가자 1명으로 포함됩니다."
+            : "개설자는 운영자로 남고, 참가자 목록에는 자동 포함되지 않습니다."}
+        </p>
         <p className="mt-1">
           정회원은 일정 생성이 가능하고, 게스트는 생성된 일정에 참가만
           가능합니다.

@@ -17,6 +17,7 @@ type ScheduleRow = {
   status: MatchScheduleSummary["status"];
   linked_match_id: string | null;
   scheduled_at: string;
+  ends_at: string;
   location: string;
   court_fee: number;
   ball_fee: number;
@@ -46,7 +47,6 @@ function pickOne<T>(value: T | T[] | null | undefined): T | null {
 
 function toScheduleSummary(
   row: ScheduleRow,
-  userId: string,
   participantMap: Map<string, MatchScheduleParticipant[]>,
 ): MatchScheduleSummary {
   const host = pickOne(row.host_member);
@@ -57,6 +57,9 @@ function toScheduleSummary(
     }),
   );
   const participantCount = participantsForSchedule.length;
+  const hostParticipates = participantsForSchedule.some(
+    (participant) => participant.clubMemberId === row.host_member_id,
+  );
 
   return {
     id: row.id,
@@ -64,6 +67,7 @@ function toScheduleSummary(
     format: row.format,
     status: row.status,
     scheduledAt: row.scheduled_at,
+    endsAt: row.ends_at,
     location: row.location,
     courtFee: row.court_fee,
     ballFee: row.ball_fee,
@@ -71,11 +75,10 @@ function toScheduleSummary(
     notes: row.notes,
     hostMemberId: row.host_member_id,
     hostNickname: host?.nickname ?? "알 수 없음",
+    hostParticipates,
     participantCount,
     remainingSlots: Math.max(0, row.capacity - participantCount),
-    isHost:
-      row.host_member_id ===
-      participantsForSchedule.find((item) => item.isMe)?.clubMemberId,
+    isHost: false,
     isParticipant: participantsForSchedule.some((participant) => participant.isMe),
     participants: participantsForSchedule,
   } satisfies MatchScheduleSummary;
@@ -98,10 +101,12 @@ export async function createMatchSchedule(
       p_club_id: clubId,
       p_format: data.format,
       p_scheduled_at: data.scheduledAt,
+      p_ends_at: data.endsAt,
       p_location: data.location.trim(),
       p_court_fee: data.courtFee,
       p_ball_fee: data.ballFee,
       p_capacity: data.capacity,
+      p_include_host: data.includeHost,
       p_notes: data.notes.trim(),
     },
   );
@@ -147,6 +152,7 @@ export async function listUpcomingMatchSchedules(
       status,
       linked_match_id,
       scheduled_at,
+      ends_at,
       location,
       court_fee,
       ball_fee,
@@ -201,7 +207,13 @@ export async function listUpcomingMatchSchedules(
     participantMap.set(row.schedule_id, group);
   });
 
-  return scheduleRows.map((row) => toScheduleSummary(row, user.id, participantMap));
+  return scheduleRows.map((row) => {
+    const summary = toScheduleSummary(row, participantMap);
+    return {
+      ...summary,
+      isHost: pickOne(row.host_member)?.user_id === user.id,
+    };
+  });
 }
 
 export async function getMatchScheduleDetail(
@@ -222,6 +234,7 @@ export async function getMatchScheduleDetail(
       status,
       linked_match_id,
       scheduled_at,
+      ends_at,
       location,
       court_fee,
       ball_fee,
@@ -272,17 +285,14 @@ export async function getMatchScheduleDetail(
     participantMap.set(row.schedule_id, group);
   });
 
-  const summary = toScheduleSummary(
-    schedule as ScheduleRow,
-    user.id,
-    participantMap,
-  );
+  const summary = toScheduleSummary(schedule as ScheduleRow, participantMap);
   const totalFee = summary.courtFee + summary.ballFee;
   const estimatedFeePerPerson =
     summary.capacity > 0 ? Math.ceil(totalFee / summary.capacity) : 0;
 
   return {
     ...summary,
+    isHost: pickOne((schedule as ScheduleRow).host_member)?.user_id === user.id,
     linkedMatchId: (schedule as ScheduleRow).linked_match_id,
     estimatedFeePerPerson,
   };

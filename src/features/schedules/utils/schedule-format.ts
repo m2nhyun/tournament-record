@@ -28,3 +28,20 @@ export function formatScheduleDateTime(value: string) {
     minute: "2-digit",
   }).format(new Date(value));
 }
+
+export function formatScheduleDateTimeRange(start: string, end: string) {
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+
+  const dateLabel = new Intl.DateTimeFormat("ko-KR", {
+    month: "long",
+    day: "numeric",
+    weekday: "short",
+  }).format(startDate);
+  const timeLabel = new Intl.DateTimeFormat("ko-KR", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+  return `${dateLabel} ${timeLabel.format(startDate)} ~ ${timeLabel.format(endDate)}`;
+}

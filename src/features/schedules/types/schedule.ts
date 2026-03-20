@@ -8,10 +8,12 @@ export type MatchScheduleStatus = "open" | "full" | "cancelled";
 export type MatchScheduleCreationData = {
   format: MatchScheduleFormat;
   scheduledAt: string;
+  endsAt: string;
   location: string;
   courtFee: number;
   ballFee: number;
   capacity: number;
+  includeHost: boolean;
   notes: string;
 };
 
@@ -29,6 +31,7 @@ export type MatchScheduleSummary = {
   format: MatchScheduleFormat;
   status: MatchScheduleStatus;
   scheduledAt: string;
+  endsAt: string;
   location: string;
   courtFee: number;
   ballFee: number;
@@ -36,6 +39,7 @@ export type MatchScheduleSummary = {
   notes: string;
   hostMemberId: string;
   hostNickname: string;
+  hostParticipates: boolean;
   participantCount: number;
   remainingSlots: number;
   isHost: boolean;

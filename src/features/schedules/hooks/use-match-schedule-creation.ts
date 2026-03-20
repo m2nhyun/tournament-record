@@ -27,6 +27,75 @@ function futureDateString() {
   return value.toISOString().slice(0, 10);
 }
 
+function timeToMinutes(value: string) {
+  const [hours, minutes] = value.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+function minutesToTime(value: number) {
+  const hours = Math.floor(value / 60)
+    .toString()
+    .padStart(2, "0");
+  const minutes = (value % 60).toString().padStart(2, "0");
+  return `${hours}:${minutes}`;
+}
+
+function addMinutes(value: string, amount: number) {
+  return minutesToTime(timeToMinutes(value) + amount);
+}
+
+function sortTimes(values: string[]) {
+  return [...values].sort((left, right) => timeToMinutes(left) - timeToMinutes(right));
+}
+
+function buildSlotRange(start: string, end: string) {
+  const slots: string[] = [];
+  let current = timeToMinutes(start);
+  const last = timeToMinutes(end);
+
+  while (current <= last) {
+    slots.push(minutesToTime(current));
+    current += 60;
+  }
+
+  return slots;
+}
+
+function toggleTimeSlot(current: string[], slot: string) {
+  const sorted = sortTimes(current);
+
+  if (sorted.length === 0) return [slot];
+
+  if (sorted.length === 1) {
+    if (slot === sorted[0]) return [];
+    if (Math.abs(timeToMinutes(slot) - timeToMinutes(sorted[0])) === 60) {
+      return buildSlotRange(sortTimes([sorted[0], slot])[0], sortTimes([sorted[0], slot])[1]);
+    }
+    return [slot];
+  }
+
+  if (!sorted.includes(slot)) {
+    const startMinutes = timeToMinutes(sorted[0]);
+    const endMinutes = timeToMinutes(sorted[sorted.length - 1]);
+    const slotMinutes = timeToMinutes(slot);
+
+    if (slotMinutes === startMinutes - 60) {
+      return [slot, ...sorted];
+    }
+
+    if (slotMinutes === endMinutes + 60) {
+      return [...sorted, slot];
+    }
+
+    return [slot];
+  }
+
+  if (slot === sorted[0]) return sorted.slice(1);
+  if (slot === sorted[sorted.length - 1]) return sorted.slice(0, -1);
+
+  return buildSlotRange(sorted[0], addMinutes(slot, -60));
+}
+
 export const suggestedScheduleTimes = [
   "06:00",
   "07:00",
@@ -56,12 +125,15 @@ export function useMatchScheduleCreation(clubId: string) {
 
   const [format, setFormat] = useState<MatchScheduleFormat>("open_doubles");
   const [date, setDate] = useState(futureDateString());
-  const [time, setTime] = useState("19:00");
+  const [selectedTimeSlots, setSelectedTimeSlots] = useState<string[]>(["19:00"]);
   const [location, setLocation] = useState("");
   const [courtFee, setCourtFee] = useState("0");
   const [ballFee, setBallFee] = useState("0");
   const [capacity, setCapacity] = useState("4");
   const [notes, setNotes] = useState("");
+  const [includeCourtFee, setIncludeCourtFee] = useState(true);
+  const [includeBallFee, setIncludeBallFee] = useState(true);
+  const [includeHost, setIncludeHost] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -92,35 +164,60 @@ export function useMatchScheduleCreation(clubId: string) {
     [members],
   );
   const canCreateSchedule = canRecordMatchByRole(myMembership);
-  const participantCount = 1;
-  const remainingSlots = Math.max(0, Number(capacity || "0") - participantCount);
-  const totalFee = Number(courtFee || "0") + Number(ballFee || "0");
+  const participantCount = includeHost ? 1 : 0;
+  const normalizedCapacity = Number(capacity || "0");
+  const remainingSlots = Math.max(0, normalizedCapacity - participantCount);
+  const timeSlots = sortTimes(selectedTimeSlots);
+  const startTime = timeSlots[0] ?? "";
+  const endTime =
+    timeSlots.length > 0 ? addMinutes(timeSlots[timeSlots.length - 1], 60) : "";
+  const totalFee =
+    (includeCourtFee ? Number(courtFee || "0") : 0) +
+    (includeBallFee ? Number(ballFee || "0") : 0);
   const estimatedFeePerPerson =
-    Number.isFinite(totalFee) && Number(capacity) > 0
-      ? Math.ceil(totalFee / Number(capacity))
+    Number.isFinite(totalFee) && normalizedCapacity > 0
+      ? Math.ceil(totalFee / normalizedCapacity)
       : 0;
 
   useEffect(() => {
     if (status?.type === "error") {
       setStatus(null);
     }
-  }, [ballFee, capacity, courtFee, date, format, location, notes, status, time]);
+  }, [
+    ballFee,
+    capacity,
+    courtFee,
+    date,
+    format,
+    includeBallFee,
+    includeCourtFee,
+    includeHost,
+    location,
+    notes,
+    selectedTimeSlots,
+    status,
+  ]);
 
   const submit = useCallback(async () => {
     if (submitting) return;
 
     const normalizedLocation = location.trim();
     const normalizedCapacity = Number(capacity);
-    const normalizedCourtFee = Number(courtFee || "0");
-    const normalizedBallFee = Number(ballFee || "0");
+    const normalizedCourtFee = includeCourtFee ? Number(courtFee || "0") : 0;
+    const normalizedBallFee = includeBallFee ? Number(ballFee || "0") : 0;
 
-    if (!date || !time) {
+    if (!date || timeSlots.length === 0) {
       setStatus({ type: "error", message: "날짜와 시간을 모두 선택해주세요." });
       return;
     }
 
-    const scheduledAt = new Date(`${date}T${time}:00`);
-    if (Number.isNaN(scheduledAt.getTime())) {
+    const scheduledAt = new Date(`${date}T${startTime}:00`);
+    const endsAt = new Date(`${date}T${endTime}:00`);
+    if (
+      Number.isNaN(scheduledAt.getTime()) ||
+      Number.isNaN(endsAt.getTime()) ||
+      endsAt.getTime() <= scheduledAt.getTime()
+    ) {
       setStatus({
         type: "error",
         message: "선택한 날짜 또는 시간이 올바르지 않습니다. 다시 확인해주세요.",
@@ -168,17 +265,21 @@ export function useMatchScheduleCreation(clubId: string) {
       const payload: MatchScheduleCreationData = {
         format,
         scheduledAt: scheduledAt.toISOString(),
+        endsAt: endsAt.toISOString(),
         location: normalizedLocation,
         courtFee: normalizedCourtFee,
         ballFee: normalizedBallFee,
         capacity: normalizedCapacity,
+        includeHost,
         notes: notes.trim(),
       };
       const scheduleId = await createMatchSchedule(clubId, payload);
       setCreatedScheduleId(scheduleId);
       setStatus({
         type: "success",
-        message: "일정을 만들었고, 개설자로 자동 참가되었습니다.",
+        message: includeHost
+          ? "일정을 만들었고, 개설자로 자동 참가되었습니다."
+          : "일정을 만들었습니다. 개설자는 참가 인원에서 제외된 상태로 시작합니다.",
       });
     } catch (error) {
       setStatus({ type: "error", message: toMessage(error) });
@@ -192,11 +293,16 @@ export function useMatchScheduleCreation(clubId: string) {
     courtFee,
     date,
     format,
+    includeBallFee,
+    includeCourtFee,
+    includeHost,
     location,
     notes,
     participantCount,
+    startTime,
     submitting,
-    time,
+    timeSlots,
+    endTime,
   ]);
 
   return {
@@ -210,8 +316,12 @@ export function useMatchScheduleCreation(clubId: string) {
     setFormat,
     date,
     setDate,
-    time,
-    setTime,
+    selectedTimeSlots: timeSlots,
+    setSelectedTimeSlots,
+    toggleTimeSlot: (slot: string) =>
+      setSelectedTimeSlots((current) => toggleTimeSlot(current, slot)),
+    startTime,
+    endTime,
     location,
     setLocation,
     courtFee,
@@ -220,6 +330,12 @@ export function useMatchScheduleCreation(clubId: string) {
     setBallFee,
     capacity,
     setCapacity,
+    includeCourtFee,
+    setIncludeCourtFee,
+    includeBallFee,
+    setIncludeBallFee,
+    includeHost,
+    setIncludeHost,
     notes,
     setNotes,
     participantCount,

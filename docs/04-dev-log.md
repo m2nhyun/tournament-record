@@ -35,6 +35,13 @@
 - `scripts/automation/cmux-browser-check.sh`와 `npm run browser:check`를 추가해 로컬 페이지 접속, title/url 확인, compact snapshot 출력을 자동화
 - 스키마 변경 작업이 있으면 종료 시 사용자에게 변경 파일과 수동 반영 필요 여부를 명시적으로 알리는 규칙을 추가
 
+### Schedule Creation UX Refinement
+
+- 일정 생성 화면에서 캘린더 선택 강조를 더 강하게 주고, 시간 선택을 연속 슬롯 기반 범위로 확장
+- 코트비, 캔볼 가격, `본인 포함`을 체크 기반으로 전환하고 기본값은 모두 체크 상태로 유지
+- `본인 포함`을 끄면 개설자는 운영자로만 남고 참가자에 자동 포함되지 않도록 `create_match_schedule` RPC와 프론트 로직을 함께 수정
+- 일정 카드/상세에 `개설자 미포함` 상태를 노출하고, 인당 예상 비용 안내를 더 명확하게 정리
+
 ## 2026-03-17
 
 ### Match Schedule MVP

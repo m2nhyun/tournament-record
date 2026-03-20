@@ -48,10 +48,10 @@
   - 상대 확인이 있어야 `matches.status = confirmed`
 - `match_schedules`
   - 경기 기록과 분리된 일정/모집 엔티티
-  - 복식 타입(`men_doubles | women_doubles | open_doubles`), 일정 시각, 장소, 비용, 정원 관리
+  - 복식 타입(`men_doubles | women_doubles | open_doubles`), 시작/종료 시각, 장소, 비용, 정원 관리
 - `match_schedule_participants`
   - 일정 참가자 목록
-  - 개설자는 일정 생성 시 자동 참가
+  - 개설자는 기본적으로 자동 참가하지만, `본인 포함`을 끄면 운영자만 유지 가능
 - `audit_logs`
   - 운영/변경 추적 로그
 
@@ -77,7 +77,8 @@
 - 일정 권한:
   - 일정 생성: `owner/manager/member`만
   - 일정 참가: active 클럽 멤버면 가능(게스트 포함)
-  - 생성자는 자동 참가되며, 정원/마감 상태는 DB 함수로 보정
+  - 생성자는 기본적으로 자동 참가되며, `본인 포함` 옵션을 끄면 참가자에 자동 포함되지 않는다
+  - 정원/마감 상태는 DB 함수로 보정
 
 ## UI Layout Contract
 

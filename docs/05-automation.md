@@ -128,6 +128,15 @@ npm run browser:check
 - 확인 대상 승인/거절 상태(`pending | approved | rejected`) 도입
 - 상대 확인 기반 경기 확정 흐름 지원
 
+5. `20260319185807_update_match_schedule_host_toggle.sql`
+- 일정 생성 RPC에 `본인 포함` 옵션 추가
+- 개설자를 자동 참가자로 넣을지 여부를 일정 생성 시 결정
+
+6. `20260319194000_add_match_schedule_end_time.sql`
+- 일정 엔티티에 종료 시각(`ends_at`) 추가
+- 일정 생성 RPC가 시작/종료 시각을 함께 받도록 확장
+- 시간 슬롯 다중 선택 기반 범위 저장 지원
+
 ## Match Confirmation Operations
 
 - 경기 저장 직후 기본 상태는 `submitted`다.

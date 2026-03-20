@@ -16,7 +16,7 @@ import {
   leaveMatchSchedule,
 } from "@/features/schedules/services/schedules";
 import {
-  formatScheduleDateTime,
+  formatScheduleDateTimeRange,
   formatWon,
   scheduleFormatLabels,
   scheduleStatusLabels,
@@ -115,12 +115,18 @@ export function MatchScheduleDetailView({
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="brand">{scheduleFormatLabels[schedule.format]}</Badge>
               <Badge>{scheduleStatusLabels[schedule.status]}</Badge>
+              {!schedule.hostParticipates ? (
+                <Badge variant="warning">개설자 미포함</Badge>
+              ) : null}
               <span className="text-xs text-muted-foreground">
                 개설 {schedule.hostNickname}
               </span>
             </div>
             <CardTitle className="text-lg">
-              {formatScheduleDateTime(schedule.scheduledAt)}
+              {formatScheduleDateTimeRange(
+                schedule.scheduledAt,
+                schedule.endsAt,
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -161,13 +167,19 @@ export function MatchScheduleDetailView({
                 참가자
               </p>
               <div className="flex flex-wrap gap-2">
-                {schedule.participants.map((participant) => (
-                  <Badge key={participant.clubMemberId}>
-                    {participant.nickname}
-                    {participant.isHost ? " · 개설자" : ""}
-                    {participant.isMe ? " · 나" : ""}
-                  </Badge>
-                ))}
+                {schedule.participants.length > 0 ? (
+                  schedule.participants.map((participant) => (
+                    <Badge key={participant.clubMemberId}>
+                      {participant.nickname}
+                      {participant.isHost ? " · 개설자" : ""}
+                      {participant.isMe ? " · 나" : ""}
+                    </Badge>
+                  ))
+                ) : (
+                  <span className="text-sm text-muted-foreground">
+                    아직 참가자가 없습니다.
+                  </span>
+                )}
               </div>
             </section>
 
@@ -202,8 +214,11 @@ export function MatchScheduleDetailView({
 
             {schedule.isHost ? (
               <div className="rounded-lg border bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
-                개설자는 자동 참가 상태입니다. 다음 단계에서는 이 화면에 일정 취소,
-                마감, 실제 경기 연결 같은 운영 액션을 붙일 수 있습니다.
+                {schedule.hostParticipates
+                  ? "개설자는 현재 참가 상태입니다."
+                  : "개설자는 현재 참가 인원에서 제외된 운영자 상태입니다."}{" "}
+                다음 단계에서는 이 화면에 일정 취소, 마감, 실제 경기 연결 같은
+                운영 액션을 붙일 수 있습니다.
               </div>
             ) : null}
             {!canJoin && !canLeave && !schedule.isHost ? (
