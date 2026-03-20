@@ -66,31 +66,6 @@ function formatSchedulePreview(date: string, startTime: string, endTime: string)
   return `${dateLabel} ${timeLabel.format(startValue)} ~ ${timeLabel.format(endValue)}`;
 }
 
-function getQuickDateOptions() {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const tomorrow = new Date(today);
-  tomorrow.setDate(today.getDate() + 1);
-
-  const nextSaturday = new Date(today);
-  nextSaturday.setDate(today.getDate() + ((6 - today.getDay() + 7) % 7 || 7));
-
-  const nextSunday = new Date(today);
-  nextSunday.setDate(today.getDate() + ((7 - today.getDay()) % 7 || 7));
-
-  const format = (value: Date) => value.toISOString().slice(0, 10);
-
-  return [
-    { label: "내일", value: format(tomorrow) },
-    { label: "이번 토", value: format(nextSaturday) },
-    { label: "이번 일", value: format(nextSunday) },
-  ].filter(
-    (item, index, array) =>
-      array.findIndex((candidate) => candidate.value === item.value) === index,
-  );
-}
-
 export function MatchScheduleForm({ clubId }: MatchScheduleFormProps) {
   const {
     loadingMembers,
@@ -134,7 +109,6 @@ export function MatchScheduleForm({ clubId }: MatchScheduleFormProps) {
     value.setHours(0, 0, 0, 0);
     return value;
   }, []);
-  const quickDateOptions = useMemo(() => getQuickDateOptions(), []);
   const schedulePreview = useMemo(
     () => formatSchedulePreview(date, startTime, endTime),
     [date, startTime, endTime],
@@ -246,27 +220,7 @@ export function MatchScheduleForm({ clubId }: MatchScheduleFormProps) {
 
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px]">
             <div className="grid gap-2">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <Label>캘린더</Label>
-                <div className="flex flex-wrap gap-2">
-                  {quickDateOptions.map((option) => (
-                    <Button
-                      key={option.value}
-                      type="button"
-                      size="sm"
-                      variant={date === option.value ? "default" : "outline"}
-                      className={
-                        date === option.value
-                          ? "bg-[var(--brand)] text-white hover:opacity-90"
-                          : ""
-                      }
-                      onClick={() => setDate(option.value)}
-                    >
-                      {option.label}
-                    </Button>
-                  ))}
-                </div>
-              </div>
+              <Label>캘린더</Label>
               <Calendar
                 mode="single"
                 selected={selectedDate}

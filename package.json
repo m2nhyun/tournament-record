@@ -15,6 +15,7 @@
     "db:smoke": "bash scripts/automation/smoke-db.sh",
     "db:push:dry": "bash scripts/automation/db-push.sh --dry-run",
     "db:push": "bash scripts/automation/db-push.sh",
+    "db:schema:sync": "bash scripts/automation/db-sync-schema.sh",
     "automation:check": "npm run env:check && npm run db:smoke && npm run verify"
   },
   "dependencies": {

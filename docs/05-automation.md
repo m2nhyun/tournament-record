@@ -9,12 +9,12 @@
 - `cmux browser` 기반 페이지 스모크 체크
 - Supabase 연결 스모크 체크
 - Supabase 마이그레이션 dry-run / apply
+- `schema.sql` 원격 스키마 동기화
 - GitHub Actions CI(푸시/PR 시 자동 검증)
 
 수동 필요:
 - Supabase Dashboard Auth 설정(Provider/Redirect)
 - Vercel 환경변수 관리
-- SQL Editor 수동 반영(현재 운영 정책)
 - SQL 반영 후 `docs/04-dev-log.md` 기록
 
 ## Auth Modes
@@ -63,7 +63,8 @@ npm run browser:check   # cmux browser로 페이지 접속/스냅샷 확인
 npm run env:check        # 앱 필수 env 확인
 npm run db:smoke         # Supabase 연결 스모크 체크
 npm run db:push:dry      # 원격 DB 반영 예정 마이그레이션 확인
-npm run db:push          # 원격 DB 마이그레이션 실제 반영
+npm run db:push          # 원격 DB 마이그레이션 실제 반영 + schema.sql 동기화
+npm run db:schema:sync   # 원격 public schema를 schema.sql로 다시 덤프
 npm run verify           # lint + build 전체 검증
 npm run automation:check # env + smoke + verify 일괄 실행
 ```
@@ -92,18 +93,21 @@ npm run browser:check
 - 확인 결과로 workspace, surface, title, url, compact snapshot을 출력한다.
 - 인증이나 fixture가 없어 목표 라우트를 완전히 재현하지 못하면, 그 blocker를 작업 결과에 명시한다.
 
-## Temporary Policy (Manual DB Migration)
+## DB Apply Policy
 
-- 원칙: DB 변경은 Supabase `SQL Editor` 수동 실행을 기본으로 유지한다.
+- 기본 원칙: DB 변경은 `npm run db:push:dry` 후 `npm run db:push`로 반영한다.
+- `npm run db:push`는 적용 성공 뒤 `supabase/schema.sql`까지 자동으로 동기화한다.
+- 대시보드에서 SQL을 수동 실행했다면 `npm run db:schema:sync`로 로컬 스키마를 다시 맞춘다.
 - 코드/문서/SQL은 같은 변경 세트로 관리하고, SQL 적용 전까지 기능 완료로 보지 않는다.
 
 실행 순서:
 1. `supabase/migrations/*.sql`에서 대상 파일 선택
-2. SQL Editor에 전체 붙여넣기 후 실행
-3. 검증 쿼리 실행(함수/테이블/정책 생성 확인)
-4. 앱 기능 재테스트
-5. `docs/04-dev-log.md`에 실행 일시와 적용 파일 기록
-6. 관련 문서(`docs/03-architecture.md`, `docs/05-automation.md`, 필요 시 `README.md`) 최신 상태 확인
+2. `npm run db:push:dry`
+3. `npm run db:push`
+4. 검증 쿼리 또는 앱 기능 재테스트
+5. 대시보드에서 직접 실행했다면 `npm run db:schema:sync`
+6. `docs/04-dev-log.md`에 실행 일시와 적용 파일 기록
+7. 관련 문서(`docs/03-architecture.md`, `docs/05-automation.md`, 필요 시 `README.md`) 최신 상태 확인
 
 ## Required SQL (Current Baseline)
 

@@ -313,3 +313,7 @@
 - GitHub 공식 MCP를 `GITHUB_TOKEN` bearer auth 방식으로 등록하고, PR/이슈 연동 용도를 `AGENTS.md`에 추가
 - 프로젝트 전용 시크릿은 `direnv`(`.envrc` + `.envrc.local`)로 주입하는 방향으로 정리
 - `~/.zshrc`의 전역 `GITHUB_TOKEN` export를 제거하고, 이 저장소에서만 `direnv`로 GitHub MCP 인증을 주입하도록 정리
+## 2026-03-20
+
+- 일정 생성 화면의 날짜 선택 강조를 캘린더 셀 자체의 원형 선택 상태로 정리하고, `내일/이번 일` 빠른 날짜 버튼과 시간 기본값을 제거했다. 사용자가 직접 날짜와 시간을 명확히 고르는 흐름으로 맞췄다.
+- Supabase 자동화에 `npm run db:schema:sync`를 추가했고, `npm run db:push` 뒤에는 `supabase/schema.sql`을 자동으로 다시 덤프하도록 연결했다. 대시보드 수동 반영 후에도 로컬 스키마를 맞출 수 있게 했다.

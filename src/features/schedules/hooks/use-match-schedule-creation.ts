@@ -125,7 +125,7 @@ export function useMatchScheduleCreation(clubId: string) {
 
   const [format, setFormat] = useState<MatchScheduleFormat>("open_doubles");
   const [date, setDate] = useState(futureDateString());
-  const [selectedTimeSlots, setSelectedTimeSlots] = useState<string[]>(["19:00"]);
+  const [selectedTimeSlots, setSelectedTimeSlots] = useState<string[]>([]);
   const [location, setLocation] = useState("");
   const [courtFee, setCourtFee] = useState("0");
   const [ballFee, setBallFee] = useState("0");

@@ -34,9 +34,9 @@ export function Calendar({ className, classNames, ...props }: CalendarProps) {
         week: "mt-1 grid grid-cols-7 gap-1",
         day: "h-11 w-full p-0",
         day_button:
-          "flex size-11 items-center justify-center rounded-2xl text-sm font-medium transition-colors hover:bg-muted aria-selected:bg-[var(--brand)] aria-selected:text-white aria-selected:shadow-md aria-selected:ring-2 aria-selected:ring-[var(--brand)]/30",
-        today: "text-[var(--brand)]",
-        selected: "bg-transparent",
+          "flex size-11 items-center justify-center rounded-full text-sm font-medium transition-colors hover:bg-muted aria-selected:bg-[var(--brand)] aria-selected:text-white aria-selected:shadow-md aria-selected:ring-2 aria-selected:ring-[var(--brand)]/30",
+        today: "rounded-full text-[var(--brand)]",
+        selected: "rounded-full bg-[var(--brand)] text-white shadow-md ring-2 ring-[var(--brand)]/30",
         outside: "text-muted-foreground/40",
         disabled: "text-muted-foreground/30",
         ...classNames,

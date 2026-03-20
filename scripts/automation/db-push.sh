@@ -21,4 +21,6 @@ else
     --db-url "$SUPABASE_DB_URL" \
     --include-all \
     --yes
+
+  bash scripts/automation/db-sync-schema.sh
 fi
