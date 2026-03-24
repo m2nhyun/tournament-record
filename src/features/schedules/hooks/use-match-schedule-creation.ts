@@ -61,6 +61,18 @@ function buildSlotRange(start: string, end: string) {
   return slots;
 }
 
+function createTimeRange(start: string, end: string) {
+  const sortedRange = sortTimes([start, end]);
+  const rangeStart = sortedRange[0];
+  const rangeEnd = sortedRange[1];
+
+  if (timeToMinutes(rangeEnd) <= timeToMinutes(rangeStart)) {
+    return [rangeStart];
+  }
+
+  return buildSlotRange(rangeStart, addMinutes(rangeEnd, -60));
+}
+
 function toggleTimeSlot(current: string[], slot: string) {
   const sorted = sortTimes(current);
 
@@ -318,6 +330,8 @@ export function useMatchScheduleCreation(clubId: string) {
     setDate,
     selectedTimeSlots: timeSlots,
     setSelectedTimeSlots,
+    setTimeRange: (start: string, end: string) =>
+      setSelectedTimeSlots(createTimeRange(start, end)),
     toggleTimeSlot: (slot: string) =>
       setSelectedTimeSlots((current) => toggleTimeSlot(current, slot)),
     startTime,

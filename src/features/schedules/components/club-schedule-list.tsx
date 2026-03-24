@@ -41,10 +41,16 @@ export function ClubScheduleList({ clubId, myRole }: ClubScheduleListProps) {
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-lg font-semibold">
-          <CalendarClock className="size-5" />
-          다가오는 일정
-        </h2>
+        <div className="space-y-1">
+          <h2 className="flex items-center gap-2 text-lg font-semibold">
+            <CalendarClock className="size-5" />
+            다가오는 일정
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            새로 만든 일정은 생성 직후 여기 맨 위 카드와 상세 화면에서 바로 확인할 수
+            있습니다.
+          </p>
+        </div>
         {canCreateSchedule ? (
           <Button
             size="sm"
