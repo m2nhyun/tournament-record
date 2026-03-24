@@ -9,8 +9,13 @@ type AppShellProps = {
 
 export function AppShell({ children, clubId }: AppShellProps) {
   return (
-    <div className="min-h-screen bg-background">
-      <main className="mx-auto w-full max-w-3xl pb-24">{children}</main>
+    <div className="fixed inset-0 bg-background">
+      <main
+        className="mx-auto h-full w-full max-w-3xl overscroll-contain pb-24"
+        style={{ overflowY: "auto" }}
+      >
+        {children}
+      </main>
       <BottomNav clubId={clubId} />
     </div>
   );

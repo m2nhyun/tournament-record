@@ -30,6 +30,8 @@
 - 페이지 기본 구조는 아래 계약을 따른다.
   - `<div><AppBar /><div className="px-4">...</div></div>`
   - `AppBar`는 상단 sticky, 콘텐츠 여백(`px-4`)은 본문 래퍼에서만 담당
+- 클럽 화면처럼 하단 네비게이션이 있는 경우 `AppShell`은 `fixed inset-0` 캔버스로 유지하고, 전체 문서가 아니라 `AppShell > main`만 스크롤한다. 바텀 네비게이션은 화면 하단에 고정되고 스크롤 대상에 포함되지 않아야 한다.
+- 루트 문서(`html`, `body`)는 뷰포트 높이로 고정하고 overflow를 잠근다. 페이지 전환과 스크롤은 앱 캔버스 내부에서만 처리한다.
 
 ## Components
 
