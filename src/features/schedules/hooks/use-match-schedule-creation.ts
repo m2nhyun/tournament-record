@@ -9,6 +9,7 @@ import { createMatchSchedule } from "@/features/schedules/services/schedules";
 import type {
   MatchScheduleCreationData,
   MatchScheduleFormat,
+  MatchScheduleJoinPolicy,
 } from "@/features/schedules/types/schedule";
 
 type StatusState = {
@@ -136,6 +137,8 @@ export function useMatchScheduleCreation(clubId: string) {
   const [createdScheduleId, setCreatedScheduleId] = useState<string | null>(null);
 
   const [format, setFormat] = useState<MatchScheduleFormat>("open_doubles");
+  const [joinPolicy, setJoinPolicy] =
+    useState<MatchScheduleJoinPolicy>("instant");
   const [date, setDate] = useState(futureDateString());
   const [selectedTimeSlots, setSelectedTimeSlots] = useState<string[]>([]);
   const [location, setLocation] = useState("");
@@ -276,6 +279,7 @@ export function useMatchScheduleCreation(clubId: string) {
     try {
       const payload: MatchScheduleCreationData = {
         format,
+        joinPolicy,
         scheduledAt: scheduledAt.toISOString(),
         endsAt: endsAt.toISOString(),
         location: normalizedLocation,
@@ -305,6 +309,7 @@ export function useMatchScheduleCreation(clubId: string) {
     courtFee,
     date,
     format,
+    joinPolicy,
     includeBallFee,
     includeCourtFee,
     includeHost,
@@ -326,6 +331,8 @@ export function useMatchScheduleCreation(clubId: string) {
     canCreateSchedule,
     format,
     setFormat,
+    joinPolicy,
+    setJoinPolicy,
     date,
     setDate,
     selectedTimeSlots: timeSlots,

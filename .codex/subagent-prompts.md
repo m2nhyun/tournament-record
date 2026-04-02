@@ -76,6 +76,10 @@ Focus
 - Affected tables, RPCs, policies, triggers, indexes
 - Guest/member/owner permission impact
 - Frontend-only changes that leave DB behavior inconsistent
+- Whether remote migration history might need `repair` instead of reapplying SQL
+- Whether `supabase/schema.sql` likely needs a fresh remote dump after apply
+- If remote schema objects already exist but `supabase migration list` shows empty `Remote`, recommend `supabase migration repair ... --status applied` instead of reapplying the migrations
+- If the change was applied manually in Supabase Dashboard, recommend `npm run db:schema:sync` after verification
 
 Deliverables
 - Verdict: impact 없음 / impact 있음
@@ -185,6 +189,7 @@ Run
 - npm run lint
 - npm run build
 - npm run db:smoke [DB-sensitive change only]
+- npm run db:push:dry [when migrations/schema changed]
 
 Constraints
 - Do not modify source files.

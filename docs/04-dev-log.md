@@ -14,6 +14,8 @@
 - pending 상태이던 `20260402120000_add_user_profiles.sql`을 remote DB 반영 대상으로 확정
 - 새 테이블 `user_profiles`는 기존 기능을 깨지 않는 additive 스키마로 판단하고 먼저 반영
 - 아키텍처 문서에는 `user_profiles`와 `/onboarding/profile`를 현재 구조로 기록하되, `profile_completed` 기반 전면 권한 강제는 아직 후속 단계라고 명시
+- 다른 에이전트도 같은 DB 운영 판단을 재사용할 수 있도록 `AGENTS.md`와 `.codex/subagent-prompts.md`의 DB 체크리스트를 보강
+- `db push` / `migration repair` / `schema sync` 선택 기준을 `docs/05-automation.md`에 decision tree로 정리해 후속 에이전트가 같은 판단을 재사용할 수 있게 함
 
 ### Profile Completed Flow Wiring
 
@@ -21,6 +23,12 @@
 - 홈(`/`)도 기존 로그인 세션에서 프로필 미완료 사용자를 온보딩으로 유도하도록 보강
 - 클럽 생성, 일정 생성, 경기 기록 저장/수정은 서비스 계층에서 `requireCompletedProfile()`을 거치도록 정리
 - 초대 참가, 이메일 인증 UX, DB/RPC 수준의 강제 가드는 아직 후속 작업으로 남겨 둠
+
+### Match Schedule Request Flow
+
+- `match_schedules`에 `join_policy`(`instant | approval_required`)를 추가하고, 승인형 모집의 신청 상태를 담는 `match_schedule_requests`를 새로 도입
+- 일정 생성 화면에서 `바로 참가`와 `승인 후 참가`를 선택할 수 있게 했고, 클럽 홈 카드와 일정 상세 화면에 `참가 신청`, `신청 취소`, `대기 신청 건수`, `승인 대기(reviewing)` 상태를 함께 노출
+- 일정 상세에서 개설자가 pending 신청을 수락/거절할 수 있게 연결하고, 신청이 남아 있는 승인형 모집은 상태를 `reviewing`으로 보정해 단순 `open`과 구분되게 정리
 
 ## 2026-03-26
 

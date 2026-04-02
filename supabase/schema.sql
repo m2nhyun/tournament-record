@@ -54,10 +54,31 @@ CREATE TYPE "public"."match_schedule_format" AS ENUM (
 ALTER TYPE "public"."match_schedule_format" OWNER TO "postgres";
 
 
+CREATE TYPE "public"."match_schedule_join_policy" AS ENUM (
+    'instant',
+    'approval_required'
+);
+
+
+ALTER TYPE "public"."match_schedule_join_policy" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."match_schedule_request_status" AS ENUM (
+    'pending',
+    'accepted',
+    'rejected',
+    'cancelled_by_user'
+);
+
+
+ALTER TYPE "public"."match_schedule_request_status" OWNER TO "postgres";
+
+
 CREATE TYPE "public"."match_schedule_status" AS ENUM (
     'open',
     'full',
-    'cancelled'
+    'cancelled',
+    'reviewing'
 );
 
 
@@ -82,6 +103,95 @@ CREATE TYPE "public"."match_type" AS ENUM (
 
 
 ALTER TYPE "public"."match_type" OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."accept_match_schedule_request"("p_schedule_id" "uuid", "p_club_member_id" "uuid") RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_user_id uuid;
+  v_schedule record;
+  v_participant_count integer;
+begin
+  v_user_id := auth.uid();
+
+  if v_user_id is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  select ms.id, ms.club_id, ms.capacity, ms.status, ms.host_member_id
+    into v_schedule
+  from public.match_schedules ms
+  where ms.id = p_schedule_id
+  for update;
+
+  if v_schedule.id is null then
+    raise exception '일정을 찾을 수 없습니다.';
+  end if;
+
+  if not (
+    public.is_club_admin(v_schedule.club_id)
+    or exists (
+      select 1
+      from public.club_members cm
+      where cm.id = v_schedule.host_member_id
+        and cm.user_id = v_user_id
+        and cm.is_active = true
+    )
+  ) then
+    raise exception '신청을 검토할 권한이 없습니다.';
+  end if;
+
+  if v_schedule.status = 'cancelled' then
+    raise exception '취소된 일정입니다.';
+  end if;
+
+  if not exists (
+    select 1
+    from public.match_schedule_requests msr
+    where msr.schedule_id = p_schedule_id
+      and msr.club_member_id = p_club_member_id
+      and msr.status = 'pending'
+  ) then
+    raise exception '대기 중인 신청이 없습니다.';
+  end if;
+
+  select count(*)
+    into v_participant_count
+  from public.match_schedule_participants
+  where schedule_id = p_schedule_id;
+
+  if v_participant_count >= v_schedule.capacity then
+    raise exception '정원이 모두 찼습니다.';
+  end if;
+
+  insert into public.match_schedule_participants (
+    schedule_id,
+    club_member_id,
+    joined_by
+  )
+  values (
+    p_schedule_id,
+    p_club_member_id,
+    v_user_id
+  )
+  on conflict (schedule_id, club_member_id) do nothing;
+
+  update public.match_schedule_requests
+  set status = 'accepted',
+      updated_at = now()
+  where schedule_id = p_schedule_id
+    and club_member_id = p_club_member_id;
+
+  perform public.refresh_match_schedule_status(p_schedule_id);
+
+  return p_schedule_id;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."accept_match_schedule_request"("p_schedule_id" "uuid", "p_club_member_id" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."can_create_match_schedule"("p_club_id" "uuid") RETURNS boolean
@@ -120,7 +230,41 @@ $$;
 ALTER FUNCTION "public"."can_manage_match"("p_club_id" "uuid", "p_created_by" "uuid") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."create_match_schedule"("p_club_id" "uuid", "p_format" "public"."match_schedule_format", "p_scheduled_at" timestamp with time zone, "p_ends_at" timestamp with time zone, "p_location" "text", "p_court_fee" integer DEFAULT 0, "p_ball_fee" integer DEFAULT 0, "p_capacity" integer DEFAULT 4, "p_notes" "text" DEFAULT ''::"text", "p_include_host" boolean DEFAULT true) RETURNS "uuid"
+CREATE OR REPLACE FUNCTION "public"."cancel_match_schedule_request"("p_schedule_id" "uuid") RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_user_id uuid;
+begin
+  v_user_id := auth.uid();
+
+  if v_user_id is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  update public.match_schedule_requests
+  set status = 'cancelled_by_user',
+      updated_at = now()
+  where schedule_id = p_schedule_id
+    and requested_by = v_user_id
+    and status = 'pending';
+
+  if not found then
+    raise exception '취소할 신청이 없습니다.';
+  end if;
+
+  perform public.refresh_match_schedule_status(p_schedule_id);
+
+  return p_schedule_id;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."cancel_match_schedule_request"("p_schedule_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."create_match_schedule"("p_club_id" "uuid", "p_format" "public"."match_schedule_format", "p_scheduled_at" timestamp with time zone, "p_ends_at" timestamp with time zone, "p_location" "text", "p_court_fee" integer DEFAULT 0, "p_ball_fee" integer DEFAULT 0, "p_capacity" integer DEFAULT 4, "p_notes" "text" DEFAULT ''::"text", "p_include_host" boolean DEFAULT true, "p_join_policy" "public"."match_schedule_join_policy" DEFAULT 'instant'::"public"."match_schedule_join_policy") RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -140,6 +284,7 @@ begin
   from public.club_members cm
   where cm.club_id = p_club_id
     and cm.user_id = v_user_id
+    and cm.is_active = true
   limit 1;
 
   if v_host_member_id is null then
@@ -164,6 +309,7 @@ begin
     created_by,
     format,
     status,
+    join_policy,
     scheduled_at,
     ends_at,
     location,
@@ -178,6 +324,7 @@ begin
     v_user_id,
     p_format,
     'open',
+    coalesce(p_join_policy, 'instant'),
     p_scheduled_at,
     p_ends_at,
     trim(p_location),
@@ -201,7 +348,7 @@ end;
 $$;
 
 
-ALTER FUNCTION "public"."create_match_schedule"("p_club_id" "uuid", "p_format" "public"."match_schedule_format", "p_scheduled_at" timestamp with time zone, "p_ends_at" timestamp with time zone, "p_location" "text", "p_court_fee" integer, "p_ball_fee" integer, "p_capacity" integer, "p_notes" "text", "p_include_host" boolean) OWNER TO "postgres";
+ALTER FUNCTION "public"."create_match_schedule"("p_club_id" "uuid", "p_format" "public"."match_schedule_format", "p_scheduled_at" timestamp with time zone, "p_ends_at" timestamp with time zone, "p_location" "text", "p_court_fee" integer, "p_ball_fee" integer, "p_capacity" integer, "p_notes" "text", "p_include_host" boolean, "p_join_policy" "public"."match_schedule_join_policy") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."generate_invite_code_unique"() RETURNS "text"
@@ -491,10 +638,12 @@ CREATE OR REPLACE FUNCTION "public"."refresh_match_schedule_status"("p_schedule_
 declare
   v_capacity smallint;
   v_status public.match_schedule_status;
+  v_join_policy public.match_schedule_join_policy;
   v_participant_count integer;
+  v_pending_request_count integer;
 begin
-  select capacity, status
-    into v_capacity, v_status
+  select capacity, status, join_policy
+    into v_capacity, v_status, v_join_policy
   from public.match_schedules
   where id = p_schedule_id;
 
@@ -511,9 +660,16 @@ begin
   from public.match_schedule_participants
   where schedule_id = p_schedule_id;
 
+  select count(*)
+    into v_pending_request_count
+  from public.match_schedule_requests
+  where schedule_id = p_schedule_id
+    and status = 'pending';
+
   update public.match_schedules
   set status = case
     when v_participant_count >= v_capacity then 'full'
+    when v_join_policy = 'approval_required' and v_pending_request_count > 0 then 'reviewing'
     else 'open'
   end
   where id = p_schedule_id;
@@ -565,6 +721,65 @@ $$;
 
 
 ALTER FUNCTION "public"."regenerate_club_invite_code"("p_club_id" "uuid", "p_days_valid" integer) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."reject_match_schedule_request"("p_schedule_id" "uuid", "p_club_member_id" "uuid") RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_user_id uuid;
+  v_club_id uuid;
+begin
+  v_user_id := auth.uid();
+
+  if v_user_id is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  select ms.club_id
+    into v_club_id
+  from public.match_schedules ms
+  where ms.id = p_schedule_id;
+
+  if v_club_id is null then
+    raise exception '일정을 찾을 수 없습니다.';
+  end if;
+
+  if not (
+    public.is_club_admin(v_club_id)
+    or exists (
+      select 1
+      from public.match_schedules ms
+      join public.club_members cm
+        on cm.id = ms.host_member_id
+      where ms.id = p_schedule_id
+        and cm.user_id = v_user_id
+        and cm.is_active = true
+    )
+  ) then
+    raise exception '신청을 검토할 권한이 없습니다.';
+  end if;
+
+  update public.match_schedule_requests
+  set status = 'rejected',
+      updated_at = now()
+  where schedule_id = p_schedule_id
+    and club_member_id = p_club_member_id
+    and status = 'pending';
+
+  if not found then
+    raise exception '대기 중인 신청이 없습니다.';
+  end if;
+
+  perform public.refresh_match_schedule_status(p_schedule_id);
+
+  return p_schedule_id;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."reject_match_schedule_request"("p_schedule_id" "uuid", "p_club_member_id" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."remove_club_member"("p_club_id" "uuid", "p_member_id" "uuid") RETURNS "void"
@@ -622,6 +837,100 @@ $$;
 
 
 ALTER FUNCTION "public"."remove_club_member"("p_club_id" "uuid", "p_member_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."request_match_schedule"("p_schedule_id" "uuid", "p_message" "text" DEFAULT ''::"text") RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_user_id uuid;
+  v_member_id uuid;
+  v_member_role public.club_member_role;
+  v_schedule record;
+begin
+  v_user_id := auth.uid();
+
+  if v_user_id is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  select ms.id, ms.club_id, ms.capacity, ms.status, ms.join_policy, ms.host_member_id
+    into v_schedule
+  from public.match_schedules ms
+  where ms.id = p_schedule_id
+  for update;
+
+  if v_schedule.id is null then
+    raise exception '일정을 찾을 수 없습니다.';
+  end if;
+
+  if v_schedule.status = 'cancelled' then
+    raise exception '취소된 일정에는 신청할 수 없습니다.';
+  end if;
+
+  if v_schedule.join_policy <> 'approval_required' then
+    raise exception '바로 참가형 일정입니다. 신청 대신 바로 참가를 사용해주세요.';
+  end if;
+
+  select cm.id, cm.role
+    into v_member_id, v_member_role
+  from public.club_members cm
+  where cm.club_id = v_schedule.club_id
+    and cm.user_id = v_user_id
+    and cm.is_active = true
+  limit 1;
+
+  if v_member_id is null then
+    raise exception '클럽 멤버만 일정에 신청할 수 있습니다.';
+  end if;
+
+  if v_member_role = 'guest' then
+    raise exception '게스트는 승인형 모집에 신청할 수 없습니다.';
+  end if;
+
+  if v_member_id = v_schedule.host_member_id then
+    raise exception '개설자는 자신의 일정에 신청할 수 없습니다.';
+  end if;
+
+  if exists (
+    select 1
+    from public.match_schedule_participants msp
+    where msp.schedule_id = p_schedule_id
+      and msp.club_member_id = v_member_id
+  ) then
+    return p_schedule_id;
+  end if;
+
+  insert into public.match_schedule_requests (
+    schedule_id,
+    club_member_id,
+    requested_by,
+    status,
+    message
+  )
+  values (
+    p_schedule_id,
+    v_member_id,
+    v_user_id,
+    'pending',
+    left(coalesce(trim(p_message), ''), 120)
+  )
+  on conflict (schedule_id, club_member_id)
+  do update
+    set requested_by = excluded.requested_by,
+        status = 'pending',
+        message = excluded.message,
+        updated_at = now();
+
+  perform public.refresh_match_schedule_status(p_schedule_id);
+
+  return p_schedule_id;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."request_match_schedule"("p_schedule_id" "uuid", "p_message" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."set_updated_at"() RETURNS "trigger"
@@ -853,6 +1162,22 @@ CREATE TABLE IF NOT EXISTS "public"."match_schedule_participants" (
 ALTER TABLE "public"."match_schedule_participants" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."match_schedule_requests" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "schedule_id" "uuid" NOT NULL,
+    "club_member_id" "uuid" NOT NULL,
+    "requested_by" "uuid" NOT NULL,
+    "status" "public"."match_schedule_request_status" DEFAULT 'pending'::"public"."match_schedule_request_status" NOT NULL,
+    "message" "text" DEFAULT ''::"text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "match_schedule_requests_message_check" CHECK (("char_length"("message") <= 120))
+);
+
+
+ALTER TABLE "public"."match_schedule_requests" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."match_schedules" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "club_id" "uuid" NOT NULL,
@@ -870,6 +1195,7 @@ CREATE TABLE IF NOT EXISTS "public"."match_schedules" (
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "ends_at" timestamp with time zone NOT NULL,
+    "join_policy" "public"."match_schedule_join_policy" DEFAULT 'instant'::"public"."match_schedule_join_policy" NOT NULL,
     CONSTRAINT "match_schedules_ball_fee_check" CHECK (("ball_fee" >= 0)),
     CONSTRAINT "match_schedules_capacity_check" CHECK ((("capacity" >= 2) AND ("capacity" <= 8))),
     CONSTRAINT "match_schedules_court_fee_check" CHECK (("court_fee" >= 0)),
@@ -980,6 +1306,16 @@ ALTER TABLE ONLY "public"."match_schedule_participants"
 
 
 
+ALTER TABLE ONLY "public"."match_schedule_requests"
+    ADD CONSTRAINT "match_schedule_requests_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."match_schedule_requests"
+    ADD CONSTRAINT "match_schedule_requests_schedule_id_club_member_id_key" UNIQUE ("schedule_id", "club_member_id");
+
+
+
 ALTER TABLE ONLY "public"."match_schedules"
     ADD CONSTRAINT "match_schedules_linked_match_id_key" UNIQUE ("linked_match_id");
 
@@ -1037,6 +1373,14 @@ CREATE INDEX "idx_match_schedule_participants_schedule" ON "public"."match_sched
 
 
 
+CREATE INDEX "idx_match_schedule_requests_requested_by" ON "public"."match_schedule_requests" USING "btree" ("requested_by", "created_at" DESC);
+
+
+
+CREATE INDEX "idx_match_schedule_requests_schedule_status" ON "public"."match_schedule_requests" USING "btree" ("schedule_id", "status");
+
+
+
 CREATE INDEX "idx_match_schedules_club_scheduled_at" ON "public"."match_schedules" USING "btree" ("club_id", "scheduled_at");
 
 
@@ -1058,6 +1402,10 @@ CREATE OR REPLACE TRIGGER "match_confirmations_set_updated_at" BEFORE UPDATE ON 
 
 
 CREATE OR REPLACE TRIGGER "match_results_set_updated_at" BEFORE UPDATE ON "public"."match_results" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "match_schedule_requests_set_updated_at" BEFORE UPDATE ON "public"."match_schedule_requests" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
 
@@ -1150,6 +1498,21 @@ ALTER TABLE ONLY "public"."match_schedule_participants"
 
 ALTER TABLE ONLY "public"."match_schedule_participants"
     ADD CONSTRAINT "match_schedule_participants_schedule_id_fkey" FOREIGN KEY ("schedule_id") REFERENCES "public"."match_schedules"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."match_schedule_requests"
+    ADD CONSTRAINT "match_schedule_requests_club_member_id_fkey" FOREIGN KEY ("club_member_id") REFERENCES "public"."club_members"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."match_schedule_requests"
+    ADD CONSTRAINT "match_schedule_requests_requested_by_fkey" FOREIGN KEY ("requested_by") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."match_schedule_requests"
+    ADD CONSTRAINT "match_schedule_requests_schedule_id_fkey" FOREIGN KEY ("schedule_id") REFERENCES "public"."match_schedules"("id") ON DELETE CASCADE;
 
 
 
@@ -1299,6 +1662,15 @@ CREATE POLICY "match_schedule_participants_select_member" ON "public"."match_sch
 
 
 
+ALTER TABLE "public"."match_schedule_requests" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "match_schedule_requests_select_member" ON "public"."match_schedule_requests" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."match_schedules" "ms"
+  WHERE (("ms"."id" = "match_schedule_requests"."schedule_id") AND "public"."is_club_member"("ms"."club_id")))));
+
+
+
 ALTER TABLE "public"."match_schedules" ENABLE ROW LEVEL SECURITY;
 
 
@@ -1349,6 +1721,12 @@ GRANT USAGE ON SCHEMA "public" TO "service_role";
 
 
 
+GRANT ALL ON FUNCTION "public"."accept_match_schedule_request"("p_schedule_id" "uuid", "p_club_member_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."accept_match_schedule_request"("p_schedule_id" "uuid", "p_club_member_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."accept_match_schedule_request"("p_schedule_id" "uuid", "p_club_member_id" "uuid") TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."can_create_match_schedule"("p_club_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."can_create_match_schedule"("p_club_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."can_create_match_schedule"("p_club_id" "uuid") TO "service_role";
@@ -1361,9 +1739,15 @@ GRANT ALL ON FUNCTION "public"."can_manage_match"("p_club_id" "uuid", "p_created
 
 
 
-GRANT ALL ON FUNCTION "public"."create_match_schedule"("p_club_id" "uuid", "p_format" "public"."match_schedule_format", "p_scheduled_at" timestamp with time zone, "p_ends_at" timestamp with time zone, "p_location" "text", "p_court_fee" integer, "p_ball_fee" integer, "p_capacity" integer, "p_notes" "text", "p_include_host" boolean) TO "anon";
-GRANT ALL ON FUNCTION "public"."create_match_schedule"("p_club_id" "uuid", "p_format" "public"."match_schedule_format", "p_scheduled_at" timestamp with time zone, "p_ends_at" timestamp with time zone, "p_location" "text", "p_court_fee" integer, "p_ball_fee" integer, "p_capacity" integer, "p_notes" "text", "p_include_host" boolean) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."create_match_schedule"("p_club_id" "uuid", "p_format" "public"."match_schedule_format", "p_scheduled_at" timestamp with time zone, "p_ends_at" timestamp with time zone, "p_location" "text", "p_court_fee" integer, "p_ball_fee" integer, "p_capacity" integer, "p_notes" "text", "p_include_host" boolean) TO "service_role";
+GRANT ALL ON FUNCTION "public"."cancel_match_schedule_request"("p_schedule_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."cancel_match_schedule_request"("p_schedule_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."cancel_match_schedule_request"("p_schedule_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."create_match_schedule"("p_club_id" "uuid", "p_format" "public"."match_schedule_format", "p_scheduled_at" timestamp with time zone, "p_ends_at" timestamp with time zone, "p_location" "text", "p_court_fee" integer, "p_ball_fee" integer, "p_capacity" integer, "p_notes" "text", "p_include_host" boolean, "p_join_policy" "public"."match_schedule_join_policy") TO "anon";
+GRANT ALL ON FUNCTION "public"."create_match_schedule"("p_club_id" "uuid", "p_format" "public"."match_schedule_format", "p_scheduled_at" timestamp with time zone, "p_ends_at" timestamp with time zone, "p_location" "text", "p_court_fee" integer, "p_ball_fee" integer, "p_capacity" integer, "p_notes" "text", "p_include_host" boolean, "p_join_policy" "public"."match_schedule_join_policy") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."create_match_schedule"("p_club_id" "uuid", "p_format" "public"."match_schedule_format", "p_scheduled_at" timestamp with time zone, "p_ends_at" timestamp with time zone, "p_location" "text", "p_court_fee" integer, "p_ball_fee" integer, "p_capacity" integer, "p_notes" "text", "p_include_host" boolean, "p_join_policy" "public"."match_schedule_join_policy") TO "service_role";
 
 
 
@@ -1421,9 +1805,21 @@ GRANT ALL ON FUNCTION "public"."regenerate_club_invite_code"("p_club_id" "uuid",
 
 
 
+GRANT ALL ON FUNCTION "public"."reject_match_schedule_request"("p_schedule_id" "uuid", "p_club_member_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."reject_match_schedule_request"("p_schedule_id" "uuid", "p_club_member_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."reject_match_schedule_request"("p_schedule_id" "uuid", "p_club_member_id" "uuid") TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."remove_club_member"("p_club_id" "uuid", "p_member_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."remove_club_member"("p_club_id" "uuid", "p_member_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."remove_club_member"("p_club_id" "uuid", "p_member_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."request_match_schedule"("p_schedule_id" "uuid", "p_message" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."request_match_schedule"("p_schedule_id" "uuid", "p_message" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."request_match_schedule"("p_schedule_id" "uuid", "p_message" "text") TO "service_role";
 
 
 
@@ -1490,6 +1886,12 @@ GRANT ALL ON TABLE "public"."match_results" TO "service_role";
 GRANT ALL ON TABLE "public"."match_schedule_participants" TO "anon";
 GRANT ALL ON TABLE "public"."match_schedule_participants" TO "authenticated";
 GRANT ALL ON TABLE "public"."match_schedule_participants" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."match_schedule_requests" TO "anon";
+GRANT ALL ON TABLE "public"."match_schedule_requests" TO "authenticated";
+GRANT ALL ON TABLE "public"."match_schedule_requests" TO "service_role";
 
 
 

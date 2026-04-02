@@ -22,11 +22,15 @@ export function mapScheduleError(error: unknown): Error {
 
   if (
     message.includes("Could not find the function public.create_match_schedule") ||
+    message.includes("Could not find the function public.request_match_schedule") ||
     message.includes("relation \"public.match_schedules\" does not exist") ||
-    message.includes("relation \"match_schedules\" does not exist")
+    message.includes("relation \"match_schedules\" does not exist") ||
+    message.includes("relation \"public.match_schedule_requests\" does not exist") ||
+    message.includes("relation \"match_schedule_requests\" does not exist") ||
+    message.includes("column match_schedules.join_policy does not exist")
   ) {
     return new Error(
-      "일정 스키마가 아직 반영되지 않았습니다. Supabase SQL Editor에서 일정 마이그레이션을 먼저 실행해주세요.",
+      "일정/매칭 스키마가 아직 반영되지 않았습니다. 최신 Supabase 마이그레이션을 먼저 실행해주세요.",
     );
   }
 

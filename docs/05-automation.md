@@ -102,22 +102,35 @@ npm run browser:check
 
 ## DB Apply Policy
 
-- 기본 원칙: DB 변경은 `npm run db:push:dry` 후 `npm run db:push`로 반영한다.
-- `npm run db:push`는 적용 성공 뒤 `supabase/schema.sql`까지 자동으로 동기화한다.
-- 대시보드에서 SQL을 수동 실행했다면 `npm run db:schema:sync`로 로컬 스키마를 다시 맞춘다.
-- 코드/문서/SQL은 같은 변경 세트로 관리하고, SQL 적용 전까지 기능 완료로 보지 않는다.
-- 현재 작업 환경처럼 `db.<project-ref>.supabase.co:5432` direct host가 IPv6-only로 응답하면, 대시보드의 session pooler 문자열을 `SUPABASE_DB_PUSH_URL`에 넣고 CLI 작업을 수행한다.
-- remote schema 객체는 이미 있는데 `supabase migration list`의 `Remote`가 비어 있으면, SQL을 다시 밀어 넣지 말고 `supabase migration repair ... --status applied`로 history부터 복구한다.
-- history repair 전에는 `db:push:dry`, remote schema dump, 핵심 RPC/컬럼 조회로 실제 schema가 최신 상태인지 먼저 확인한다.
+### Decision Tree
 
-실행 순서:
+1. 새 SQL이 `supabase/migrations/*.sql`에 있다면 `npm run db:push:dry`로 먼저 확인한다.
+2. dry-run 결과가 정상이고 remote migration history도 맞으면 `npm run db:push`로 반영한다.
+3. `supabase migration list`에서 remote schema 객체는 이미 있는데 `Remote`가 비어 있으면, SQL을 다시 밀어 넣지 말고 `supabase migration repair ... --status applied`로 history부터 복구한다.
+4. Supabase Dashboard에서 SQL을 직접 실행했거나 remote schema를 로컬 파일로 다시 맞춰야 하면 `npm run db:schema:sync`를 사용한다.
+5. `db.<project-ref>.supabase.co:5432` direct host가 IPv6-only로 응답하면 `SUPABASE_DB_PUSH_URL`에 session pooler 문자열을 넣고 CLI 작업을 수행한다.
+
+### Operating Rules
+
+- DB 변경은 `npm run db:push:dry` 후 `npm run db:push`로 반영한다.
+- `npm run db:push`는 적용 성공 뒤 `supabase/schema.sql`까지 자동으로 동기화한다.
+- 코드/문서/SQL은 같은 변경 세트로 관리하고, SQL 적용 전까지 기능 완료로 보지 않는다.
+- `db:push:dry`, remote schema dump, 핵심 RPC/컬럼 조회를 먼저 보고 나서 repair 여부를 결정한다.
+- `SUPABASE_DB_PUSH_URL`가 있으면 `db:push`, `db:push:dry`, `db:schema:sync`는 이 값을 우선 사용한다.
+- 비밀번호에 `@`, `:`, `/` 같은 reserved 문자가 있으면 URL 인코딩해야 한다. 예: `p@ssword` -> `p%40ssword`
+- Supabase 공식 가이드 기준으로 direct connection은 IPv6 의존성이 있을 수 있으므로, 현재 네트워크에서 5432 direct 접속이 막히면 session pooler를 사용한다.
+- 현재 기준 remote migration history와 로컬 `supabase/schema.sql`은 정합 상태이며, 정상 dry-run 기대값은 `Remote database is up to date.`다.
+
+### Execution Order
+
 1. `supabase/migrations/*.sql`에서 대상 파일 선택
 2. `npm run db:push:dry`
-3. `npm run db:push`
-4. 검증 쿼리 또는 앱 기능 재테스트
-5. 대시보드에서 직접 실행했다면 `npm run db:schema:sync`
-6. `docs/04-dev-log.md`에 실행 일시와 적용 파일 기록
-7. 관련 문서(`docs/03-architecture.md`, `docs/05-automation.md`, 필요 시 `README.md`) 최신 상태 확인
+3. remote schema는 이미 있는데 migration history만 비어 있으면 `supabase migration repair ... --status applied`
+4. 그 외 일반적인 신규 변경이면 `npm run db:push`
+5. 검증 쿼리 또는 앱 기능 재테스트
+6. 대시보드에서 직접 실행했다면 `npm run db:schema:sync`
+7. `docs/04-dev-log.md`에 실행 일시와 적용 파일 기록
+8. 관련 문서(`docs/03-architecture.md`, `docs/05-automation.md`, 필요 시 `README.md`) 최신 상태 확인
 
 ## Required SQL (Current Baseline)
 

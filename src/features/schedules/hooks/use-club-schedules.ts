@@ -3,9 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 
 import {
+  cancelMatchScheduleRequest,
   joinMatchSchedule,
   leaveMatchSchedule,
   listUpcomingMatchSchedules,
+  requestMatchSchedule,
 } from "@/features/schedules/services/schedules";
 import type { MatchScheduleSummary } from "@/features/schedules/types/schedule";
 
@@ -75,6 +77,40 @@ export function useClubSchedules(clubId: string) {
     [refresh],
   );
 
+  const request = useCallback(
+    async (scheduleId: string) => {
+      setBusyScheduleId(scheduleId);
+      setStatus(null);
+      try {
+        await requestMatchSchedule(scheduleId);
+        await refresh();
+        setStatus({ type: "success", message: "참가 신청을 보냈습니다." });
+      } catch (error) {
+        setStatus({ type: "error", message: toMessage(error) });
+      } finally {
+        setBusyScheduleId(null);
+      }
+    },
+    [refresh],
+  );
+
+  const cancelRequest = useCallback(
+    async (scheduleId: string) => {
+      setBusyScheduleId(scheduleId);
+      setStatus(null);
+      try {
+        await cancelMatchScheduleRequest(scheduleId);
+        await refresh();
+        setStatus({ type: "success", message: "참가 신청을 취소했습니다." });
+      } catch (error) {
+        setStatus({ type: "error", message: toMessage(error) });
+      } finally {
+        setBusyScheduleId(null);
+      }
+    },
+    [refresh],
+  );
+
   return {
     schedules,
     loading,
@@ -83,5 +119,7 @@ export function useClubSchedules(clubId: string) {
     refresh,
     join,
     leave,
+    request,
+    cancelRequest,
   };
 }

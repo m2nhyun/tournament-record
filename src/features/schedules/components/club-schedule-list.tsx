@@ -14,6 +14,7 @@ import {
   formatScheduleDateTimeRange,
   formatWon,
   scheduleFormatLabels,
+  scheduleJoinPolicyLabels,
   scheduleStatusLabels,
 } from "@/features/schedules/utils/schedule-format";
 import type { ClubRole } from "@/features/clubs/types/club";
@@ -24,7 +25,16 @@ type ClubScheduleListProps = {
 };
 
 export function ClubScheduleList({ clubId, myRole }: ClubScheduleListProps) {
-  const { schedules, loading, busyScheduleId, status, join, leave } =
+  const {
+    schedules,
+    loading,
+    busyScheduleId,
+    status,
+    join,
+    leave,
+    request,
+    cancelRequest,
+  } =
     useClubSchedules(clubId);
 
   const canCreateSchedule = myRole !== "guest";
@@ -74,23 +84,35 @@ export function ClubScheduleList({ clubId, myRole }: ClubScheduleListProps) {
         <div className="space-y-3">
           {schedules.map((schedule) => {
             const isBusy = busyScheduleId === schedule.id;
-            const canJoin =
+            const canJoinInstant =
+              schedule.joinPolicy === "instant" &&
               !schedule.isParticipant &&
               schedule.status !== "cancelled" &&
               schedule.remainingSlots > 0;
             const canLeave =
               schedule.isParticipant && !schedule.isHost && schedule.status !== "cancelled";
+            const canRequest =
+              schedule.joinPolicy === "approval_required" &&
+              !schedule.isParticipant &&
+              schedule.myRequestStatus !== "pending" &&
+              schedule.status !== "cancelled" &&
+              schedule.remainingSlots > 0;
+            const canCancelRequest =
+              schedule.joinPolicy === "approval_required" &&
+              schedule.myRequestStatus === "pending";
 
             return (
               <Card key={schedule.id}>
                 <CardHeader className="space-y-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="brand">{scheduleFormatLabels[schedule.format]}</Badge>
-                    <Badge>
-                      {scheduleStatusLabels[schedule.status]}
-                    </Badge>
+                    <Badge>{scheduleStatusLabels[schedule.status]}</Badge>
+                    <Badge>{scheduleJoinPolicyLabels[schedule.joinPolicy]}</Badge>
                     {!schedule.hostParticipates ? (
                       <Badge variant="warning">개설자 미포함</Badge>
+                    ) : null}
+                    {schedule.requestCount > 0 ? (
+                      <Badge variant="warning">대기 신청 {schedule.requestCount}건</Badge>
                     ) : null}
                     <span className="text-xs text-muted-foreground">
                       개설 {schedule.hostNickname}
@@ -149,13 +171,32 @@ export function ClubScheduleList({ clubId, myRole }: ClubScheduleListProps) {
                         상세 보기
                       </Link>
                     </Button>
-                    {canJoin ? (
+                    {canJoinInstant ? (
                       <Button
                         className="flex-1 bg-[var(--brand)] text-white hover:opacity-90"
                         disabled={isBusy}
                         onClick={() => void join(schedule.id)}
                       >
                         참가하기
+                      </Button>
+                    ) : null}
+                    {canRequest ? (
+                      <Button
+                        className="flex-1 bg-[var(--brand)] text-white hover:opacity-90"
+                        disabled={isBusy}
+                        onClick={() => void request(schedule.id)}
+                      >
+                        참가 신청
+                      </Button>
+                    ) : null}
+                    {canCancelRequest ? (
+                      <Button
+                        variant="outline"
+                        className="flex-1"
+                        disabled={isBusy}
+                        onClick={() => void cancelRequest(schedule.id)}
+                      >
+                        신청 취소
                       </Button>
                     ) : null}
                     {canLeave ? (
@@ -173,9 +214,17 @@ export function ClubScheduleList({ clubId, myRole }: ClubScheduleListProps) {
                         개설자로 참가 중
                       </div>
                     ) : null}
-                    {!canJoin && !canLeave && !schedule.isHost ? (
+                    {!canJoinInstant &&
+                    !canRequest &&
+                    !canCancelRequest &&
+                    !canLeave &&
+                    !schedule.isHost ? (
                       <div className="flex-1 rounded-md border bg-muted/20 px-3 py-2 text-center text-sm text-muted-foreground">
-                        {schedule.status === "cancelled" ? "취소된 일정" : "참가 가능 상태 아님"}
+                        {schedule.status === "cancelled"
+                          ? "취소된 일정"
+                          : schedule.myRequestStatus === "pending"
+                            ? "신청 응답 대기 중"
+                            : "참가 가능 상태 아님"}
                       </div>
                     ) : null}
                   </div>

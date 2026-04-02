@@ -1,5 +1,5 @@
-import { requireUser } from "@/features/auth/services/auth";
 import { requireCompletedProfile } from "@/features/auth/services/profile";
+import { requireUser } from "@/features/auth/services/auth";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { mapScheduleError } from "@/features/schedules/services/schedule-error";
 
@@ -7,6 +7,8 @@ import type {
   MatchScheduleCreationData,
   MatchScheduleDetail,
   MatchScheduleParticipant,
+  MatchScheduleRequest,
+  MatchScheduleRequestStatus,
   MatchScheduleSummary,
 } from "@/features/schedules/types/schedule";
 
@@ -16,6 +18,7 @@ type ScheduleRow = {
   host_member_id: string;
   format: MatchScheduleSummary["format"];
   status: MatchScheduleSummary["status"];
+  join_policy: MatchScheduleSummary["joinPolicy"];
   linked_match_id: string | null;
   scheduled_at: string;
   ends_at: string;
@@ -40,15 +43,75 @@ type ParticipantRow = {
     | null;
 };
 
+type RequestRow = {
+  schedule_id: string;
+  club_member_id: string;
+  status: MatchScheduleRequestStatus;
+  message: string;
+  created_at: string;
+  member:
+    | { id: string; nickname: string; user_id: string | null }
+    | { id: string; nickname: string; user_id: string | null }[]
+    | null;
+};
+
 function pickOne<T>(value: T | T[] | null | undefined): T | null {
   if (!value) return null;
   if (Array.isArray(value)) return value[0] ?? null;
   return value;
 }
 
+function buildParticipantMap(rows: ParticipantRow[], userId: string) {
+  const participantMap = new Map<string, MatchScheduleParticipant[]>();
+
+  rows.forEach((row) => {
+    const member = pickOne(row.member);
+    if (!member) return;
+
+    const nextParticipant: MatchScheduleParticipant = {
+      clubMemberId: row.club_member_id,
+      nickname: member.nickname,
+      joinedAt: row.created_at,
+      isHost: false,
+      isMe: member.user_id === userId,
+    };
+
+    const group = participantMap.get(row.schedule_id) ?? [];
+    group.push(nextParticipant);
+    participantMap.set(row.schedule_id, group);
+  });
+
+  return participantMap;
+}
+
+function buildRequestMap(rows: RequestRow[], userId: string) {
+  const requestMap = new Map<string, MatchScheduleRequest[]>();
+
+  rows.forEach((row) => {
+    const member = pickOne(row.member);
+    if (!member) return;
+
+    const nextRequest: MatchScheduleRequest = {
+      clubMemberId: row.club_member_id,
+      nickname: member.nickname,
+      requestedAt: row.created_at,
+      status: row.status,
+      message: row.message,
+      isMe: member.user_id === userId,
+    };
+
+    const group = requestMap.get(row.schedule_id) ?? [];
+    group.push(nextRequest);
+    requestMap.set(row.schedule_id, group);
+  });
+
+  return requestMap;
+}
+
 function toScheduleSummary(
   row: ScheduleRow,
   participantMap: Map<string, MatchScheduleParticipant[]>,
+  requestMap: Map<string, MatchScheduleRequest[]>,
 ): MatchScheduleSummary {
   const host = pickOne(row.host_member);
   const participantsForSchedule = (participantMap.get(row.id) ?? []).map(
@@ -57,16 +120,20 @@ function toScheduleSummary(
       isHost: participant.clubMemberId === row.host_member_id,
     }),
   );
+  const requestsForSchedule = requestMap.get(row.id) ?? [];
   const participantCount = participantsForSchedule.length;
   const hostParticipates = participantsForSchedule.some(
     (participant) => participant.clubMemberId === row.host_member_id,
   );
+  const myRequest =
+    requestsForSchedule.find((request) => request.isMe) ?? null;
 
   return {
     id: row.id,
     clubId: row.club_id,
     format: row.format,
     status: row.status,
+    joinPolicy: row.join_policy,
     scheduledAt: row.scheduled_at,
     endsAt: row.ends_at,
     location: row.location,
@@ -81,8 +148,58 @@ function toScheduleSummary(
     remainingSlots: Math.max(0, row.capacity - participantCount),
     isHost: false,
     isParticipant: participantsForSchedule.some((participant) => participant.isMe),
+    myRequestStatus: myRequest?.status ?? null,
+    requestCount: requestsForSchedule.filter((request) => request.status === "pending")
+      .length,
     participants: participantsForSchedule,
   } satisfies MatchScheduleSummary;
+}
+
+async function listScheduleParticipants(
+  scheduleIds: string[],
+  userId: string,
+) {
+  if (scheduleIds.length === 0) return new Map<string, MatchScheduleParticipant[]>();
+
+  const { data: participants, error } = await getSupabaseClient()
+    .from("match_schedule_participants")
+    .select(
+      `
+      schedule_id,
+      club_member_id,
+      created_at,
+      member:club_members!match_schedule_participants_club_member_id_fkey(id,nickname,user_id)
+    `,
+    )
+    .in("schedule_id", scheduleIds)
+    .order("created_at", { ascending: true });
+
+  if (error) throw mapScheduleError(error);
+
+  return buildParticipantMap((participants ?? []) as ParticipantRow[], userId);
+}
+
+async function listScheduleRequests(scheduleIds: string[], userId: string) {
+  if (scheduleIds.length === 0) return new Map<string, MatchScheduleRequest[]>();
+
+  const { data: requests, error } = await getSupabaseClient()
+    .from("match_schedule_requests")
+    .select(
+      `
+      schedule_id,
+      club_member_id,
+      status,
+      message,
+      created_at,
+      member:club_members!match_schedule_requests_club_member_id_fkey(id,nickname,user_id)
+    `,
+    )
+    .in("schedule_id", scheduleIds)
+    .order("created_at", { ascending: true });
+
+  if (error) throw mapScheduleError(error);
+
+  return buildRequestMap((requests ?? []) as RequestRow[], userId);
 }
 
 export async function createMatchSchedule(
@@ -102,6 +219,7 @@ export async function createMatchSchedule(
     {
       p_club_id: clubId,
       p_format: data.format,
+      p_join_policy: data.joinPolicy,
       p_scheduled_at: data.scheduledAt,
       p_ends_at: data.endsAt,
       p_location: data.location.trim(),
@@ -137,6 +255,64 @@ export async function leaveMatchSchedule(scheduleId: string) {
   if (error) throw mapScheduleError(error);
 }
 
+export async function requestMatchSchedule(scheduleId: string, message = "") {
+  await requireCompletedProfile();
+
+  const { error } = await getSupabaseClient().rpc("request_match_schedule", {
+    p_schedule_id: scheduleId,
+    p_message: message.trim(),
+  });
+
+  if (error) throw mapScheduleError(error);
+}
+
+export async function cancelMatchScheduleRequest(scheduleId: string) {
+  await requireCompletedProfile();
+
+  const { error } = await getSupabaseClient().rpc(
+    "cancel_match_schedule_request",
+    {
+      p_schedule_id: scheduleId,
+    },
+  );
+
+  if (error) throw mapScheduleError(error);
+}
+
+export async function acceptMatchScheduleRequest(
+  scheduleId: string,
+  clubMemberId: string,
+) {
+  await requireCompletedProfile();
+
+  const { error } = await getSupabaseClient().rpc(
+    "accept_match_schedule_request",
+    {
+      p_schedule_id: scheduleId,
+      p_club_member_id: clubMemberId,
+    },
+  );
+
+  if (error) throw mapScheduleError(error);
+}
+
+export async function rejectMatchScheduleRequest(
+  scheduleId: string,
+  clubMemberId: string,
+) {
+  await requireCompletedProfile();
+
+  const { error } = await getSupabaseClient().rpc(
+    "reject_match_schedule_request",
+    {
+      p_schedule_id: scheduleId,
+      p_club_member_id: clubMemberId,
+    },
+  );
+
+  if (error) throw mapScheduleError(error);
+}
+
 export async function listUpcomingMatchSchedules(
   clubId: string,
 ): Promise<MatchScheduleSummary[]> {
@@ -152,6 +328,7 @@ export async function listUpcomingMatchSchedules(
       host_member_id,
       format,
       status,
+      join_policy,
       linked_match_id,
       scheduled_at,
       ends_at,
@@ -175,42 +352,11 @@ export async function listUpcomingMatchSchedules(
 
   if (scheduleIds.length === 0) return [];
 
-  const { data: participants, error: participantError } = await supabase
-    .from("match_schedule_participants")
-    .select(
-      `
-      schedule_id,
-      club_member_id,
-      created_at,
-      member:club_members!match_schedule_participants_club_member_id_fkey(id,nickname,user_id)
-    `,
-    )
-    .in("schedule_id", scheduleIds)
-    .order("created_at", { ascending: true });
-
-  if (participantError) throw mapScheduleError(participantError);
-
-  const participantMap = new Map<string, MatchScheduleParticipant[]>();
-
-  ((participants ?? []) as ParticipantRow[]).forEach((row) => {
-    const member = pickOne(row.member);
-    if (!member) return;
-
-    const nextParticipant: MatchScheduleParticipant = {
-      clubMemberId: row.club_member_id,
-      nickname: member.nickname,
-      joinedAt: row.created_at,
-      isHost: false,
-      isMe: member.user_id === user.id,
-    };
-
-    const group = participantMap.get(row.schedule_id) ?? [];
-    group.push(nextParticipant);
-    participantMap.set(row.schedule_id, group);
-  });
+  const participantMap = await listScheduleParticipants(scheduleIds, user.id);
+  const requestMap = await listScheduleRequests(scheduleIds, user.id);
 
   return scheduleRows.map((row) => {
-    const summary = toScheduleSummary(row, participantMap);
+    const summary = toScheduleSummary(row, participantMap, requestMap);
     return {
       ...summary,
       isHost: pickOne(row.host_member)?.user_id === user.id,
@@ -234,6 +380,7 @@ export async function getMatchScheduleDetail(
       host_member_id,
       format,
       status,
+      join_policy,
       linked_match_id,
       scheduled_at,
       ends_at,
@@ -253,41 +400,13 @@ export async function getMatchScheduleDetail(
     throw mapScheduleError(scheduleError ?? new Error("일정을 찾을 수 없습니다."));
   }
 
-  const { data: participants, error: participantError } = await supabase
-    .from("match_schedule_participants")
-    .select(
-      `
-      schedule_id,
-      club_member_id,
-      created_at,
-      member:club_members!match_schedule_participants_club_member_id_fkey(id,nickname,user_id)
-    `,
-    )
-    .eq("schedule_id", scheduleId)
-    .order("created_at", { ascending: true });
-
-  if (participantError) throw mapScheduleError(participantError);
-
-  const participantMap = new Map<string, MatchScheduleParticipant[]>();
-
-  ((participants ?? []) as ParticipantRow[]).forEach((row) => {
-    const member = pickOne(row.member);
-    if (!member) return;
-
-    const nextParticipant: MatchScheduleParticipant = {
-      clubMemberId: row.club_member_id,
-      nickname: member.nickname,
-      joinedAt: row.created_at,
-      isHost: false,
-      isMe: member.user_id === user.id,
-    };
-
-    const group = participantMap.get(row.schedule_id) ?? [];
-    group.push(nextParticipant);
-    participantMap.set(row.schedule_id, group);
-  });
-
-  const summary = toScheduleSummary(schedule as ScheduleRow, participantMap);
+  const participantMap = await listScheduleParticipants([scheduleId], user.id);
+  const requestMap = await listScheduleRequests([scheduleId], user.id);
+  const summary = toScheduleSummary(
+    schedule as ScheduleRow,
+    participantMap,
+    requestMap,
+  );
   const totalFee = summary.courtFee + summary.ballFee;
   const estimatedFeePerPerson =
     summary.capacity > 0 ? Math.ceil(totalFee / summary.capacity) : 0;
@@ -297,5 +416,8 @@ export async function getMatchScheduleDetail(
     isHost: pickOne((schedule as ScheduleRow).host_member)?.user_id === user.id,
     linkedMatchId: (schedule as ScheduleRow).linked_match_id,
     estimatedFeePerPerson,
+    pendingRequests: (requestMap.get(scheduleId) ?? []).filter(
+      (request) => request.status === "pending",
+    ),
   };
 }

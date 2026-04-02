@@ -54,9 +54,14 @@
 - `match_schedules`
   - 경기 기록과 분리된 일정/모집 엔티티
   - 복식 타입(`men_doubles | women_doubles | open_doubles`), 시작/종료 시각, 장소, 비용, 정원 관리
+  - 참가 방식 `join_policy`(`instant | approval_required`)를 가진다
+  - 상태는 `open | reviewing | full | cancelled`를 사용한다
 - `match_schedule_participants`
   - 일정 참가자 목록
   - 개설자는 기본적으로 자동 참가하지만, `본인 포함`을 끄면 운영자만 유지 가능
+- `match_schedule_requests`
+  - 승인형 모집(`approval_required`)의 신청 대기 큐
+  - 상태: `pending | accepted | rejected | cancelled_by_user`
 - `audit_logs`
   - 운영/변경 추적 로그
 
@@ -82,6 +87,8 @@
 - 일정 권한:
   - 일정 생성: `owner/manager/member`만
   - 일정 참가: active 클럽 멤버면 가능(게스트 포함)
+  - 승인형 모집은 `match_schedule_requests`를 거쳐 개설자 수락 후 참가자로 전환된다
+  - 승인형 모집에 pending 신청이 있으면 일정 상태를 `reviewing`으로 보정한다
   - 생성자는 기본적으로 자동 참가되며, `본인 포함` 옵션을 끄면 참가자에 자동 포함되지 않는다
   - 정원/마감 상태는 DB 함수로 보정
 

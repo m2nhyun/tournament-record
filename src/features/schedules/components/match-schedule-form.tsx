@@ -27,10 +27,14 @@ import {
   suggestedScheduleTimes,
   useMatchScheduleCreation,
 } from "@/features/schedules/hooks/use-match-schedule-creation";
-import type { MatchScheduleFormat } from "@/features/schedules/types/schedule";
+import type {
+  MatchScheduleFormat,
+  MatchScheduleJoinPolicy,
+} from "@/features/schedules/types/schedule";
 import {
   formatWon,
   scheduleFormatLabels,
+  scheduleJoinPolicyLabels,
 } from "@/features/schedules/utils/schedule-format";
 
 type MatchScheduleFormProps = {
@@ -41,6 +45,11 @@ const scheduleFormats: MatchScheduleFormat[] = [
   "men_doubles",
   "women_doubles",
   "open_doubles",
+];
+
+const joinPolicyOptions: MatchScheduleJoinPolicy[] = [
+  "instant",
+  "approval_required",
 ];
 
 const timeRangeOptions = suggestedScheduleTimes.map((value, index, array) => ({
@@ -86,6 +95,8 @@ export function MatchScheduleForm({ clubId }: MatchScheduleFormProps) {
     canCreateSchedule,
     format,
     setFormat,
+    joinPolicy,
+    setJoinPolicy,
     date,
     setDate,
     selectedTimeSlots,
@@ -240,6 +251,32 @@ export function MatchScheduleForm({ clubId }: MatchScheduleFormProps) {
               </p>
             </div>
 
+            <div className="grid gap-2">
+              <Label>참가 방식</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {joinPolicyOptions.map((option) => (
+                  <Button
+                    key={option}
+                    type="button"
+                    variant={joinPolicy === option ? "default" : "outline"}
+                    className={
+                      joinPolicy === option
+                        ? "bg-[var(--brand)] text-white hover:opacity-90"
+                        : ""
+                    }
+                    onClick={() => setJoinPolicy(option)}
+                  >
+                    {scheduleJoinPolicyLabels[option]}
+                  </Button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {joinPolicy === "instant"
+                  ? "클럽 멤버가 바로 참가자 목록에 들어오는 빠른 모집 방식입니다."
+                  : "참가 신청을 받은 뒤 개설자가 수락해야 참가자로 확정됩니다."}
+              </p>
+            </div>
+
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,240px)]">
               <div className="grid gap-2">
                 <Label>캘린더</Label>
@@ -375,6 +412,9 @@ export function MatchScheduleForm({ clubId }: MatchScheduleFormProps) {
             <div className="rounded-xl border bg-muted/20 p-3 text-sm">
               <div className="font-medium text-foreground">{schedulePreview}</div>
               <div className="mt-1 text-muted-foreground">{location.trim()}</div>
+              <div className="mt-2 inline-flex">
+                <Badge>{scheduleJoinPolicyLabels[joinPolicy]}</Badge>
+              </div>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -506,10 +546,13 @@ export function MatchScheduleForm({ clubId }: MatchScheduleFormProps) {
               </p>
             </div>
             <div className="rounded-xl border bg-muted/20 p-3">
-              <p className="text-xs text-muted-foreground">복식 타입 / 정원</p>
+              <p className="text-xs text-muted-foreground">복식 타입 / 정원 / 참가 방식</p>
               <p className="mt-1 font-medium">
                 {scheduleFormatLabels[format]} · 총 {capacity || "0"}명
                 {includeHost ? " (개설자 포함)" : " (개설자 제외)"}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {scheduleJoinPolicyLabels[joinPolicy]}
               </p>
             </div>
             <div className="rounded-xl border bg-muted/20 p-3">
@@ -530,9 +573,11 @@ export function MatchScheduleForm({ clubId }: MatchScheduleFormProps) {
               생성 후 바로 적용되는 내용
             </div>
             <p className="mt-2 text-muted-foreground">
-              {includeHost
-                ? "개설자는 자동 참가 처리되고, 클럽 홈 upcoming 일정 카드에서 참가/취소와 남은 자리 수가 바로 갱신됩니다."
-                : "개설자는 운영자로만 생성되고, 클럽 홈 upcoming 일정 카드에서 모집 인원과 남은 자리 수가 바로 갱신됩니다."}
+              {joinPolicy === "instant"
+                ? includeHost
+                  ? "개설자는 자동 참가 처리되고, 클럽 홈 upcoming 일정 카드에서 참가/취소와 남은 자리 수가 바로 갱신됩니다."
+                  : "개설자는 운영자로만 생성되고, 클럽 홈 upcoming 일정 카드에서 모집 인원과 남은 자리 수가 바로 갱신됩니다."
+                : "참가자는 먼저 신청 대기 상태로 들어가고, 개설자가 수락한 뒤 참가자로 확정됩니다."}
             </p>
           </div>
         </CardContent>
@@ -552,8 +597,8 @@ export function MatchScheduleForm({ clubId }: MatchScheduleFormProps) {
           정회원은 일정 생성이 가능하고, 게스트는 생성된 일정에 참가만 가능합니다.
         </p>
         <p className="mt-1">
-          채팅방과 실제 경기 기록 연결은 이 일정 엔티티를 기준으로 다음 단계에서
-          붙일 수 있습니다.
+          승인형 모집은 신청/수락 흐름을 먼저 거치고, 바로 참가형은 기존처럼 즉시
+          참가가 가능합니다.
         </p>
       </div>
 
