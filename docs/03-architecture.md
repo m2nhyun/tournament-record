@@ -12,6 +12,7 @@
 - `src/app`: 라우트 엔트리
   - `/`: 홈(클럽 대시보드)
   - `/auth/callback`: OAuth 콜백
+  - `/onboarding/profile`: 정회원 기본 프로필 온보딩
   - `/join/[inviteCode]`: 원클릭 초대 링크 참가
   - `/clubs/[clubId]/*`: 클럽 상세/히스토리/리더보드/경기
   - `/clubs/[clubId]/schedules/[scheduleId]`: 일정 상세/참가 현황
@@ -36,6 +37,10 @@
   - 역할: `owner | manager | member | guest`
   - `is_active`, `left_at` (소프트 삭제/탈퇴 처리)
   - 개인 설정: `open_kakao_profile`, `allow_record_search`, `share_history`
+- `user_profiles`
+  - 전역 정회원 프로필 저장
+  - `display_name`, `gender`, `profile_completed`, `auth_provider`
+  - 현재는 온보딩용 기본 저장소이며, 핵심 쓰기 기능의 강제 가드는 후속 연결 단계
 - `matches`
   - `created_by` 기준 생성자 보존
 - `match_players`
@@ -94,6 +99,10 @@
 - 게스트: Supabase anonymous session 지원
 - `requireUser`: 로그인 또는 게스트 세션 요구
 - `requireRegisteredUser`: 정회원(비-anonymous) 요구
+- `/auth/callback`은 정회원 로그인 뒤 `profile_completed`를 확인하고, 미완료 사용자를 `/onboarding/profile`로 보낸다
+- 홈(`/`)도 기존 세션의 정회원이 `profile_completed = false`면 온보딩으로 유도한다
+- 클럽 생성, 일정 생성, 경기 기록 저장/수정에는 클라이언트 서비스 레벨의 `profile_completed` 가드가 연결되어 있다
+- DB/RPC 수준의 전면 강제는 아직 후속 작업 범위다
 
 ## Branch & Deploy
 

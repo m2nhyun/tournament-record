@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 
 import { ClubTabs } from "@/features/clubs/components/club-tabs";
 import { ClubList } from "@/features/clubs/components/club-list";
@@ -12,6 +14,7 @@ import { LoadingSpinner } from "@/components/feedback/loading-spinner";
 import { StatusBox } from "@/components/feedback/status-box";
 import { Button } from "@/components/ui/button";
 import { AppBar } from "@/components/layout/app-bar";
+import { getMyProfile } from "@/features/auth/services/profile";
 
 function tabTitle(activeTab: "list" | "join" | "create") {
   if (activeTab === "join") return "클럽 참가";
@@ -20,6 +23,7 @@ function tabTitle(activeTab: "list" | "join" | "create") {
 }
 
 export function ClubDashboard() {
+  const router = useRouter();
   const {
     user,
     clubs,
@@ -48,6 +52,27 @@ export function ClubDashboard() {
     isGuestModeEnabled,
     isAnonymousUser,
   } = useClubDashboard();
+
+  useEffect(() => {
+    if (!user || user.is_anonymous) return;
+
+    let mounted = true;
+
+    void getMyProfile()
+      .then((profile) => {
+        if (!mounted) return;
+        if (!profile?.profileCompleted) {
+          router.replace("/onboarding/profile?next=/");
+        }
+      })
+      .catch(() => {
+        // Keep the current screen if profile lookup fails; service guards still block writes.
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [router, user]);
 
   if (busyType === "loading") {
     return <LoadingSpinner title="로딩 중" message="세션 확인 중..." />;

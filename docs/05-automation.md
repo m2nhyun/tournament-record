@@ -49,12 +49,19 @@ Kakao Developers:
 
 1. `.env.local` 설정
 2. `SUPABASE_DB_URL` 환경변수 설정
+3. IPv4-only 환경이거나 direct DB host(`db.<project-ref>.supabase.co:5432`)가 막히면 `SUPABASE_DB_PUSH_URL`에 session pooler URL 설정
 
 예시:
 
 ```bash
-export SUPABASE_DB_URL='postgresql://postgres:<password>@db.<project-ref>.supabase.co:5432/postgres'
+export SUPABASE_DB_URL='postgresql://postgres:<url-encoded-password>@db.<project-ref>.supabase.co:5432/postgres'
+export SUPABASE_DB_PUSH_URL='postgresql://postgres.<project-ref>:<url-encoded-password>@aws-0-<region>.pooler.supabase.com:5432/postgres'
 ```
+
+주의:
+- 비밀번호에 `@`, `:`, `/` 같은 reserved 문자가 있으면 URL 인코딩해야 한다. 예: `p@ssword` -> `p%40ssword`
+- `SUPABASE_DB_PUSH_URL`가 있으면 `db:push`, `db:push:dry`, `db:schema:sync`는 이 값을 우선 사용한다.
+- Supabase 공식 가이드 기준으로 direct connection은 IPv6 의존성이 있을 수 있으므로, 현재 네트워크에서 5432 direct 접속이 막히면 session pooler를 사용한다.
 
 ## 명령어
 
@@ -99,6 +106,9 @@ npm run browser:check
 - `npm run db:push`는 적용 성공 뒤 `supabase/schema.sql`까지 자동으로 동기화한다.
 - 대시보드에서 SQL을 수동 실행했다면 `npm run db:schema:sync`로 로컬 스키마를 다시 맞춘다.
 - 코드/문서/SQL은 같은 변경 세트로 관리하고, SQL 적용 전까지 기능 완료로 보지 않는다.
+- 현재 작업 환경처럼 `db.<project-ref>.supabase.co:5432` direct host가 IPv6-only로 응답하면, 대시보드의 session pooler 문자열을 `SUPABASE_DB_PUSH_URL`에 넣고 CLI 작업을 수행한다.
+- remote schema 객체는 이미 있는데 `supabase migration list`의 `Remote`가 비어 있으면, SQL을 다시 밀어 넣지 말고 `supabase migration repair ... --status applied`로 history부터 복구한다.
+- history repair 전에는 `db:push:dry`, remote schema dump, 핵심 RPC/컬럼 조회로 실제 schema가 최신 상태인지 먼저 확인한다.
 
 실행 순서:
 1. `supabase/migrations/*.sql`에서 대상 파일 선택
@@ -140,6 +150,11 @@ npm run browser:check
 - 일정 엔티티에 종료 시각(`ends_at`) 추가
 - 일정 생성 RPC가 시작/종료 시각을 함께 받도록 확장
 - 시간 슬롯 다중 선택 기반 범위 저장 지원
+
+7. `20260402120000_add_user_profiles.sql`
+- 전역 정회원 프로필 테이블 `user_profiles` 추가
+- `display_name`, `gender`, `profile_completed`, `auth_provider` 저장
+- 본인 전용 RLS(`select/insert/update own`) 추가
 
 ## Match Confirmation Operations
 

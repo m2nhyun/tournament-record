@@ -1,5 +1,6 @@
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { requireRegisteredUser, requireUser } from "@/features/auth/services/auth";
+import { requireCompletedProfile } from "@/features/auth/services/profile";
 import { mapClubSettingsError } from "@/features/clubs/services/club-error";
 
 import type {
@@ -69,6 +70,7 @@ export async function listMyClubs(): Promise<ClubSummary[]> {
 
 export async function createClub(input: { name: string; nickname: string }) {
   const user = await requireRegisteredUser();
+  await requireCompletedProfile();
   const inviteCode = generateInviteCode();
 
   const { data: club, error: clubError } = await getSupabaseClient()

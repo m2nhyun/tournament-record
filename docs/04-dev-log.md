@@ -1,5 +1,53 @@
 # Dev Log
 
+## 2026-04-02
+
+### Remote Schema Sync
+
+- `supabase migration repair` 이후 remote migration history와 실제 schema 상태를 다시 점검
+- remote dump 기준으로 `supabase/schema.sql`이 최신 운영 스키마와 드리프트 상태임을 확인
+- `scripts/automation/db-sync-schema.sh`와 동일한 dump 절차로 `supabase/schema.sql`을 remote 기준으로 다시 동기화
+- 확인 결과 `club_member_role.guest`, `club_members.is_active/left_at`, `join_club_by_invite_as_guest`, 최신 `create_match_schedule(... p_ends_at, p_include_host ...)` 등 최근 운영 구조가 로컬 schema 파일에도 반영됨
+
+### User Profiles Migration Apply
+
+- pending 상태이던 `20260402120000_add_user_profiles.sql`을 remote DB 반영 대상으로 확정
+- 새 테이블 `user_profiles`는 기존 기능을 깨지 않는 additive 스키마로 판단하고 먼저 반영
+- 아키텍처 문서에는 `user_profiles`와 `/onboarding/profile`를 현재 구조로 기록하되, `profile_completed` 기반 전면 권한 강제는 아직 후속 단계라고 명시
+
+### Profile Completed Flow Wiring
+
+- `/auth/callback`이 세션 복구 뒤 `user_profiles.profile_completed`를 확인하고, 미완료 정회원을 `/onboarding/profile`로 보내도록 연결
+- 홈(`/`)도 기존 로그인 세션에서 프로필 미완료 사용자를 온보딩으로 유도하도록 보강
+- 클럽 생성, 일정 생성, 경기 기록 저장/수정은 서비스 계층에서 `requireCompletedProfile()`을 거치도록 정리
+- 초대 참가, 이메일 인증 UX, DB/RPC 수준의 강제 가드는 아직 후속 작업으로 남겨 둠
+
+## 2026-03-26
+
+### Session Pooler DB Apply
+
+- Supabase direct DB host가 IPv4 호환이 아니어서 `db push` 계열 명령이 실패하던 문제를 session pooler 기반 CLI 연결로 정리
+- `.env.local`, `.envrc`에 `SUPABASE_DB_PUSH_URL`을 추가하고, `db:push`, `db:push:dry`, `db:schema:sync`가 이 값을 우선 사용하도록 자동화 스크립트를 고정
+- `npm run db:push:dry`로 원격 상태를 확인한 결과, 로컬 마이그레이션 전체가 아직 remote migration history에 반영되지 않은 상태임을 확인
+- 다음 세션에서도 같은 판단을 재사용할 수 있도록 `AGENTS.md` 5장/14장과 `docs/05-automation.md`에 session pooler 운영 규칙을 기록
+- remote schema dump와 API 체크로 최신 구조가 이미 들어 있음을 확인한 뒤, `supabase migration repair --status applied`로 전체 migration history를 복구
+- 복구 후 `supabase migration list`에서 local/remote 버전이 모두 일치하고, `npm run db:push:dry`가 `Remote database is up to date.`로 끝나는 것까지 확인
+
+### Auth / Onboarding Design
+
+- 이메일/카카오 병행 인증과 프로필 완료 가드 설계를 `docs/11-auth-onboarding-design.md`에 별도 문서로 고정
+- 전역 프로필(`user_profiles`), `gender`, `profile_completed`, `/auth/check-email`, `/onboarding/profile` 도입 방향을 현재 구현과 분리해서 정리
+- UX 백로그에도 `정회원 프로필 온보딩` 항목을 추가해, 설계만 존재하고 실행 순서가 흐려지지 않도록 연결
+
+## 2026-03-20
+
+### DB Automation Connection Fallback
+
+- `scripts/automation/db-push.sh`, `scripts/automation/db-sync-schema.sh`가 direct DB URL만 고정 사용하지 않도록 정리
+- 새 헬퍼 `scripts/automation/resolve-db-url.sh`를 추가해 `SUPABASE_DB_PUSH_URL`가 있으면 이를 우선 사용하도록 변경
+- direct connection 문자열의 비밀번호에 reserved 문자(`@`, `:`, `/`)가 들어갈 때 URL 인코딩이 필요하다는 점을 예시와 함께 문서화
+- IPv4-only/IPv6 미지원 환경에서는 direct host(`db.<project-ref>.supabase.co:5432`) 대신 session pooler를 CLI 전용 연결 문자열로 쓰는 운영 가이드를 추가
+
 ## 2026-03-19
 
 ### Agent Workflow Bootstrap

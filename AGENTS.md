@@ -154,6 +154,9 @@
 - DB 반영이 필요한 기능은 SQL이 준비되고 적용되기 전까지 완료로 간주하지 않는다.
 - 신규 SQL은 반드시 `supabase/migrations/*.sql`에 남긴다.
 - 현재 운영 정책상 실제 반영은 Supabase `SQL Editor` 수동 실행을 기본으로 한다.
+- CLI로 반영할 때 direct host(`db.<project-ref>.supabase.co:5432`)가 IPv6-only로 막히면 `SUPABASE_DB_PUSH_URL`에 session pooler 문자열을 넣어 우회한다.
+- DB 연결 문자열의 비밀번호에 `@`, `:`, `/` 같은 reserved 문자가 있으면 반드시 URL 인코딩한다.
+- remote schema 객체는 이미 있는데 migration history만 비어 있으면, SQL 재적용보다 `supabase migration repair --status applied`를 우선 검토한다.
 - DB 구조, 정책, RPC, enum, trigger, index 변경이 있으면 아래를 함께 점검한다.
   - `supabase/schema.sql`
   - `docs/03-architecture.md`
@@ -755,13 +758,15 @@ codex --enable multi_agent
 
 ## 14. Current Tooling State
 
-2026-03-10 현재 기준:
+2026-03-26 현재 기준:
 
 - `AGENTS.md`를 루트 실행 규칙으로 사용한다.
 - Codex global config에서 `multi_agent` feature가 활성화되어 있다.
 - Codex global MCP에 `playwright`, `context7`, `exa`, `github`가 등록되어 있다.
 - 이 저장소에서는 `direnv`로 `.env.local`과 `.envrc.local`을 함께 로드한다.
 - `GITHUB_TOKEN`은 전역 `~/.zshrc`가 아니라 `.envrc.local`로 관리한다.
+- DB CLI 작업(`db:push`, `db:push:dry`, `db:schema:sync`)은 `SUPABASE_DB_PUSH_URL`가 있으면 이를 우선 사용한다.
+- 현재 Supabase 프로젝트의 direct DB host는 IPv4 호환이 아니므로, 이 환경에서는 session pooler URL을 CLI 전용 연결 문자열로 사용한다.
 - 이 저장소에서는 multi-agent를 “많은 에이전트를 무조건 띄우는 기능”으로 보지 않는다.
 - 우선순위는 아래와 같다.
   1. 병렬 탐색

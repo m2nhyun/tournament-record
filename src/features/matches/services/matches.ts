@@ -1,5 +1,6 @@
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { requireUser } from "@/features/auth/services/auth";
+import { requireCompletedProfile } from "@/features/auth/services/profile";
 import type { ClubRole } from "@/features/clubs/types/club";
 import { writeAuditLog } from "@/features/matches/services/audit";
 import { resolveMatchStatus } from "@/features/matches/utils/match-status";
@@ -153,6 +154,7 @@ export async function createMatch(
       "게스트는 경기 기록을 저장할 수 없습니다. 카카오/이메일 로그인 후 이용해주세요.",
     );
   }
+  await requireCompletedProfile();
 
   const { data: match, error: matchError } = await getSupabaseClient()
     .from("matches")
@@ -220,6 +222,7 @@ export async function updateMatch(
       "게스트는 경기 기록을 수정할 수 없습니다. 카카오/이메일 로그인 후 이용해주세요.",
     );
   }
+  await requireCompletedProfile();
 
   const { data: existingMatch, error: existingMatchError } =
     await getSupabaseClient()

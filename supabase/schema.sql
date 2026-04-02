@@ -1,499 +1,129 @@
--- Tournament Record MVP schema
--- Run this in Supabase SQL Editor.
 
-create extension if not exists pgcrypto;
 
-create table if not exists public.clubs (
-  id uuid primary key default gen_random_uuid(),
-  name text not null,
-  invite_code text not null unique,
-  created_by uuid not null references auth.users(id) on delete restrict,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+
+CREATE SCHEMA IF NOT EXISTS "public";
+
+
+ALTER SCHEMA "public" OWNER TO "pg_database_owner";
+
+
+COMMENT ON SCHEMA "public" IS 'standard public schema';
+
+
+
+CREATE TYPE "public"."club_member_role" AS ENUM (
+    'owner',
+    'manager',
+    'member',
+    'guest'
 );
 
-create type public.club_member_role as enum ('owner', 'manager', 'member');
 
-create table if not exists public.club_members (
-  id uuid primary key default gen_random_uuid(),
-  club_id uuid not null references public.clubs(id) on delete cascade,
-  user_id uuid not null references auth.users(id) on delete cascade,
-  role public.club_member_role not null default 'member',
-  nickname text not null,
-  created_at timestamptz not null default now(),
-  unique(club_id, user_id)
+ALTER TYPE "public"."club_member_role" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."match_confirmation_decision" AS ENUM (
+    'pending',
+    'approved',
+    'rejected'
 );
 
-create type public.match_type as enum ('singles', 'doubles');
-create type public.match_status as enum ('draft', 'submitted', 'confirmed', 'disputed');
-create type public.match_confirmation_decision as enum ('pending', 'approved', 'rejected');
-create type public.match_schedule_format as enum ('men_doubles', 'women_doubles', 'open_doubles');
-create type public.match_schedule_status as enum ('open', 'full', 'cancelled');
 
-create table if not exists public.matches (
-  id uuid primary key default gen_random_uuid(),
-  club_id uuid not null references public.clubs(id) on delete cascade,
-  match_type public.match_type not null,
-  status public.match_status not null default 'draft',
-  played_at timestamptz not null default now(),
-  created_by uuid not null references auth.users(id) on delete restrict,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+ALTER TYPE "public"."match_confirmation_decision" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."match_schedule_format" AS ENUM (
+    'men_doubles',
+    'women_doubles',
+    'open_doubles'
 );
 
-create table if not exists public.match_players (
-  id uuid primary key default gen_random_uuid(),
-  match_id uuid not null references public.matches(id) on delete cascade,
-  club_member_id uuid not null references public.club_members(id) on delete restrict,
-  side smallint not null check (side in (1, 2)),
-  position smallint check (position in (1, 2)),
-  created_at timestamptz not null default now(),
-  unique(match_id, club_member_id)
+
+ALTER TYPE "public"."match_schedule_format" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."match_schedule_status" AS ENUM (
+    'open',
+    'full',
+    'cancelled'
 );
 
-create table if not exists public.match_results (
-  id uuid primary key default gen_random_uuid(),
-  match_id uuid not null unique references public.matches(id) on delete cascade,
-  score_summary text not null,
-  set_scores jsonb not null default '[]'::jsonb,
-  submitted_by uuid not null references auth.users(id) on delete restrict,
-  confirmed_by uuid references auth.users(id) on delete set null,
-  confirmed_at timestamptz,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+
+ALTER TYPE "public"."match_schedule_status" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."match_status" AS ENUM (
+    'draft',
+    'submitted',
+    'confirmed',
+    'disputed'
 );
 
-create table if not exists public.match_confirmations (
-  id uuid primary key default gen_random_uuid(),
-  match_id uuid not null references public.matches(id) on delete cascade,
-  club_member_id uuid not null references public.club_members(id) on delete cascade,
-  user_id uuid references auth.users(id) on delete set null,
-  side smallint not null check (side in (1, 2)),
-  decision public.match_confirmation_decision not null default 'pending',
-  decided_at timestamptz,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  unique(match_id, club_member_id)
+
+ALTER TYPE "public"."match_status" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."match_type" AS ENUM (
+    'singles',
+    'doubles'
 );
 
-create table if not exists public.match_schedules (
-  id uuid primary key default gen_random_uuid(),
-  club_id uuid not null references public.clubs(id) on delete cascade,
-  host_member_id uuid not null
-    constraint match_schedules_host_member_id_fkey
-    references public.club_members(id) on delete restrict,
-  created_by uuid not null references auth.users(id) on delete restrict,
-  linked_match_id uuid unique references public.matches(id) on delete set null,
-  format public.match_schedule_format not null default 'open_doubles',
-  status public.match_schedule_status not null default 'open',
-  scheduled_at timestamptz not null,
-  ends_at timestamptz not null,
-  location text not null check (char_length(btrim(location)) between 2 and 80),
-  court_fee integer not null default 0 check (court_fee >= 0),
-  ball_fee integer not null default 0 check (ball_fee >= 0),
-  capacity smallint not null check (capacity between 2 and 8),
-  notes text not null default '' check (char_length(notes) <= 240),
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  constraint match_schedules_ends_at_after_scheduled_at check (ends_at > scheduled_at)
-);
 
-create table if not exists public.match_schedule_participants (
-  id uuid primary key default gen_random_uuid(),
-  schedule_id uuid not null references public.match_schedules(id) on delete cascade,
-  club_member_id uuid not null
-    constraint match_schedule_participants_club_member_id_fkey
-    references public.club_members(id) on delete restrict,
-  joined_by uuid references auth.users(id) on delete set null,
-  created_at timestamptz not null default now(),
-  unique(schedule_id, club_member_id)
-);
+ALTER TYPE "public"."match_type" OWNER TO "postgres";
 
-create table if not exists public.audit_logs (
-  id uuid primary key default gen_random_uuid(),
-  club_id uuid not null references public.clubs(id) on delete cascade,
-  actor_user_id uuid not null references auth.users(id) on delete restrict,
-  action text not null,
-  entity_type text not null,
-  entity_id uuid not null,
-  payload jsonb not null default '{}'::jsonb,
-  created_at timestamptz not null default now()
-);
 
-create index if not exists idx_club_members_club on public.club_members(club_id);
-create index if not exists idx_matches_club_played_at on public.matches(club_id, played_at desc);
-create index if not exists idx_match_players_match on public.match_players(match_id);
-create index if not exists idx_match_confirmations_match on public.match_confirmations(match_id);
-create index if not exists idx_match_schedules_club_scheduled_at on public.match_schedules(club_id, scheduled_at asc);
-create index if not exists idx_match_schedule_participants_schedule on public.match_schedule_participants(schedule_id, created_at asc);
-create index if not exists idx_audit_logs_club_created_at on public.audit_logs(club_id, created_at desc);
-
-create or replace function public.set_updated_at()
-returns trigger
-language plpgsql
-as $$
-begin
-  new.updated_at = now();
-  return new;
-end;
-$$;
-
-drop trigger if exists clubs_set_updated_at on public.clubs;
-create trigger clubs_set_updated_at
-before update on public.clubs
-for each row execute function public.set_updated_at();
-
-drop trigger if exists matches_set_updated_at on public.matches;
-create trigger matches_set_updated_at
-before update on public.matches
-for each row execute function public.set_updated_at();
-
-drop trigger if exists match_results_set_updated_at on public.match_results;
-create trigger match_results_set_updated_at
-before update on public.match_results
-for each row execute function public.set_updated_at();
-
-drop trigger if exists match_confirmations_set_updated_at on public.match_confirmations;
-create trigger match_confirmations_set_updated_at
-before update on public.match_confirmations
-for each row execute function public.set_updated_at();
-
-drop trigger if exists match_schedules_set_updated_at on public.match_schedules;
-create trigger match_schedules_set_updated_at
-before update on public.match_schedules
-for each row execute function public.set_updated_at();
-
-create or replace function public.is_club_member(target_club_id uuid)
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select exists(
-    select 1
-    from public.club_members cm
-    where cm.club_id = target_club_id
-      and cm.user_id = auth.uid()
-  );
-$$;
-
-create or replace function public.is_club_admin(target_club_id uuid)
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select exists(
-    select 1
-    from public.club_members cm
-    where cm.club_id = target_club_id
-      and cm.user_id = auth.uid()
-      and cm.role in ('owner', 'manager')
-  );
-$$;
-
-alter table public.clubs enable row level security;
-alter table public.club_members enable row level security;
-alter table public.matches enable row level security;
-alter table public.match_players enable row level security;
-alter table public.match_results enable row level security;
-alter table public.match_confirmations enable row level security;
-alter table public.match_schedules enable row level security;
-alter table public.match_schedule_participants enable row level security;
-alter table public.audit_logs enable row level security;
-
-drop policy if exists clubs_select_member on public.clubs;
-create policy clubs_select_member
-on public.clubs for select
-to authenticated
-using (public.is_club_member(id) or created_by = auth.uid());
-
-drop policy if exists clubs_insert_authenticated on public.clubs;
-create policy clubs_insert_authenticated
-on public.clubs for insert
-to authenticated
-with check (created_by = auth.uid());
-
-drop policy if exists clubs_update_admin on public.clubs;
-create policy clubs_update_admin
-on public.clubs for update
-to authenticated
-using (public.is_club_admin(id))
-with check (public.is_club_admin(id));
-
-drop policy if exists club_members_select_member on public.club_members;
-create policy club_members_select_member
-on public.club_members for select
-to authenticated
-using (public.is_club_member(club_id));
-
-drop policy if exists club_members_manage_admin on public.club_members;
-create policy club_members_manage_admin
-on public.club_members for all
-to authenticated
-using (public.is_club_admin(club_id))
-with check (public.is_club_admin(club_id));
-
-drop policy if exists club_members_insert_owner_bootstrap on public.club_members;
-create policy club_members_insert_owner_bootstrap
-on public.club_members for insert
-to authenticated
-with check (
-  user_id = auth.uid()
-  and role = 'owner'
-  and exists (
-    select 1
-    from public.clubs c
-    where c.id = club_id
-      and c.created_by = auth.uid()
-  )
-);
-
-drop policy if exists matches_select_member on public.matches;
-create policy matches_select_member
-on public.matches for select
-to authenticated
-using (public.is_club_member(club_id));
-
-drop policy if exists matches_insert_member on public.matches;
-create policy matches_insert_member
-on public.matches for insert
-to authenticated
-with check (
-  public.is_club_member(club_id)
-  and created_by = auth.uid()
-);
-
-drop policy if exists matches_update_member on public.matches;
-create policy matches_update_member
-on public.matches for update
-to authenticated
-using (public.is_club_member(club_id))
-with check (public.is_club_member(club_id));
-
-drop policy if exists matches_delete_member on public.matches;
-create policy matches_delete_member
-on public.matches for delete
-to authenticated
-using (public.can_manage_match(club_id, created_by));
-
-drop policy if exists match_players_select_member on public.match_players;
-create policy match_players_select_member
-on public.match_players for select
-to authenticated
-using (
-  exists (
-    select 1
-    from public.matches m
-    where m.id = match_id
-      and public.is_club_member(m.club_id)
-  )
-);
-
-drop policy if exists match_players_manage_member on public.match_players;
-create policy match_players_manage_member
-on public.match_players for all
-to authenticated
-using (
-  exists (
-    select 1
-    from public.matches m
-    where m.id = match_id
-      and public.is_club_member(m.club_id)
-  )
-)
-with check (
-  exists (
-    select 1
-    from public.matches m
-    where m.id = match_id
-      and public.is_club_member(m.club_id)
-  )
-);
-
-drop policy if exists match_results_select_member on public.match_results;
-create policy match_results_select_member
-on public.match_results for select
-to authenticated
-using (
-  exists (
-    select 1
-    from public.matches m
-    where m.id = match_id
-      and public.is_club_member(m.club_id)
-  )
-);
-
-drop policy if exists match_results_manage_member on public.match_results;
-create policy match_results_manage_member
-on public.match_results for all
-to authenticated
-using (
-  exists (
-    select 1
-    from public.matches m
-    where m.id = match_id
-      and public.is_club_member(m.club_id)
-  )
-)
-with check (
-  exists (
-    select 1
-    from public.matches m
-    where m.id = match_id
-      and public.is_club_member(m.club_id)
-  )
-);
-
-drop policy if exists audit_logs_select_member on public.audit_logs;
-create policy audit_logs_select_member
-on public.audit_logs for select
-to authenticated
-using (public.is_club_member(club_id));
-
-drop policy if exists match_schedules_select_member on public.match_schedules;
-create policy match_schedules_select_member
-on public.match_schedules for select
-to authenticated
-using (public.is_club_member(club_id));
-
-drop policy if exists match_schedule_participants_select_member on public.match_schedule_participants;
-create policy match_schedule_participants_select_member
-on public.match_schedule_participants for select
-to authenticated
-using (
-  exists (
-    select 1
-    from public.match_schedules ms
-    where ms.id = schedule_id
-      and public.is_club_member(ms.club_id)
-  )
-);
-
-drop policy if exists match_confirmations_select_member on public.match_confirmations;
-create policy match_confirmations_select_member
-on public.match_confirmations for select
-to authenticated
-using (
-  exists (
-    select 1
-    from public.matches m
-    where m.id = match_id
-      and public.is_club_member(m.club_id)
-  )
-);
-
-drop policy if exists match_confirmations_insert_manager on public.match_confirmations;
-create policy match_confirmations_insert_manager
-on public.match_confirmations for insert
-to authenticated
-with check (
-  exists (
-    select 1
-    from public.matches m
-    where m.id = match_id
-      and public.can_manage_match(m.club_id, m.created_by)
-  )
-);
-
-drop policy if exists match_confirmations_delete_manager on public.match_confirmations;
-create policy match_confirmations_delete_manager
-on public.match_confirmations for delete
-to authenticated
-using (
-  exists (
-    select 1
-    from public.matches m
-    where m.id = match_id
-      and public.can_manage_match(m.club_id, m.created_by)
-  )
-);
-
-drop policy if exists match_confirmations_update_target_user on public.match_confirmations;
-create policy match_confirmations_update_target_user
-on public.match_confirmations for update
-to authenticated
-using (user_id = auth.uid())
-with check (user_id = auth.uid());
-
-drop policy if exists audit_logs_insert_member on public.audit_logs;
-create policy audit_logs_insert_member
-on public.audit_logs for insert
-to authenticated
-with check (
-  public.is_club_member(club_id)
-  and actor_user_id = auth.uid()
-);
-
-create or replace function public.can_create_match_schedule(p_club_id uuid)
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
+CREATE OR REPLACE FUNCTION "public"."can_create_match_schedule"("p_club_id" "uuid") RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
   select exists (
     select 1
     from public.club_members cm
     where cm.club_id = p_club_id
       and cm.user_id = auth.uid()
+      and cm.is_active = true
       and cm.role in ('owner', 'manager', 'member')
   );
 $$;
 
-create or replace function public.refresh_match_schedule_status(p_schedule_id uuid)
-returns void
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_capacity smallint;
-  v_status public.match_schedule_status;
-  v_participant_count integer;
-begin
-  select capacity, status
-    into v_capacity, v_status
-  from public.match_schedules
-  where id = p_schedule_id;
 
-  if v_capacity is null or v_status = 'cancelled' then
-    return;
-  end if;
+ALTER FUNCTION "public"."can_create_match_schedule"("p_club_id" "uuid") OWNER TO "postgres";
 
-  select count(*)
-    into v_participant_count
-  from public.match_schedule_participants
-  where schedule_id = p_schedule_id;
 
-  update public.match_schedules
-  set status = case
-    when v_participant_count >= v_capacity then 'full'
-    else 'open'
-  end
-  where id = p_schedule_id;
-end;
+CREATE OR REPLACE FUNCTION "public"."can_manage_match"("p_club_id" "uuid", "p_created_by" "uuid") RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  select exists (
+    select 1
+    from public.club_members cm
+    where cm.club_id = p_club_id
+      and cm.user_id = auth.uid()
+      and cm.role in ('owner', 'manager')
+  )
+  or (auth.uid() = p_created_by);
 $$;
 
-create or replace function public.create_match_schedule(
-  p_club_id uuid,
-  p_format public.match_schedule_format,
-  p_scheduled_at timestamptz,
-  p_ends_at timestamptz,
-  p_location text,
-  p_court_fee integer default 0,
-  p_ball_fee integer default 0,
-  p_capacity integer default 4,
-  p_notes text default '',
-  p_include_host boolean default true
-)
-returns uuid
-language plpgsql
-security definer
-set search_path = public
-as $$
+
+ALTER FUNCTION "public"."can_manage_match"("p_club_id" "uuid", "p_created_by" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."create_match_schedule"("p_club_id" "uuid", "p_format" "public"."match_schedule_format", "p_scheduled_at" timestamp with time zone, "p_ends_at" timestamp with time zone, "p_location" "text", "p_court_fee" integer DEFAULT 0, "p_ball_fee" integer DEFAULT 0, "p_capacity" integer DEFAULT 4, "p_notes" "text" DEFAULT ''::"text", "p_include_host" boolean DEFAULT true) RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
 declare
   v_user_id uuid;
   v_host_member_id uuid;
@@ -570,12 +200,166 @@ begin
 end;
 $$;
 
-create or replace function public.join_match_schedule(p_schedule_id uuid)
-returns uuid
-language plpgsql
-security definer
-set search_path = public
-as $$
+
+ALTER FUNCTION "public"."create_match_schedule"("p_club_id" "uuid", "p_format" "public"."match_schedule_format", "p_scheduled_at" timestamp with time zone, "p_ends_at" timestamp with time zone, "p_location" "text", "p_court_fee" integer, "p_ball_fee" integer, "p_capacity" integer, "p_notes" "text", "p_include_host" boolean) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."generate_invite_code_unique"() RETURNS "text"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_code text;
+  v_exists boolean;
+  v_chars text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+begin
+  loop
+    v_code := '';
+    for i in 1..6 loop
+      v_code := v_code || substr(v_chars, floor(random() * length(v_chars) + 1)::int, 1);
+    end loop;
+
+    select exists(select 1 from public.clubs c where c.invite_code = v_code) into v_exists;
+    exit when not v_exists;
+  end loop;
+
+  return v_code;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."generate_invite_code_unique"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."is_club_admin"("target_club_id" "uuid") RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  select exists(
+    select 1
+    from public.club_members cm
+    where cm.club_id = target_club_id
+      and cm.user_id = auth.uid()
+      and cm.is_active = true
+      and cm.role in ('owner', 'manager')
+  );
+$$;
+
+
+ALTER FUNCTION "public"."is_club_admin"("target_club_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."is_club_member"("target_club_id" "uuid") RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  select exists(
+    select 1
+    from public.club_members cm
+    where cm.club_id = target_club_id
+      and cm.user_id = auth.uid()
+      and cm.is_active = true
+  );
+$$;
+
+
+ALTER FUNCTION "public"."is_club_member"("target_club_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."join_club_by_invite"("p_invite_code" "text", "p_nickname" "text") RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_user_id uuid;
+  v_club_id uuid;
+begin
+  v_user_id := auth.uid();
+
+  if v_user_id is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  select id
+    into v_club_id
+  from public.clubs
+  where invite_code = upper(trim(p_invite_code))
+    and invite_expires_at > now()
+  limit 1;
+
+  if v_club_id is null then
+    raise exception 'Invalid or expired invite code';
+  end if;
+
+  insert into public.club_members (club_id, user_id, role, nickname, is_active, left_at)
+  values (v_club_id, v_user_id, 'member', trim(p_nickname), true, null)
+  on conflict (club_id, user_id)
+  do update
+    set nickname = excluded.nickname,
+        is_active = true,
+        left_at = null,
+        role = case
+          when public.club_members.role in ('owner', 'manager', 'member') then public.club_members.role
+          else 'member'
+        end;
+
+  return v_club_id;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."join_club_by_invite"("p_invite_code" "text", "p_nickname" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."join_club_by_invite_as_guest"("p_invite_code" "text", "p_nickname" "text") RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_user_id uuid;
+  v_club_id uuid;
+begin
+  v_user_id := auth.uid();
+
+  if v_user_id is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  select id
+    into v_club_id
+  from public.clubs
+  where invite_code = upper(trim(p_invite_code))
+    and invite_expires_at > now()
+  limit 1;
+
+  if v_club_id is null then
+    raise exception 'Invalid or expired invite code';
+  end if;
+
+  insert into public.club_members (club_id, user_id, role, nickname, is_active, left_at)
+  values (v_club_id, v_user_id, 'guest', trim(p_nickname), true, null)
+  on conflict (club_id, user_id)
+  do update
+    set nickname = excluded.nickname,
+        is_active = true,
+        left_at = null,
+        role = case
+          when public.club_members.role in ('owner', 'manager', 'member') then public.club_members.role
+          else 'guest'
+        end;
+
+  return v_club_id;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."join_club_by_invite_as_guest"("p_invite_code" "text", "p_nickname" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."join_match_schedule"("p_schedule_id" "uuid") RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
 declare
   v_user_id uuid;
   v_member_id uuid;
@@ -598,11 +382,16 @@ begin
     raise exception '일정을 찾을 수 없습니다.';
   end if;
 
+  if v_schedule.status = 'cancelled' then
+    raise exception '취소된 일정에는 참가할 수 없습니다.';
+  end if;
+
   select cm.id
     into v_member_id
   from public.club_members cm
   where cm.club_id = v_schedule.club_id
     and cm.user_id = v_user_id
+    and cm.is_active = true
   limit 1;
 
   if v_member_id is null then
@@ -627,8 +416,16 @@ begin
     raise exception '정원이 모두 찼습니다.';
   end if;
 
-  insert into public.match_schedule_participants (schedule_id, club_member_id, joined_by)
-  values (p_schedule_id, v_member_id, v_user_id);
+  insert into public.match_schedule_participants (
+    schedule_id,
+    club_member_id,
+    joined_by
+  )
+  values (
+    p_schedule_id,
+    v_member_id,
+    v_user_id
+  );
 
   perform public.refresh_match_schedule_status(p_schedule_id);
 
@@ -636,12 +433,14 @@ begin
 end;
 $$;
 
-create or replace function public.leave_match_schedule(p_schedule_id uuid)
-returns uuid
-language plpgsql
-security definer
-set search_path = public
-as $$
+
+ALTER FUNCTION "public"."join_match_schedule"("p_schedule_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."leave_match_schedule"("p_schedule_id" "uuid") RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
 declare
   v_user_id uuid;
   v_member_id uuid;
@@ -660,6 +459,7 @@ begin
     on cm.club_id = ms.club_id
   where ms.id = p_schedule_id
     and cm.user_id = v_user_id
+    and cm.is_active = true
   limit 1;
 
   if v_member_id is null then
@@ -680,35 +480,202 @@ begin
 end;
 $$;
 
-grant execute on function public.create_match_schedule(
-  uuid,
-  public.match_schedule_format,
-  timestamptz,
-  timestamptz,
-  text,
-  integer,
-  integer,
-  integer,
-  text,
-  boolean
-) to authenticated;
 
-grant execute on function public.join_match_schedule(uuid) to authenticated;
-grant execute on function public.leave_match_schedule(uuid) to authenticated;
-grant execute on function public.refresh_match_schedule_status(uuid) to authenticated;
+ALTER FUNCTION "public"."leave_match_schedule"("p_schedule_id" "uuid") OWNER TO "postgres";
 
-create or replace function public.join_club_by_invite(
-  p_invite_code text,
-  p_nickname text
-)
-returns uuid
-language plpgsql
-security definer
-set search_path = public
-as $$
+
+CREATE OR REPLACE FUNCTION "public"."refresh_match_schedule_status"("p_schedule_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_capacity smallint;
+  v_status public.match_schedule_status;
+  v_participant_count integer;
+begin
+  select capacity, status
+    into v_capacity, v_status
+  from public.match_schedules
+  where id = p_schedule_id;
+
+  if v_capacity is null then
+    return;
+  end if;
+
+  if v_status = 'cancelled' then
+    return;
+  end if;
+
+  select count(*)
+    into v_participant_count
+  from public.match_schedule_participants
+  where schedule_id = p_schedule_id;
+
+  update public.match_schedules
+  set status = case
+    when v_participant_count >= v_capacity then 'full'
+    else 'open'
+  end
+  where id = p_schedule_id;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."refresh_match_schedule_status"("p_schedule_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."regenerate_club_invite_code"("p_club_id" "uuid", "p_days_valid" integer DEFAULT 30) RETURNS TABLE("invite_code" "text", "invite_expires_at" timestamp with time zone)
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
 declare
   v_user_id uuid;
-  v_club_id uuid;
+  v_days int := greatest(1, least(90, coalesce(p_days_valid, 30)));
+begin
+  v_user_id := auth.uid();
+  if v_user_id is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  if not exists (
+    select 1
+    from public.club_members cm
+    where cm.club_id = p_club_id
+      and cm.user_id = v_user_id
+      and cm.role = 'owner'
+  ) then
+    raise exception 'Only owner can regenerate invite code';
+  end if;
+
+  update public.clubs c
+  set
+    invite_code = public.generate_invite_code_unique(),
+    invite_expires_at = now() + make_interval(days => v_days)
+  where c.id = p_club_id
+  returning c.invite_code, c.invite_expires_at
+  into invite_code, invite_expires_at;
+
+  if invite_code is null then
+    raise exception 'Club not found';
+  end if;
+
+  return next;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."regenerate_club_invite_code"("p_club_id" "uuid", "p_days_valid" integer) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."remove_club_member"("p_club_id" "uuid", "p_member_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_user_id uuid;
+  v_target_user_id uuid;
+  v_target_role public.club_member_role;
+begin
+  v_user_id := auth.uid();
+  if v_user_id is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  if not exists (
+    select 1
+    from public.club_members cm
+    where cm.club_id = p_club_id
+      and cm.user_id = v_user_id
+      and cm.role = 'owner'
+      and cm.is_active = true
+  ) then
+    raise exception 'Only owner can remove member';
+  end if;
+
+  select cm.user_id, cm.role
+    into v_target_user_id, v_target_role
+  from public.club_members cm
+  where cm.id = p_member_id
+    and cm.club_id = p_club_id
+    and cm.is_active = true;
+
+  if v_target_user_id is null then
+    raise exception 'Member not found';
+  end if;
+
+  if v_target_role = 'owner' then
+    raise exception 'Owner cannot be removed';
+  end if;
+
+  if v_target_user_id = v_user_id then
+    raise exception 'Cannot remove yourself';
+  end if;
+
+  update public.club_members cm
+  set is_active = false,
+      left_at = now()
+  where cm.id = p_member_id
+    and cm.club_id = p_club_id
+    and cm.is_active = true;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."remove_club_member"("p_club_id" "uuid", "p_member_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."set_updated_at"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."set_updated_at"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."update_club_name"("p_club_id" "uuid", "p_name" "text") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  declare
+    v_user_id uuid;
+  begin
+    v_user_id := auth.uid();
+
+    if v_user_id is null then
+      raise exception 'Not authenticated';
+    end if;
+
+    if not exists (
+      select 1
+      from public.club_members
+      where club_id = p_club_id
+        and user_id = v_user_id
+        and role = 'owner'
+    ) then
+      raise exception 'Only owner can update club name';
+    end if;
+
+    update public.clubs
+    set name = trim(p_name)
+    where id = p_club_id;
+  end;
+  $$;
+
+
+ALTER FUNCTION "public"."update_club_name"("p_club_id" "uuid", "p_name" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."update_my_club_member_settings"("p_club_id" "uuid", "p_nickname" "text", "p_open_kakao_profile" boolean, "p_allow_record_search" boolean, "p_share_history" boolean) RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_user_id uuid;
 begin
   v_user_id := auth.uid();
 
@@ -716,23 +683,862 @@ begin
     raise exception 'Not authenticated';
   end if;
 
-  select id
-    into v_club_id
-  from public.clubs
-  where invite_code = upper(trim(p_invite_code))
-  limit 1;
-
-  if v_club_id is null then
-    raise exception 'Invalid invite code';
+  if not exists (
+    select 1
+    from public.club_members
+    where club_id = p_club_id
+      and user_id = v_user_id
+  ) then
+    raise exception 'Not a club member';
   end if;
 
-  insert into public.club_members (club_id, user_id, role, nickname)
-  values (v_club_id, v_user_id, 'member', trim(p_nickname))
-  on conflict (club_id, user_id)
-  do update set nickname = excluded.nickname;
-
-  return v_club_id;
+  update public.club_members
+  set
+    nickname = trim(p_nickname),
+    open_kakao_profile = coalesce(p_open_kakao_profile, false),
+    allow_record_search = coalesce(p_allow_record_search, false),
+    share_history = coalesce(p_share_history, false)
+  where club_id = p_club_id
+    and user_id = v_user_id;
 end;
 $$;
 
-grant execute on function public.join_club_by_invite(text, text) to authenticated;
+
+ALTER FUNCTION "public"."update_my_club_member_settings"("p_club_id" "uuid", "p_nickname" "text", "p_open_kakao_profile" boolean, "p_allow_record_search" boolean, "p_share_history" boolean) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."update_my_club_nickname"("p_club_id" "uuid", "p_nickname" "text") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  declare
+    v_user_id uuid;
+  begin
+    v_user_id := auth.uid();
+
+    if v_user_id is null then
+      raise exception 'Not authenticated';
+    end if;
+
+    if not exists (
+      select 1
+      from public.club_members
+      where club_id = p_club_id
+        and user_id = v_user_id
+    ) then
+      raise exception 'Not a club member';
+    end if;
+
+    update public.club_members
+    set nickname = trim(p_nickname)
+    where club_id = p_club_id
+      and user_id = v_user_id;
+  end;
+  $$;
+
+
+ALTER FUNCTION "public"."update_my_club_nickname"("p_club_id" "uuid", "p_nickname" "text") OWNER TO "postgres";
+
+SET default_tablespace = '';
+
+SET default_table_access_method = "heap";
+
+
+CREATE TABLE IF NOT EXISTS "public"."audit_logs" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "club_id" "uuid" NOT NULL,
+    "actor_user_id" "uuid" NOT NULL,
+    "action" "text" NOT NULL,
+    "entity_type" "text" NOT NULL,
+    "entity_id" "uuid" NOT NULL,
+    "payload" "jsonb" DEFAULT '{}'::"jsonb" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."audit_logs" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."club_members" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "club_id" "uuid" NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "role" "public"."club_member_role" DEFAULT 'member'::"public"."club_member_role" NOT NULL,
+    "nickname" "text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "open_kakao_profile" boolean DEFAULT false NOT NULL,
+    "allow_record_search" boolean DEFAULT false NOT NULL,
+    "share_history" boolean DEFAULT false NOT NULL,
+    "is_active" boolean DEFAULT true NOT NULL,
+    "left_at" timestamp with time zone,
+    CONSTRAINT "club_members_nickname_length_check" CHECK ((("char_length"(TRIM(BOTH FROM "nickname")) >= 2) AND ("char_length"(TRIM(BOTH FROM "nickname")) <= 24)))
+);
+
+
+ALTER TABLE "public"."club_members" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."clubs" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "name" "text" NOT NULL,
+    "invite_code" "text" NOT NULL,
+    "created_by" "uuid" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "invite_expires_at" timestamp with time zone DEFAULT ("now"() + '30 days'::interval) NOT NULL,
+    CONSTRAINT "clubs_name_length_check" CHECK ((("char_length"(TRIM(BOTH FROM "name")) >= 2) AND ("char_length"(TRIM(BOTH FROM "name")) <= 24)))
+);
+
+
+ALTER TABLE "public"."clubs" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."match_confirmations" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "match_id" "uuid" NOT NULL,
+    "club_member_id" "uuid" NOT NULL,
+    "user_id" "uuid",
+    "side" smallint NOT NULL,
+    "decision" "public"."match_confirmation_decision" DEFAULT 'pending'::"public"."match_confirmation_decision" NOT NULL,
+    "decided_at" timestamp with time zone,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "match_confirmations_side_check" CHECK (("side" = ANY (ARRAY[1, 2])))
+);
+
+
+ALTER TABLE "public"."match_confirmations" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."match_players" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "match_id" "uuid" NOT NULL,
+    "club_member_id" "uuid" NOT NULL,
+    "side" smallint NOT NULL,
+    "position" smallint,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "match_players_position_check" CHECK (("position" = ANY (ARRAY[1, 2]))),
+    CONSTRAINT "match_players_side_check" CHECK (("side" = ANY (ARRAY[1, 2])))
+);
+
+
+ALTER TABLE "public"."match_players" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."match_results" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "match_id" "uuid" NOT NULL,
+    "score_summary" "text" NOT NULL,
+    "set_scores" "jsonb" DEFAULT '[]'::"jsonb" NOT NULL,
+    "submitted_by" "uuid" NOT NULL,
+    "confirmed_by" "uuid",
+    "confirmed_at" timestamp with time zone,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."match_results" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."match_schedule_participants" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "schedule_id" "uuid" NOT NULL,
+    "club_member_id" "uuid" NOT NULL,
+    "joined_by" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."match_schedule_participants" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."match_schedules" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "club_id" "uuid" NOT NULL,
+    "host_member_id" "uuid" NOT NULL,
+    "created_by" "uuid" NOT NULL,
+    "linked_match_id" "uuid",
+    "format" "public"."match_schedule_format" DEFAULT 'open_doubles'::"public"."match_schedule_format" NOT NULL,
+    "status" "public"."match_schedule_status" DEFAULT 'open'::"public"."match_schedule_status" NOT NULL,
+    "scheduled_at" timestamp with time zone NOT NULL,
+    "location" "text" NOT NULL,
+    "court_fee" integer DEFAULT 0 NOT NULL,
+    "ball_fee" integer DEFAULT 0 NOT NULL,
+    "capacity" smallint NOT NULL,
+    "notes" "text" DEFAULT ''::"text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "ends_at" timestamp with time zone NOT NULL,
+    CONSTRAINT "match_schedules_ball_fee_check" CHECK (("ball_fee" >= 0)),
+    CONSTRAINT "match_schedules_capacity_check" CHECK ((("capacity" >= 2) AND ("capacity" <= 8))),
+    CONSTRAINT "match_schedules_court_fee_check" CHECK (("court_fee" >= 0)),
+    CONSTRAINT "match_schedules_ends_at_after_scheduled_at" CHECK (("ends_at" > "scheduled_at")),
+    CONSTRAINT "match_schedules_location_check" CHECK ((("char_length"("btrim"("location")) >= 2) AND ("char_length"("btrim"("location")) <= 80))),
+    CONSTRAINT "match_schedules_notes_check" CHECK (("char_length"("notes") <= 240))
+);
+
+
+ALTER TABLE "public"."match_schedules" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."matches" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "club_id" "uuid" NOT NULL,
+    "match_type" "public"."match_type" NOT NULL,
+    "status" "public"."match_status" DEFAULT 'draft'::"public"."match_status" NOT NULL,
+    "played_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "created_by" "uuid" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."matches" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."user_profiles" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "display_name" "text",
+    "gender" "text",
+    "profile_completed" boolean DEFAULT false NOT NULL,
+    "auth_provider" "text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "user_profiles_completed_requires_fields" CHECK (((NOT "profile_completed") OR (("display_name" IS NOT NULL) AND (("char_length"("btrim"("display_name")) >= 2) AND ("char_length"("btrim"("display_name")) <= 24)) AND ("gender" = ANY (ARRAY['male'::"text", 'female'::"text", 'unspecified'::"text"]))))),
+    CONSTRAINT "user_profiles_display_name_check" CHECK ((("display_name" IS NULL) OR (("char_length"("btrim"("display_name")) >= 2) AND ("char_length"("btrim"("display_name")) <= 24)))),
+    CONSTRAINT "user_profiles_gender_check" CHECK ((("gender" IS NULL) OR ("gender" = ANY (ARRAY['male'::"text", 'female'::"text", 'unspecified'::"text"]))))
+);
+
+
+ALTER TABLE "public"."user_profiles" OWNER TO "postgres";
+
+
+ALTER TABLE ONLY "public"."audit_logs"
+    ADD CONSTRAINT "audit_logs_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."club_members"
+    ADD CONSTRAINT "club_members_club_id_user_id_key" UNIQUE ("club_id", "user_id");
+
+
+
+ALTER TABLE ONLY "public"."club_members"
+    ADD CONSTRAINT "club_members_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."clubs"
+    ADD CONSTRAINT "clubs_invite_code_key" UNIQUE ("invite_code");
+
+
+
+ALTER TABLE ONLY "public"."clubs"
+    ADD CONSTRAINT "clubs_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."match_confirmations"
+    ADD CONSTRAINT "match_confirmations_match_id_club_member_id_key" UNIQUE ("match_id", "club_member_id");
+
+
+
+ALTER TABLE ONLY "public"."match_confirmations"
+    ADD CONSTRAINT "match_confirmations_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."match_players"
+    ADD CONSTRAINT "match_players_match_id_club_member_id_key" UNIQUE ("match_id", "club_member_id");
+
+
+
+ALTER TABLE ONLY "public"."match_players"
+    ADD CONSTRAINT "match_players_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."match_results"
+    ADD CONSTRAINT "match_results_match_id_key" UNIQUE ("match_id");
+
+
+
+ALTER TABLE ONLY "public"."match_results"
+    ADD CONSTRAINT "match_results_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."match_schedule_participants"
+    ADD CONSTRAINT "match_schedule_participants_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."match_schedule_participants"
+    ADD CONSTRAINT "match_schedule_participants_schedule_id_club_member_id_key" UNIQUE ("schedule_id", "club_member_id");
+
+
+
+ALTER TABLE ONLY "public"."match_schedules"
+    ADD CONSTRAINT "match_schedules_linked_match_id_key" UNIQUE ("linked_match_id");
+
+
+
+ALTER TABLE ONLY "public"."match_schedules"
+    ADD CONSTRAINT "match_schedules_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."matches"
+    ADD CONSTRAINT "matches_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."user_profiles"
+    ADD CONSTRAINT "user_profiles_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."user_profiles"
+    ADD CONSTRAINT "user_profiles_user_id_key" UNIQUE ("user_id");
+
+
+
+CREATE INDEX "idx_audit_logs_club_created_at" ON "public"."audit_logs" USING "btree" ("club_id", "created_at" DESC);
+
+
+
+CREATE INDEX "idx_club_members_club" ON "public"."club_members" USING "btree" ("club_id");
+
+
+
+CREATE UNIQUE INDEX "idx_club_members_nickname_normalized_unique" ON "public"."club_members" USING "btree" ("club_id", "lower"(TRIM(BOTH FROM "nickname")));
+
+
+
+CREATE UNIQUE INDEX "idx_clubs_name_normalized_unique" ON "public"."clubs" USING "btree" ("lower"(TRIM(BOTH FROM "name")));
+
+
+
+CREATE INDEX "idx_match_confirmations_match" ON "public"."match_confirmations" USING "btree" ("match_id");
+
+
+
+CREATE INDEX "idx_match_confirmations_user" ON "public"."match_confirmations" USING "btree" ("user_id");
+
+
+
+CREATE INDEX "idx_match_players_match" ON "public"."match_players" USING "btree" ("match_id");
+
+
+
+CREATE INDEX "idx_match_schedule_participants_schedule" ON "public"."match_schedule_participants" USING "btree" ("schedule_id", "created_at");
+
+
+
+CREATE INDEX "idx_match_schedules_club_scheduled_at" ON "public"."match_schedules" USING "btree" ("club_id", "scheduled_at");
+
+
+
+CREATE INDEX "idx_matches_club_played_at" ON "public"."matches" USING "btree" ("club_id", "played_at" DESC);
+
+
+
+CREATE INDEX "idx_user_profiles_user_id" ON "public"."user_profiles" USING "btree" ("user_id");
+
+
+
+CREATE OR REPLACE TRIGGER "clubs_set_updated_at" BEFORE UPDATE ON "public"."clubs" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "match_confirmations_set_updated_at" BEFORE UPDATE ON "public"."match_confirmations" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "match_results_set_updated_at" BEFORE UPDATE ON "public"."match_results" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "match_schedules_set_updated_at" BEFORE UPDATE ON "public"."match_schedules" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "matches_set_updated_at" BEFORE UPDATE ON "public"."matches" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "user_profiles_set_updated_at" BEFORE UPDATE ON "public"."user_profiles" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
+
+
+
+ALTER TABLE ONLY "public"."audit_logs"
+    ADD CONSTRAINT "audit_logs_actor_user_id_fkey" FOREIGN KEY ("actor_user_id") REFERENCES "auth"."users"("id") ON DELETE RESTRICT;
+
+
+
+ALTER TABLE ONLY "public"."audit_logs"
+    ADD CONSTRAINT "audit_logs_club_id_fkey" FOREIGN KEY ("club_id") REFERENCES "public"."clubs"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."club_members"
+    ADD CONSTRAINT "club_members_club_id_fkey" FOREIGN KEY ("club_id") REFERENCES "public"."clubs"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."club_members"
+    ADD CONSTRAINT "club_members_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."clubs"
+    ADD CONSTRAINT "clubs_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "auth"."users"("id") ON DELETE RESTRICT;
+
+
+
+ALTER TABLE ONLY "public"."match_confirmations"
+    ADD CONSTRAINT "match_confirmations_club_member_id_fkey" FOREIGN KEY ("club_member_id") REFERENCES "public"."club_members"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."match_confirmations"
+    ADD CONSTRAINT "match_confirmations_match_id_fkey" FOREIGN KEY ("match_id") REFERENCES "public"."matches"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."match_confirmations"
+    ADD CONSTRAINT "match_confirmations_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."match_players"
+    ADD CONSTRAINT "match_players_club_member_id_fkey" FOREIGN KEY ("club_member_id") REFERENCES "public"."club_members"("id") ON DELETE RESTRICT;
+
+
+
+ALTER TABLE ONLY "public"."match_players"
+    ADD CONSTRAINT "match_players_match_id_fkey" FOREIGN KEY ("match_id") REFERENCES "public"."matches"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."match_results"
+    ADD CONSTRAINT "match_results_confirmed_by_fkey" FOREIGN KEY ("confirmed_by") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."match_results"
+    ADD CONSTRAINT "match_results_match_id_fkey" FOREIGN KEY ("match_id") REFERENCES "public"."matches"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."match_results"
+    ADD CONSTRAINT "match_results_submitted_by_fkey" FOREIGN KEY ("submitted_by") REFERENCES "auth"."users"("id") ON DELETE RESTRICT;
+
+
+
+ALTER TABLE ONLY "public"."match_schedule_participants"
+    ADD CONSTRAINT "match_schedule_participants_club_member_id_fkey" FOREIGN KEY ("club_member_id") REFERENCES "public"."club_members"("id") ON DELETE RESTRICT;
+
+
+
+ALTER TABLE ONLY "public"."match_schedule_participants"
+    ADD CONSTRAINT "match_schedule_participants_joined_by_fkey" FOREIGN KEY ("joined_by") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."match_schedule_participants"
+    ADD CONSTRAINT "match_schedule_participants_schedule_id_fkey" FOREIGN KEY ("schedule_id") REFERENCES "public"."match_schedules"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."match_schedules"
+    ADD CONSTRAINT "match_schedules_club_id_fkey" FOREIGN KEY ("club_id") REFERENCES "public"."clubs"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."match_schedules"
+    ADD CONSTRAINT "match_schedules_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "auth"."users"("id") ON DELETE RESTRICT;
+
+
+
+ALTER TABLE ONLY "public"."match_schedules"
+    ADD CONSTRAINT "match_schedules_host_member_id_fkey" FOREIGN KEY ("host_member_id") REFERENCES "public"."club_members"("id") ON DELETE RESTRICT;
+
+
+
+ALTER TABLE ONLY "public"."match_schedules"
+    ADD CONSTRAINT "match_schedules_linked_match_id_fkey" FOREIGN KEY ("linked_match_id") REFERENCES "public"."matches"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."matches"
+    ADD CONSTRAINT "matches_club_id_fkey" FOREIGN KEY ("club_id") REFERENCES "public"."clubs"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."matches"
+    ADD CONSTRAINT "matches_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "auth"."users"("id") ON DELETE RESTRICT;
+
+
+
+ALTER TABLE ONLY "public"."user_profiles"
+    ADD CONSTRAINT "user_profiles_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE "public"."audit_logs" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "audit_logs_insert_member" ON "public"."audit_logs" FOR INSERT TO "authenticated" WITH CHECK (("public"."is_club_member"("club_id") AND ("actor_user_id" = "auth"."uid"())));
+
+
+
+CREATE POLICY "audit_logs_select_member" ON "public"."audit_logs" FOR SELECT TO "authenticated" USING ("public"."is_club_member"("club_id"));
+
+
+
+ALTER TABLE "public"."club_members" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "club_members_insert_owner_bootstrap" ON "public"."club_members" FOR INSERT TO "authenticated" WITH CHECK ((("user_id" = "auth"."uid"()) AND ("role" = 'owner'::"public"."club_member_role") AND (EXISTS ( SELECT 1
+   FROM "public"."clubs" "c"
+  WHERE (("c"."id" = "club_members"."club_id") AND ("c"."created_by" = "auth"."uid"()))))));
+
+
+
+CREATE POLICY "club_members_manage_admin" ON "public"."club_members" TO "authenticated" USING ("public"."is_club_admin"("club_id")) WITH CHECK ("public"."is_club_admin"("club_id"));
+
+
+
+CREATE POLICY "club_members_select_member" ON "public"."club_members" FOR SELECT TO "authenticated" USING ("public"."is_club_member"("club_id"));
+
+
+
+ALTER TABLE "public"."clubs" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "clubs_insert_authenticated" ON "public"."clubs" FOR INSERT TO "authenticated" WITH CHECK (("created_by" = "auth"."uid"()));
+
+
+
+CREATE POLICY "clubs_select_member" ON "public"."clubs" FOR SELECT TO "authenticated" USING (("public"."is_club_member"("id") OR ("created_by" = "auth"."uid"())));
+
+
+
+CREATE POLICY "clubs_update_admin" ON "public"."clubs" FOR UPDATE TO "authenticated" USING ("public"."is_club_admin"("id")) WITH CHECK ("public"."is_club_admin"("id"));
+
+
+
+ALTER TABLE "public"."match_confirmations" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "match_confirmations_delete_manager" ON "public"."match_confirmations" FOR DELETE TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."matches" "m"
+  WHERE (("m"."id" = "match_confirmations"."match_id") AND "public"."can_manage_match"("m"."club_id", "m"."created_by")))));
+
+
+
+CREATE POLICY "match_confirmations_insert_manager" ON "public"."match_confirmations" FOR INSERT TO "authenticated" WITH CHECK ((EXISTS ( SELECT 1
+   FROM "public"."matches" "m"
+  WHERE (("m"."id" = "match_confirmations"."match_id") AND "public"."can_manage_match"("m"."club_id", "m"."created_by")))));
+
+
+
+CREATE POLICY "match_confirmations_select_member" ON "public"."match_confirmations" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."matches" "m"
+  WHERE (("m"."id" = "match_confirmations"."match_id") AND "public"."is_club_member"("m"."club_id")))));
+
+
+
+CREATE POLICY "match_confirmations_update_target_user" ON "public"."match_confirmations" FOR UPDATE TO "authenticated" USING (("user_id" = "auth"."uid"())) WITH CHECK (("user_id" = "auth"."uid"()));
+
+
+
+ALTER TABLE "public"."match_players" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "match_players_manage_member" ON "public"."match_players" TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."matches" "m"
+  WHERE (("m"."id" = "match_players"."match_id") AND "public"."can_manage_match"("m"."club_id", "m"."created_by"))))) WITH CHECK ((EXISTS ( SELECT 1
+   FROM "public"."matches" "m"
+  WHERE (("m"."id" = "match_players"."match_id") AND "public"."can_manage_match"("m"."club_id", "m"."created_by")))));
+
+
+
+CREATE POLICY "match_players_select_member" ON "public"."match_players" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."matches" "m"
+  WHERE (("m"."id" = "match_players"."match_id") AND "public"."is_club_member"("m"."club_id")))));
+
+
+
+ALTER TABLE "public"."match_results" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "match_results_manage_member" ON "public"."match_results" TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."matches" "m"
+  WHERE (("m"."id" = "match_results"."match_id") AND "public"."can_manage_match"("m"."club_id", "m"."created_by"))))) WITH CHECK ((EXISTS ( SELECT 1
+   FROM "public"."matches" "m"
+  WHERE (("m"."id" = "match_results"."match_id") AND "public"."can_manage_match"("m"."club_id", "m"."created_by")))));
+
+
+
+CREATE POLICY "match_results_select_member" ON "public"."match_results" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."matches" "m"
+  WHERE (("m"."id" = "match_results"."match_id") AND "public"."is_club_member"("m"."club_id")))));
+
+
+
+ALTER TABLE "public"."match_schedule_participants" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "match_schedule_participants_select_member" ON "public"."match_schedule_participants" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."match_schedules" "ms"
+  WHERE (("ms"."id" = "match_schedule_participants"."schedule_id") AND "public"."is_club_member"("ms"."club_id")))));
+
+
+
+ALTER TABLE "public"."match_schedules" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "match_schedules_select_member" ON "public"."match_schedules" FOR SELECT TO "authenticated" USING ("public"."is_club_member"("club_id"));
+
+
+
+ALTER TABLE "public"."matches" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "matches_delete_member" ON "public"."matches" FOR DELETE TO "authenticated" USING ("public"."can_manage_match"("club_id", "created_by"));
+
+
+
+CREATE POLICY "matches_insert_member" ON "public"."matches" FOR INSERT TO "authenticated" WITH CHECK (((EXISTS ( SELECT 1
+   FROM "public"."club_members" "cm"
+  WHERE (("cm"."club_id" = "matches"."club_id") AND ("cm"."user_id" = "auth"."uid"()) AND ("cm"."role" = ANY (ARRAY['owner'::"public"."club_member_role", 'manager'::"public"."club_member_role", 'member'::"public"."club_member_role"]))))) AND ("created_by" = "auth"."uid"())));
+
+
+
+CREATE POLICY "matches_select_member" ON "public"."matches" FOR SELECT TO "authenticated" USING ("public"."is_club_member"("club_id"));
+
+
+
+CREATE POLICY "matches_update_member" ON "public"."matches" FOR UPDATE TO "authenticated" USING ("public"."can_manage_match"("club_id", "created_by")) WITH CHECK ("public"."can_manage_match"("club_id", "created_by"));
+
+
+
+ALTER TABLE "public"."user_profiles" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "user_profiles_insert_own" ON "public"."user_profiles" FOR INSERT TO "authenticated" WITH CHECK (("user_id" = "auth"."uid"()));
+
+
+
+CREATE POLICY "user_profiles_select_own" ON "public"."user_profiles" FOR SELECT TO "authenticated" USING (("user_id" = "auth"."uid"()));
+
+
+
+CREATE POLICY "user_profiles_update_own" ON "public"."user_profiles" FOR UPDATE TO "authenticated" USING (("user_id" = "auth"."uid"())) WITH CHECK (("user_id" = "auth"."uid"()));
+
+
+
+GRANT USAGE ON SCHEMA "public" TO "postgres";
+GRANT USAGE ON SCHEMA "public" TO "anon";
+GRANT USAGE ON SCHEMA "public" TO "authenticated";
+GRANT USAGE ON SCHEMA "public" TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."can_create_match_schedule"("p_club_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."can_create_match_schedule"("p_club_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."can_create_match_schedule"("p_club_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."can_manage_match"("p_club_id" "uuid", "p_created_by" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."can_manage_match"("p_club_id" "uuid", "p_created_by" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."can_manage_match"("p_club_id" "uuid", "p_created_by" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."create_match_schedule"("p_club_id" "uuid", "p_format" "public"."match_schedule_format", "p_scheduled_at" timestamp with time zone, "p_ends_at" timestamp with time zone, "p_location" "text", "p_court_fee" integer, "p_ball_fee" integer, "p_capacity" integer, "p_notes" "text", "p_include_host" boolean) TO "anon";
+GRANT ALL ON FUNCTION "public"."create_match_schedule"("p_club_id" "uuid", "p_format" "public"."match_schedule_format", "p_scheduled_at" timestamp with time zone, "p_ends_at" timestamp with time zone, "p_location" "text", "p_court_fee" integer, "p_ball_fee" integer, "p_capacity" integer, "p_notes" "text", "p_include_host" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."create_match_schedule"("p_club_id" "uuid", "p_format" "public"."match_schedule_format", "p_scheduled_at" timestamp with time zone, "p_ends_at" timestamp with time zone, "p_location" "text", "p_court_fee" integer, "p_ball_fee" integer, "p_capacity" integer, "p_notes" "text", "p_include_host" boolean) TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."generate_invite_code_unique"() TO "anon";
+GRANT ALL ON FUNCTION "public"."generate_invite_code_unique"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."generate_invite_code_unique"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."is_club_admin"("target_club_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."is_club_admin"("target_club_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."is_club_admin"("target_club_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."is_club_member"("target_club_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."is_club_member"("target_club_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."is_club_member"("target_club_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."join_club_by_invite"("p_invite_code" "text", "p_nickname" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."join_club_by_invite"("p_invite_code" "text", "p_nickname" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."join_club_by_invite"("p_invite_code" "text", "p_nickname" "text") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."join_club_by_invite_as_guest"("p_invite_code" "text", "p_nickname" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."join_club_by_invite_as_guest"("p_invite_code" "text", "p_nickname" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."join_club_by_invite_as_guest"("p_invite_code" "text", "p_nickname" "text") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."join_match_schedule"("p_schedule_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."join_match_schedule"("p_schedule_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."join_match_schedule"("p_schedule_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."leave_match_schedule"("p_schedule_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."leave_match_schedule"("p_schedule_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."leave_match_schedule"("p_schedule_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."refresh_match_schedule_status"("p_schedule_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."refresh_match_schedule_status"("p_schedule_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."refresh_match_schedule_status"("p_schedule_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."regenerate_club_invite_code"("p_club_id" "uuid", "p_days_valid" integer) TO "anon";
+GRANT ALL ON FUNCTION "public"."regenerate_club_invite_code"("p_club_id" "uuid", "p_days_valid" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."regenerate_club_invite_code"("p_club_id" "uuid", "p_days_valid" integer) TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."remove_club_member"("p_club_id" "uuid", "p_member_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."remove_club_member"("p_club_id" "uuid", "p_member_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."remove_club_member"("p_club_id" "uuid", "p_member_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."set_updated_at"() TO "anon";
+GRANT ALL ON FUNCTION "public"."set_updated_at"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."set_updated_at"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."update_club_name"("p_club_id" "uuid", "p_name" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."update_club_name"("p_club_id" "uuid", "p_name" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."update_club_name"("p_club_id" "uuid", "p_name" "text") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."update_my_club_member_settings"("p_club_id" "uuid", "p_nickname" "text", "p_open_kakao_profile" boolean, "p_allow_record_search" boolean, "p_share_history" boolean) TO "anon";
+GRANT ALL ON FUNCTION "public"."update_my_club_member_settings"("p_club_id" "uuid", "p_nickname" "text", "p_open_kakao_profile" boolean, "p_allow_record_search" boolean, "p_share_history" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."update_my_club_member_settings"("p_club_id" "uuid", "p_nickname" "text", "p_open_kakao_profile" boolean, "p_allow_record_search" boolean, "p_share_history" boolean) TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."update_my_club_nickname"("p_club_id" "uuid", "p_nickname" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."update_my_club_nickname"("p_club_id" "uuid", "p_nickname" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."update_my_club_nickname"("p_club_id" "uuid", "p_nickname" "text") TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."audit_logs" TO "anon";
+GRANT ALL ON TABLE "public"."audit_logs" TO "authenticated";
+GRANT ALL ON TABLE "public"."audit_logs" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."club_members" TO "anon";
+GRANT ALL ON TABLE "public"."club_members" TO "authenticated";
+GRANT ALL ON TABLE "public"."club_members" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."clubs" TO "anon";
+GRANT ALL ON TABLE "public"."clubs" TO "authenticated";
+GRANT ALL ON TABLE "public"."clubs" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."match_confirmations" TO "anon";
+GRANT ALL ON TABLE "public"."match_confirmations" TO "authenticated";
+GRANT ALL ON TABLE "public"."match_confirmations" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."match_players" TO "anon";
+GRANT ALL ON TABLE "public"."match_players" TO "authenticated";
+GRANT ALL ON TABLE "public"."match_players" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."match_results" TO "anon";
+GRANT ALL ON TABLE "public"."match_results" TO "authenticated";
+GRANT ALL ON TABLE "public"."match_results" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."match_schedule_participants" TO "anon";
+GRANT ALL ON TABLE "public"."match_schedule_participants" TO "authenticated";
+GRANT ALL ON TABLE "public"."match_schedule_participants" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."match_schedules" TO "anon";
+GRANT ALL ON TABLE "public"."match_schedules" TO "authenticated";
+GRANT ALL ON TABLE "public"."match_schedules" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."matches" TO "anon";
+GRANT ALL ON TABLE "public"."matches" TO "authenticated";
+GRANT ALL ON TABLE "public"."matches" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."user_profiles" TO "anon";
+GRANT ALL ON TABLE "public"."user_profiles" TO "authenticated";
+GRANT ALL ON TABLE "public"."user_profiles" TO "service_role";
+
+
+
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "postgres";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "anon";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "authenticated";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "service_role";
+
+
+
+
+
+
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "postgres";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "anon";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "authenticated";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "service_role";
+
+
+
+
+
+
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "postgres";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "anon";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "authenticated";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "service_role";
+
+
+
+
+
+
+

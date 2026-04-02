@@ -1,4 +1,5 @@
 import { requireUser } from "@/features/auth/services/auth";
+import { requireCompletedProfile } from "@/features/auth/services/profile";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { mapScheduleError } from "@/features/schedules/services/schedule-error";
 
@@ -94,6 +95,7 @@ export async function createMatchSchedule(
       "게스트는 일정을 만들 수 없습니다. 카카오/이메일 로그인 후 이용해주세요.",
     );
   }
+  await requireCompletedProfile();
 
   const { data: scheduleId, error } = await getSupabaseClient().rpc(
     "create_match_schedule",
