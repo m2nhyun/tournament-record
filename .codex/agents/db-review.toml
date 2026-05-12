@@ -1,6 +1,6 @@
 name = "db-review"
 description = "Supabase schema, RPC, RLS, trigger, and migration impact reviewer"
-model = "gpt-5.4-mini"
+model = "gpt-5.4"
 model_reasoning_effort = "high"
 
 developer_instructions = """

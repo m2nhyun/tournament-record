@@ -1,6 +1,6 @@
 name = "impl"
 description = "기능 코드를 작성하고 수정하는 구현 전용 에이전트"
-model = "gpt-5.4"
+model = "gpt-5.5"
 model_reasoning_effort = "medium"
 
 developer_instructions = """
