@@ -1,11 +1,29 @@
 import { getSupabaseClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 
+let currentUserRequest: Promise<User | null> | null = null;
+let sessionUserRequest: Promise<User | null> | null = null;
+
 export const isGuestModeEnabled =
   typeof window !== "undefined" &&
   process.env.NEXT_PUBLIC_ALLOW_GUEST_MODE === "true";
 
 export async function getCurrentUser(): Promise<User | null> {
+  if (currentUserRequest) return currentUserRequest;
+
+  const request = getCurrentUserInternal();
+  currentUserRequest = request;
+
+  try {
+    return await request;
+  } finally {
+    if (currentUserRequest === request) {
+      currentUserRequest = null;
+    }
+  }
+}
+
+async function getCurrentUserInternal(): Promise<User | null> {
   const client = getSupabaseClient();
 
   const {
@@ -40,6 +58,21 @@ export async function getCurrentUser(): Promise<User | null> {
 }
 
 export async function ensureSessionUser(): Promise<User | null> {
+  if (sessionUserRequest) return sessionUserRequest;
+
+  const request = ensureSessionUserInternal();
+  sessionUserRequest = request;
+
+  try {
+    return await request;
+  } finally {
+    if (sessionUserRequest === request) {
+      sessionUserRequest = null;
+    }
+  }
+}
+
+async function ensureSessionUserInternal(): Promise<User | null> {
   const existingUser = await getCurrentUser();
   if (existingUser) return existingUser;
 
