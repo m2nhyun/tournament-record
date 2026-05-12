@@ -1,5 +1,280 @@
 # Dev Log
 
+## 2026-05-12
+
+### Club Record Auto Assignment Fill Priority
+
+- 자동 편성이 `같은 페어 반복 금지`와 `같은 사람 조합 최대 2회`를 하드 차단으로 사용해, 참가자가 적은 이벤트에서 뒤 시간대 슬롯을 생성하지 못하던 문제를 수정했다.
+- 페어/조합 반복은 차단 조건이 아니라 점수 페널티로 낮춰, 가능한 4명이 있으면 규칙 선호를 일부 포기하더라도 다음 시간대 경기를 계속 생성하도록 했다.
+- 같은 시작 시간의 여러 코트에는 기존처럼 같은 참가자를 중복 배정하지 않는다. 따라서 참가자가 4명인 2코트 이벤트는 같은 30분 구간에 1경기만 생성되고, 다음 시간대로 넘어가며 계속 경기를 만든다.
+- 이벤트 요약의 `빈 슬롯` 표현을 `편성 가능 슬롯`으로 바꿔, 실제 빈 코트와 4명 편성이 가능한 슬롯을 혼동하지 않게 했다.
+- 이번 변경에는 DB/RLS 수정이 없다.
+
+## 2026-05-08
+
+### Club Record Participant And Score UI Revision
+
+- 이벤트 워크스페이스 참가자 영역을 폼 우선 구조에서 `현재 참가자 목록 + 참가자 추가` 액션 구조로 바꿨다.
+- `참가자 추가` 다이얼로그 안에서 `클럽 회원 / 게스트` 탭을 제공하고, 클럽 회원은 미참가 회원을 체크해 여러 명을 한 번에 추가하도록 변경했다.
+- 게스트 수동 추가는 같은 다이얼로그의 `게스트` 탭으로 옮겨 참가자 추가 동선을 하나로 묶었다.
+- 결과 입력/수정 다이얼로그의 스코어 입력을 텍스트 필드에서 팀별 `- / +` 스텝퍼로 바꿔 어느 팀 점수인지 바로 보이게 했다.
+- 확정 경기 결과를 운영진이 수정할 때만 저장 전 확인을 요구하고, pending 결과 입력은 바로 저장하는 기준을 유지했다.
+- 경기 삭제는 결과 입력 버튼 옆 텍스트 버튼에서 더보기 메뉴 안으로 옮겨 주요 액션과 destructive 액션을 분리했다.
+- 이번 변경에는 DB/RLS 수정이 없다.
+
+### Club Record Operation Flow Verification
+
+- 실제 테스트 클럽 UUID 경로에서 이벤트 목록 진입, 새 이벤트 생성, 워크스페이스 이동, 회원 3명 참가자 추가, 수동 게스트 1명 추가, 첫 슬롯 수동 복식 경기 생성, `6-4` 결과 저장을 cmux browser로 검증했다.
+- 결과 저장 후 워크스페이스에서 해당 슬롯이 `완료` / `확정` / `결과: 6-4`로 표시되는 것을 확인했다.
+- 이벤트/워크스페이스 로딩 중 Supabase auth token lock warning이 재발하지 않도록 `getCurrentUser()`와 `ensureSessionUser()`의 동시 호출을 공통 인증 서비스에서 in-flight promise로 coalesce했다.
+- 공통 `Modal`이 Radix `DialogDescription`을 항상 연결하도록 보강해 결과 입력 다이얼로그의 접근성 콘솔 경고를 제거했다.
+- 이번 변경에는 DB/RLS 수정이 없다.
+
+### Club Route Invalid ID Error Handling
+
+- `/clubs/test-club/club-record/ranking`처럼 실제 UUID가 아닌 클럽 주소로 직접 진입하면 Supabase UUID cast 에러가 발생하는 것을 확인했다.
+- 클럽 선택 화면에서 들어갈 때는 실제 `clubs.id` UUID를 사용하므로 정상 진입한다.
+- `/clubs/[clubId]` layout에서 `clubId`가 UUID 형식이 아니면 즉시 `/`로 redirect하도록 해, 잘못된 값이 AppShell/bottom nav/service/Supabase query까지 전파되지 않게 했다.
+- club/club_record 에러 매핑에서 plain object 형태의 PostgREST 에러 메시지를 보존하고, invalid UUID는 `클럽 주소가 올바르지 않습니다. 내 클럽 목록에서 다시 진입해주세요.`로 안내하도록 했다.
+- 랭킹 화면에서 access 조회와 ranking 조회가 동시에 `requireUser()`를 호출해 Supabase auth lock 경합이 날 수 있어, access 확인 후 ranking을 조회하도록 순서를 조정했다.
+- cmux browser로 `/clubs/test-club/club-record/ranking` 직접 진입 시 클럽 목록(`/`)으로 돌아가도록 확인했다.
+- 이번 변경에는 DB/RLS 수정이 없다.
+
+### Club Record Auth Request Sequencing
+
+- 랭킹 화면에서 발견한 Supabase auth lock 경합이 대시보드/워크스페이스/클럽 상세 초기 로딩에서도 재발할 수 있어 초기 데이터 조회 순서를 조정했다.
+- `getClubRecordDashboardData`, `getClubRecordEventWorkspace`, `getEventAssignmentBoard`, `useClubDetail`의 초기 병렬 조회를 순차 조회로 바꿔 같은 탭에서 `requireUser()`가 동시에 여러 번 실행되는 상황을 줄였다.
+- 이번 변경에는 DB/RLS 수정이 없다.
+
+### Club Record Member Ranking Management
+
+- 홈 대시보드의 `운영 랭킹` 진입명을 `클럽 회원 랭킹`으로 바꾸고, `/clubs/{clubId}/club` 멤버 섹션 우측에 운영진용 `랭킹 관리` 진입을 추가했다.
+- 랭킹 화면에서 클럽 회원이 보이지 않던 원인은 `club_members`를 `club_record_members`로 초기 등록하는 동기화 경로가 없었기 때문으로 확인했다.
+- `sync_club_record_members(club_id)` RPC를 추가해 운영진/관리자가 활성 `owner/manager/member`를 랭킹에 append하고, 중복 호출은 0건으로 끝나며, 그룹은 기존 비율대로 재계산되게 했다.
+- 새 sync RPC의 execute 권한은 `authenticated`/`service_role`로 제한하고 `anon`/`public` grant를 제거했다.
+- ranking service/hook/view에 회원 랭킹 동기화 액션을 연결했고, D&D는 모바일 스크롤/저장 충돌 리스크 때문에 제외하고 위/아래 버튼의 즉시 저장 방식을 유지했다.
+- `supabase/tests/club_record_smoke.sql`에 sync RPC idempotency, guest/비활성 제외, 그룹 재계산, non-admin 차단 검증을 추가했다.
+- cmux browser로 실제 테스트 클럽 UUID 경로의 랭킹 동기화 버튼을 실행해 활성 회원 3명이 랭킹에 추가되고 게스트가 제외되는 것을 확인했다.
+
+### Club Record Event List Safe Landing
+
+- `/clubs/[clubId]/club-record/events`를 추가해 멤버/게스트가 먼저 current/upcoming event 목록을 보는 안전한 진입점을 만들었다.
+- `ClubRecordEventListView`는 current/upcoming events를 보여주고, `canCreateEvent`가 true일 때만 `새 이벤트` 버튼을 노출한다.
+- 하단 네비게이션의 `이벤트`는 `/clubs/{clubId}/club-record/events`를 기본 진입점으로 사용하고, `/clubs/{clubId}/club-record/new`와 이벤트 상세/워크스페이스 라우트까지 active 범위로 묶는다.
+- `홈`은 `/clubs/{clubId}`, `/clubs/{clubId}/club-record`, `/clubs/{clubId}/club-record/monthly`, `/clubs/{clubId}/club-record/ranking`을 active 범위로 둔다.
+- 이번 변경에는 DB/RLS 수정이 없다.
+
+### Club Record IA Option 1 Navigation Split
+
+- `/clubs/[clubId]`를 `ClubRecordDashboardView`의 메인 클럽 홈으로 연결해 club_record 진입점을 클럽 상세에서 분리했다.
+- `/clubs/[clubId]/club`를 기존 `ClubDetailView` 기반의 클럽 정보/초대/일정/멤버 관리 화면으로 새로 열고, 클럽 운영용 정보와 경기 운영 화면의 진입점을 나눴다.
+- 하단 네비게이션은 `홈 / 이벤트 / 히스토리 / 클럽`으로 정리했다.
+  - `홈` -> `/clubs/{clubId}`
+  - `이벤트` -> `/clubs/{clubId}/club-record/events`
+  - `히스토리` -> `/clubs/{clubId}/club-record/history`
+  - `클럽` -> `/clubs/{clubId}/club`
+- `/clubs/[clubId]/club-record`는 기존 대시보드 별칭으로 유지하고, `/matches/new`, `/history`, `/leaderboard`는 기존 상태로 남겨 두되 더 이상 기본 하단 탭으로 노출하지 않는다.
+- `ClubDetailView`에서 옛 일반 경기 CTA 그리드를 제거해 새 `클럽` 탭의 범위를 클럽 정보/초대/일정/멤버 관리로 좁혔다.
+- 이번 변경에는 DB/RLS 수정이 없다.
+
+### Club Record Monthly Public Card Detail Screen
+
+- `src/app/clubs/[clubId]/club-record/monthly/page.tsx`를 추가해 월간 공개 카드 상세 화면을 연결했다.
+- `src/features/club-record/components/club-record-monthly-card.tsx`와 `src/features/club-record/hooks/use-club-record-monthly-card.ts`를 추가해 이전/다음 달 이동, 새로고침, loading/error/empty 상태, 모바일 카드 리스트와 데스크톱 테이블을 제공했다.
+- 상세 화면은 읽기 전용이며 기존 `getMonthlyPublicCard` RPC/service를 재사용한다.
+- 대시보드의 월간 공개 카드 미리보기는 `/clubs/{clubId}/club-record/monthly`로 이동하도록 연결했다.
+- `winRate`는 기존 contract대로 `0..100` 범위를 그대로 사용하고, 화면에서 추가 `* 100` 보정은 하지 않는다.
+- 이번 변경에는 DB/RLS 수정이 없다.
+
+### Club Record Result Input UX
+
+- `ClubRecordMatchControls`의 결과 입력/수정 UX를 인라인 폼에서 다이얼로그 진입으로 바꿔 회원 입력과 운영진 수정 경로를 구분했다.
+- 회원은 본인이 참가한 `pending_result` 경기에서만 `결과 입력`을 열 수 있고, 입력 불가 상태는 확정/취소/비참가/권한 없음 안내로 드러낸다.
+- 운영진/관리자는 `결과 수정` 액션으로 기존 결과를 덮어쓰는 경로를 사용하며, 다이얼로그 안에서 확정 결과 수정 안내를 표시한다.
+- 스코어 입력은 `6-4` 형식의 클라이언트 즉시 검증, 숫자 키패드 힌트, 저장 버튼 비활성 조건을 추가했다.
+- 슬롯/경기 상태 배지는 raw enum 대신 `예정`, `준비`, `완료`, `결과 대기`, `확정`, `취소` 같은 한국어 라벨로 표시한다.
+- DB/RLS 변경은 없고, 기존 `submit_club_record_match_result` / `update_club_record_match_result` RPC와 smoke 경계를 유지한다.
+
+### Club Record Self History Screen
+
+- `src/app/clubs/[clubId]/club-record/history/page.tsx`와 `src/features/club-record/components/club-record-history.tsx`를 추가해 회원 본인 기록 전용 화면을 연결했다.
+- `useClubRecordHistory(clubId)`와 `get_my_club_record_history` RPC를 재사용해 카드/리스트 보기, 날짜 필터, 상대 이름 필터, empty/loading/error/refresh 상태, 이벤트 링크를 제공한다.
+- 대시보드에서는 `canViewOwnHistory`가 있는 멤버에게 `/clubs/{clubId}/club-record/history`를 `내 기록`으로 노출하도록 연결했다.
+- 이번 변경은 기존 RPC/service 경계를 재사용한 라우트 및 UX 추가였고, 신규 migration이나 RLS 변경은 없다.
+- `npm run lint`, `npm run build`, club-record util tests가 통과했다.
+
+### Club Record Event Edit UI
+
+- `src/features/club-record/components/club-record-event-edit-dialog.tsx`의 `ClubRecordEventEditDialog`를 연결해 이벤트 워크스페이스 요약 카드에서 운영진/관리자용 `이벤트 수정` 진입을 추가했다.
+- 수정 다이얼로그는 기존 `updateClubRecordEvent` 서비스 경계를 재사용해 이름, 날짜, 시작/종료 시간, 코트 수를 저장한다.
+- 날짜/시간/코트 수가 바뀌면 참가자와 편성이 초기화되는 현재 서비스 동작을 UI에서 경고하고, 체크 확인 후 저장하도록 했다.
+- 확정 경기가 있는 이벤트의 일정/코트 변경은 기존 서비스 가드와 DB trigger 보호 범위를 유지하며, 이번 변경에는 신규 migration/RLS 변경이 없다.
+- `npm run lint`, `npm run build`가 통과했다.
+
+### Club Record Guest Invite Join Route
+
+- `/club-record/join/[inviteCode]` guest join route와 `ClubRecordGuestJoinView`를 추가해 club_record 초대 참가 진입점을 분리했다.
+- 새 join view는 Kakao, email, anonymous guest session entry를 먼저 허용한 뒤 기존 `verifyGuestInviteCode` / `joinEventAsGuestByInviteCode` 서비스 경로로 초대 검증과 참가 처리를 이어간다.
+- `ClubRecordGuestInvitePanel`은 `/club-record/join/{code}` 링크를 복사하도록 맞췄다.
+- 이번 변경은 기존 RPC/service 경계를 재사용한 라우트/UX 추가였고, 신규 migration이나 RLS 변경은 없다.
+
+## 2026-05-07
+
+### Club Record RF-005 Smoke Coverage
+
+- `supabase/tests/club_record_smoke.sql`에 deleted event와 cancelled event의 confirmed match fixture를 추가해 월간 공개 카드가 숨김/취소 이벤트 결과를 집계하지 않는지 검증했다.
+- smoke fixture는 정상 이벤트 참가자/경기 생성 후 이벤트를 `is_deleted=true` 또는 `status='cancelled'`로 전환하고, 해당 confirmed match가 월간 카드 owner row에 영향을 주지 않는지 확인한다.
+- 월간 공개 카드 검증을 `win_rate` scale만 보던 방식에서 `2승 0패 1무`와 `win_rate ~= 67`을 함께 확인하는 방식으로 확장했다.
+- Docker Postgres `psql` smoke가 `ROLLBACK`으로 통과했고, RF-005는 smoke fixture gap에서 resolved 상태로 정리했다.
+
+### Club Record Production Apply / Smoke
+
+- 사용자가 `nomcsuizsztyhxkehila`를 1인 개발용 local/prod 공용 메인 DB로 확인하고 운영 DB 적용을 명시 승인해 `club_record` migration을 적용했다.
+- 본 migration 4개(`20260506120000`~`20260506123000`)를 적용하고 `supabase/schema.sql`을 remote schema 기준으로 동기화했다.
+- smoke 중 발견된 실제 DB/RPC 이슈를 새 migration 3개로 보정했다.
+  - `20260507094500_fix_club_record_ranking_move.sql`: `move_club_record_ranking`의 비지연 unique 충돌을 임시 오프셋 방식으로 보정
+  - `20260507095500_fix_club_record_guest_join_conflicts.sql`: 게스트 초대 join RPC의 `on conflict` column ambiguity를 constraint 기반으로 보정
+  - `20260507100500_fix_club_record_result_update_conflict.sql`: 운영진 결과 수정 RPC의 `on conflict` column ambiguity를 constraint 기반으로 보정
+- `supabase/tests/club_record_smoke.sql` fixture를 운영 DB 제약에 맞게 보정했다.
+  - smoke fixture 클럽명을 `clubs_name_length_check` 안에 들어오도록 단축
+  - `SET ROLE authenticated` 이후 temp table을 읽을 수 있게 temp table grant 추가
+  - 실제 참가자인 late observer와 비참가 overview 차단 검증 대상을 분리
+- Docker Postgres `psql` 클라이언트로 smoke SQL을 실행했고 confirmed 삭제 방지, slot cascade 삭제 방지, linked participant 삭제 방지, event 취소/삭제 방지, ranking move, cross-club participant 차단, guest invite join, late arrival guard, inactive member 차단, non-participant overview 차단, participant overview redaction, guest result 차단, member result submit, manager result update, monthly `win_rate` scale 검증이 모두 통과했다.
+- smoke는 `ROLLBACK`으로 종료했으며, 최종 `npm run db:push:dry`는 `Remote database is up to date.`를 반환했다.
+- 후속 검증으로 explicit `any` scan, `npm run env:check`, `npm run db:smoke`, `npm run lint`, club-record util tests(`7 files / 18 tests`), `npm run build`가 통과했다.
+- archived/cancelled event monthly stats exclusion은 같은 날 후속 smoke fixture로 보강했다.
+
+### Club Record DB Target Blocker
+
+- 이 항목은 같은 날 후속 승인으로 해소됐고, 최종 적용 결과는 위 `Club Record Production Apply / Smoke`에 기록했다.
+- `SUPABASE_DB_PUSH_URL` resolves to remote Supabase pooler host `aws-1-ap-northeast-1.pooler.supabase.com` with user `postgres.nomcsuizsztyhxkehila`; disposable local/staging DB status is not confirmed.
+- Because the target DB could not be proven disposable, `npm run db:push` and `psql "$SUPABASE_DB_PUSH_URL" -f supabase/tests/club_record_smoke.sql` were not run.
+- Pre-apply checks passed: explicit `any` scan only hit the eslint rule line, `npm run lint`, club-record util tests (`7 files / 18 tests`), `npm run build`, and `npm run db:push:dry` with 4 pending `club_record` migrations.
+- 당시 다음 명령은 안전한 대상 또는 명시 승인이 확인된 뒤에만 `npm run db:push`, smoke SQL 순서로 실행하는 것이었다.
+
+### Documentation Map / Policy Alignment
+
+- `docs/00-map.md`를 추가해 작업 유형별 읽기 경로와 문서 그룹을 명확히 정리했다.
+- `docs/README.md`에 빠른 읽기 경로, `11-auth-onboarding-design.md`, 디자인 문서 인덱스를 추가해 문서 진입점을 보강했다.
+- `docs/design/README.md`를 추가해 `club_record` 디자인 방향, 토큰, primitive 문서의 읽기 순서를 고정했다.
+- `docs/09-keep-rules.md`의 DB 반영 정책을 현재 운영 기준에 맞춰 `db:push:dry` 선확인 후 CLI 반영 기본으로 정정했다.
+- `AGENTS.md`와 `docs/03-architecture.md`에 `schedules`, `club-record` 디렉터리 책임과 `CLAUDE.md`의 보조 문서 성격을 명시했다.
+- Vercel/GitHub/Supabase CLI와 MCP 연결 상태를 실제 로컬 명령으로 확인하고, Vercel/Supabase는 MCP 미등록 상태에서 CLI 중심으로 운영한다는 기준을 `AGENTS.md`와 `docs/05-automation.md`에 기록했다.
+- 확인 결과 Vercel CLI는 linked project/env 조회 가능, Supabase CLI는 auth/project list와 DB URL 기반 smoke/dry-run 가능, GitHub CLI는 미설치이며 GitHub MCP와 `git` 원격 조회를 사용하는 상태로 정리했다.
+- Supabase migration list와 dry-run 결과를 반영해 `Remote database is up to date` 기대값을 폐기하고, 현재 기준 4개 `club_record` migration pending 상태를 `AGENTS.md`와 `docs/05-automation.md`에 명시했다.
+
+### Club Record Migration Pre-Apply Guard Patch
+
+- `club_record` migration 적용 전 review findings 중 ranking move unique 충돌, 초대 게스트 참가 RLS/RPC 경로, participant club mismatch, 월간 카드 승률 scale을 실제 패치로 반영
+- `move_club_record_ranking`가 임시 ranking position을 거쳐 이동하도록 바꿔 `unique (club_id, ranking_position)` transient 충돌을 피하게 했다
+- 초대 게스트 참가를 `join_club_record_event_guest_by_invite_code` security definer RPC로 묶고, 서비스가 direct insert 대신 RPC를 호출하도록 변경했다
+- `validate_club_record_event_participant` trigger로 event club과 member/guest club 일치 및 active member 조건을 DB 경계에서 검증하도록 추가했다
+- 월간 공개 카드 `win_rate` contract를 `0..100` percentage scale로 문서화하고 UI 표시에서 추가 `* 100`을 제거했다
+- `supabase/tests/club_record_smoke.sql`에 ranking move, cross-club participant insert 차단, 초대 게스트 참가 RPC, 월간 공개 카드 scale 회귀 검사를 추가했다
+- 검증 결과 `npm run lint`, club-record util tests, `npm run build`, `npm run db:push:dry`가 통과했고 실제 DB apply는 하지 않았다
+
+### Club Record Next Handoff Refresh
+
+- `docs/club-record/07-handoff.md`에 현재 handoff snapshot을 추가해 실제 DB apply 미실행, 4개 migration pending, smoke 미실행, guard patch 반영 완료 상태를 명확히 기록
+- 다음 작업 우선순위를 `disposable local/staging DB apply + club_record smoke 실행`으로 재정렬했다
+- `Next Agent Prompt`를 다음 작업자가 그대로 복사해 쓸 수 있도록 local/staging apply, smoke 실행, 운영 DB apply 금지, 최종 응답 형식 중심으로 갱신했다
+- 운영 DB 반영은 여전히 명시 승인 전 금지이며, 다음 단계는 로컬/스테이징에서 `npm run db:push`와 `psql "$SUPABASE_DB_PUSH_URL" -f supabase/tests/club_record_smoke.sql`을 실행하는 것이다
+
+### Club Record Review Findings
+
+- `club_record` 리뷰에서 발견된 P1/P2 이슈를 `docs/club-record/08-review-findings.md`에 별도 추적 문서로 남김
+- 랭킹 이동 unique 충돌, 게스트 초대 참가 RLS/RPC 경로, 참가자 club mismatch, 월간 카드 승률 scale, archived event 통계 제외 여부를 각각 재검토 가능한 항목으로 정리
+- 다음 작업자가 수정 여부를 판단할 수 있도록 각 항목에 확인할 파일/함수, 예상 수정 방향, 완료 판정 기준, 권장 검증 명령을 추가
+- `docs/club-record/README.md`, `06-checklist.md`, `07-handoff.md`, `docs/README.md`에서 새 리뷰 문서를 작업 진입 경로와 적용 전 체크리스트에 연결
+
+### Club Record SQL Consistency Patch
+
+- `club_record` migration 초안의 RLS/RPC 정합성을 재검토하고, 비활성 멤버가 과거 참가 row만으로 이벤트/경기 조회나 결과 입력 권한을 얻지 못하도록 helper/policy 조건에 `is_active=true`를 보강
+- 취소/삭제된 이벤트와 취소된 경기는 멤버/게스트용 direct select 및 overview/history/monthly RPC 응답에서 제외하고, 이벤트 슬롯 overview는 운영진/관리자 또는 해당 이벤트 참가자에게만 노출되도록 축소
+- `confirmed` 경기가 있는 이벤트는 서비스와 SQL trigger 양쪽에서 소프트 삭제/취소를 차단하도록 보강해 확정 결과/통계가 숨겨지는 경로를 막음
+- 자동/수동 경기 생성 RPC가 참가자의 `arrival_time`보다 이른 슬롯 배정을 직접 차단하도록 보강
+- 참가자 RPC에서 랭킹 위치는 운영진/관리자에게만 내려주고, 내부 member/guest 식별자는 운영진/관리자 또는 본인 식별에 필요한 경우로 제한
+- migration 적용 후 확인할 수 있도록 `supabase/tests/club_record_smoke.sql`을 추가하고, confirmed 삭제 방지/RLS-RPC 권한/늦참 배정/결과 입력 경로를 `rollback` 기반 smoke 시나리오로 고정
+- 다음 작업자가 바로 이어받을 수 있도록 `docs/club-record/07-handoff.md`에 migration 적용 전 최종 검증 전용 프롬프트, 금지 사항, 검증 명령, 최종 응답 형식을 추가
+
+### Club Record Handoff / Data Guard
+
+- `docs/club-record/07-handoff.md`를 다음 작업자 진입 문서로 추가하고, `CLAUDE.md` 선독, `any` 금지, 최근 검증 명령, migration draft, 남은 작업 분할 기준을 정리
+- `docs/README.md`에 `club_record.md`와 `docs/club-record/README.md`를 연결해 상위 문서 목록에서도 club_record 설계 문서로 바로 진입할 수 있게 보강
+- 이벤트 시간/코트 변경 시 슬롯/참가자 초기화가 confirmed 경기 데이터를 지울 수 있는 리스크를 막기 위해, 서비스 계층에서 confirmed 경기 존재 시 일정 변경을 차단하도록 보강
+- migration 초안에 confirmed match 삭제 방지 트리거와 연결 경기 참가자의 direct delete 방지 트리거를 추가해, RPC 외 경로에서도 확정 경기와 선수 구성이 훼손되지 않도록 보수적으로 조정
+
+### Club Record Minimum Product Flow
+
+- `club_record` 최소 제품 흐름에 운영진 입력 화면을 추가했다. 새 이벤트 생성 라우트 `src/app/clubs/[clubId]/club-record/new/page.tsx`와 `ClubRecordEventFormView`를 연결해 날짜/시작 시간/종료 시간/코트 수로 바로 슬롯 생성까지 이어지도록 했다.
+- 이벤트 워크스페이스에 `ClubRecordParticipantManager`, `ClubRecordGuestInvitePanel`을 추가했다. 운영진은 같은 화면에서 회원 참가자 추가/삭제, 수동 게스트 추가, 이벤트별 게스트 초대코드 생성/재발급/비활성화를 처리할 수 있다.
+- 참가자 `arrival_time`은 스키마의 `timestamptz`에 맞춰 이벤트 날짜 기반 ISO timestamp로 저장되도록 수정했다. UI에서는 이벤트 시간 범위 안의 30분 단위 옵션만 노출한다.
+- 수동 게스트 추가를 허용하기 위해 `club_record_guest_profiles.guest_user_id`를 nullable로 조정했다. 카카오 기반 게스트 초대 흐름은 그대로 유지하고, 운영진 현장 추가도 함께 수용한다.
+- `club_record` 대시보드와 이벤트 워크스페이스에 `새 이벤트` 진입을 추가해 운영진이 기존 클럽 상세를 거치지 않고 바로 이어서 작업할 수 있게 했다.
+- 이벤트 워크스페이스 슬롯 카드에 `ClubRecordMatchControls`를 연결했다. 운영진은 빈 슬롯에서 수동 경기 4인을 지정할 수 있고, pending/confirmed 경기에는 권한에 따라 스코어 결과를 입력하거나 수정할 수 있다.
+- 수동 경기 삭제는 기존 RPC 경계를 그대로 사용한다. 확정 경기 삭제는 DB 함수에서 차단되고, pending/cancelled 경기만 슬롯 해제와 함께 삭제된다.
+- 빌드 중 드러난 `getMonthlyPublicCard` RPC 응답의 암시적 미지정 타입을 명시 타입으로 보강했다.
+- `club_record` access context에 현재 사용자의 `clubMemberId`를 포함했다. 회원은 본인이 실제 참가한 경기에서만 결과 입력 컨트롤을 보고, 운영진/관리자는 전체 결과 수정 권한을 유지한다.
+- 이벤트 워크스페이스에 이벤트 취소 액션을 추가했다. 취소는 hard delete가 아니라 기존 `archiveClubRecordEvent` 소프트 삭제 경계를 사용하고, 처리 후 club record 홈으로 이동한다.
+
+## 2026-05-06
+
+### Club Record Domain Design
+
+- `docs/club_record.md`를 새로 도입해 클럽 운영용 데일리 매치 시스템의 확정 규칙을 별도 문서로 정리
+- 기존 `matches`/`match_schedules`를 재사용하지 않고, `club record`를 새 하위 도메인으로 분리한다는 원칙을 고정
+- 역할 체계(`관리자 > 운영진 > 회원 > 게스트`), 랭킹 비공개 정책, 데일리 매치 운영 규칙, 게스트 초대코드, 늦참 반영 규칙, 결과 입력/취소 정책을 문서화
+- 후속 구현 전 단계로 새 엔티티 목록, 관계 구조, 상태 모델, 권한 정책, 자동 편성 로직 v1, 통계/히스토리 범위, 화면 흐름, 구현 순서를 `club_record.md`에 구체화
+- 게스트 결과 입력 비허용, 본인 히스토리 비공개 범위, 운영진 전체 히스토리 조회, 클럽 월간 승/패 카드 공개 정책을 추가 반영
+- 스코어 자유 입력/필수값, 스코어 기반 승패무 자동 계산, 이벤트 종료+24시간 취소 규칙, 취소 경기 운영진 전용 노출, 월간 카드 정렬 기준을 추가 반영
+- 관리자 1명 정책, 그룹 `A/B/C` 비율 기본값(20/30/50), 게스트 그룹 지정, 소프트 삭제/참석자 삭제/자동 경기 삭제 정책을 추가 반영
+- club record 전용 enum/테이블/관계/인덱스/마이그레이션 순서를 포함한 DB 스키마 초안을 `docs/club_record.md`에 추가
+- 역할별 접근 매트릭스, 서비스 계층 책임, RPC 후보, 자동 취소 배치 작업, RLS 초안 원칙을 `docs/club_record.md`에 추가
+- 실제 migration 작성 전 단계로 enum/table/index/trigger/seed/validation/migration split까지 포함한 SQL migration draft를 `docs/club_record.md`에 추가
+- 테이블별 읽기/쓰기 권한, helper function 후보, view/RPC 노출 전략, 민감 필드 규칙, RLS 위험 포인트를 `docs/club_record.md`에 추가
+- `docs/club_record.md`를 상위 진입 문서로 축소하고, `docs/club-record/` 아래에 `README`, `Rules`, `Domain`, `Schema`, `Access` 문서로 분리해 이후 구현 시 필요한 컨텍스트만 선택적으로 읽을 수 있게 재구성
+- club record migration 초안에 `guest_invites`/`event_slots`의 `updated_at` 추적을 보강하고, 결과 입력자가 실제 해당 경기 참가자인지 검증하는 helper function을 추가
+- 참가자 목록과 선수 구성은 direct table select 대신 RPC/DTO로 제한하는 방향으로 access 설계를 보수적으로 조정
+- `docs/club-record/05-implementation.md`를 추가해 실제 구현 순서, 추천 feature 구조, 서비스/훅/라우트 후보 파일을 정리
+- `docs/club-record/06-checklist.md`를 추가해 migration 전후 점검 항목, 권한 검증 포인트, 구현 단계별 체크리스트를 정리
+- `src/features/club-record/` 아래에 types / services / hooks 스캐폴딩을 추가해 이후 구현 시 문서 구조에서 코드 구조로 바로 이어질 수 있게 정리
+- 스캐폴딩 서비스 함수는 `Not implemented` 예외를 던지는 형태로 고정하고, 프로젝트 전체 `npm run lint`가 통과하도록 미사용 인자 경고를 정리
+- `club-record`의 `settings`, `ranking`, `events`, `participants`, `slots`, `results`, `history` 서비스 일부를 실제 Supabase 조회/RPC 호출 형태로 연결
+- 스코어 문자열 파싱 유틸(`utils/score.ts`)과 단위 테스트(`utils/score.test.ts`)를 추가하고, `npm run lint`, `npm run test -- src/features/club-record/utils/score.test.ts` 통과를 확인
+- 게스트 프로필/초대코드 서비스와 수동 경기 생성/삭제 서비스를 실제 insert/update/delete 흐름으로 연결
+- 본인 히스토리/운영진 타인 히스토리 RPC 초안을 migration에 추가하고, `services/history.ts`, `hooks/use-club-record-history.ts`를 이에 맞춰 확장
+- `club record` 이벤트 생성 시 30분 단위 슬롯을 자동 생성하도록 `utils/slots.ts`와 `services/events.ts`를 보강
+- 이벤트 시간/코트 수가 바뀌면 기존 슬롯/경기/참가자를 초기화하고 상태를 `draft`로 되돌리는 일정 재설정 규칙을 서비스 계층에 반영
+- 수동 경기 생성 시 4인 중복 방지, 팀 인원/포지션 검증, 슬롯 잠금 여부 확인, 현재 이벤트 참가자 여부 확인을 추가해 잘못된 조합 저장을 사전에 차단
+- 슬롯 생성 유틸 단위 테스트(`utils/slots.test.ts`)를 추가해 30분 단위 분할 규칙과 예외 케이스를 검증
+- 게스트 초대코드 RPC 초안을 실제 서비스에서 사용하도록 연결하고, `코드 검증 -> 게스트 프로필 upsert -> 이벤트 참가 등록` 흐름을 `services/guests.ts`에 추가
+- 참가자 목록 조회를 direct table join 대신 `get_club_record_event_participants` RPC/DTO 기준으로 전환하고, 그룹/랭킹 메타데이터를 함께 내려주는 방향으로 정리
+- 슬롯 조회를 `get_club_record_event_slots_overview` RPC/DTO 기준으로 전환하고, 코트/시간/경기/선수/결과를 한 번에 조립할 수 있는 overview 타입을 추가
+- 자동편성 구현 전에 필요한 기초 계산을 `utils/assignment-pool.ts`로 분리해, 참가자별 경기 수/같은 날 페어 이력/슬롯별 참여 가능 인원 계산을 순수 함수로 먼저 고정
+- 자동편성 v1 순수 계획 유틸(`utils/auto-assignment.ts`)을 추가해 경기 수 균등, 랭킹/그룹 근접도, 동일 페어 재사용 금지, 늦참 반영 규칙을 테스트 가능한 형태로 먼저 구현
+- 사용자 정정에 맞춰 자동편성 규칙을 `인당 최대 2경기`에서 제거하고, `빈 슬롯은 같은 사람을 재사용해서 최대한 채우되 같은 날 같은 사람과 같은 매치에 함께 엮이는 횟수는 최대 2회` 기준으로 문서와 유틸 로직을 수정
+- `attendance_count`/`match_count` 기준을 확정하고, 삭제되지 않은 이벤트 참가 등록 및 `confirmed` 경기(자동/수동 포함)를 기준으로 회원 집계를 재계산하는 SQL helper/trigger 초안을 추가
+- 참가자 삭제 규칙을 확정하고, `confirmed` 경기 연결 시 삭제 차단 / `pending_result` 경기만 자동 삭제 + 슬롯 해제 후 참가자 삭제하는 RPC 초안을 추가
+- 같은 시간대 다중 코트 중복 배정 리스크를 발견해 snapshot에 시간대별 점유 상태를 추가하고, 슬롯별 available participant 계산 및 assignment board 유틸을 보강
+- assignment board를 서비스/훅 레벨로 끌어올려 이후 운영 화면에서 슬롯 목록과 함께 `openSlotIds`, `unslottedParticipantIds`, 슬롯별 available participant 계산을 직접 사용할 수 있게 정리
+- assignment board에 시간대 그룹(`timeGroups`)을 추가해, 같은 시작시간 기준으로 빈 슬롯/점유 인원/배정 가능 인원을 한 번에 계산할 수 있게 확장
+- 자동 편성 적용 단계를 `apply_club_record_auto_assignments` RPC로 묶어, 기존 auto 경기 제거/슬롯 해제/신규 auto 경기 생성/선수 연결/슬롯 잠금을 한 트랜잭션 경계 안에서 처리하도록 정리
+- 수동 경기 생성/삭제도 각각 `create_club_record_manual_match`, `delete_club_record_match` RPC로 옮겨 슬롯 잠금/해제와 경기 상태 검증을 DB 경계에서 일관되게 처리하도록 정리
+- 이벤트/슬롯/경기 상태가 분리돼 떠다니지 않도록 `refresh_club_record_progress_for_event` 계열 helper/trigger 초안을 추가하고, 참가자/경기 변경 시 상태를 자동 동기화하는 방향으로 정리
+- 재편성 필요 경고를 UI 계산에만 맡기지 않도록 `assignment_dirty`, `last_assignment_run_at` 필드와 dirty helper/trigger 방향을 추가해 참가자/수동편성 변경 후 이벤트가 스스로 재편성 필요 상태를 기억하게 정리
+- `24시간` 미입력 취소 후에도 운영진이 결과를 다시 입력할 수 있어야 한다는 규칙에 맞춰, 결과 row의 participant 입력자를 nullable로 완화하고 운영진 결과 수정 RPC를 upsert 기반으로 바꿔 취소 경기 사후 확정까지 수용하도록 정리
+- 운영 화면이 이벤트/참가자/편성 보드를 제각각 읽다가 서로 다른 시점의 데이터를 섞지 않도록 workspace 타입/서비스/훅을 추가하고, `assignmentDirty`, `lastAssignmentRunAt`, confirmed auto match 여부, open slot/미배정 인원 요약을 한 DTO로 묶는 조립 계층을 도입
+- `security definer` RPC를 서비스 로직만 믿지 않도록 보강해, 자동/수동 경기 생성 시 슬롯 소속/잠금 상태/이벤트 참가자 여부/동시간대 중복 출전 여부를 DB에서도 직접 검증하게 정리
+- `cancel_expired_club_record_matches` RPC를 직접 쓰지 않도록 maintenance service 래퍼를 추가해, 이후 배치/관리자 재처리 진입점을 서비스 계층에서 일관되게 잡을 수 있게 정리
+- `owner/manager/member/guest` 문자열 비교가 club record 페이지/액션 전반에 흩어지지 않도록 access type/util/service/hook을 추가하고, 관리자/운영진/회원/게스트 capability를 한 곳에서 계산하도록 정리
+- 클럽 진입 첫 화면 데이터를 위해 access/event list/monthly public card를 한 번에 조립하는 dashboard type/service/hook을 추가하고, 현재 진행 이벤트 선택과 upcoming event 축약 규칙을 서비스 계층으로 올림
+- ranking/settings/history 서비스 진입에서 capability를 먼저 확인하도록 보강해, RLS 에러에만 의존하지 않고 운영진 전용/회원 전용 접근 오류를 더 일찍, 더 명확한 메시지로 반환하도록 정리
+- `getdesign.md`와 Spotify 레퍼런스를 비교한 뒤, `club_record`는 다크 음악앱보다 `white + green tennis ops dashboard`에 맞다고 판단하고 전용 디자인 방향 문서를 `docs/design/club-record-design-direction.md`로 분리
+- `club_record` UI를 바로 바꾸기 전에 사용성 우선 원칙을 고정하기 위해 전용 토큰 문서와 primitive 정리 계획 문서를 추가하고, Button/Input/Card/Badge/StatusBox/Dialog/AppBar/BottomNav를 순차적으로 정리하는 migration 순서를 문서화
+- `club_record` 디자인 방향은 기존 제품을 통째로 버리지 않고, 현재 UI에서 사용성이 좋은 모바일 shell / form / card 구조를 유지한 채 Airtable/Vercel/Spotify 일부를 선택적으로 섞는 merge 전략으로 정리
+- 공통 primitive 변경 전에 Button/Card/Input/Badge/StatusBox/Dialog/AppBar/BottomNav 각각에 대해 유지할 것, 변경할 것, 필요한 variant, migration 순서를 `club-record-primitive-spec.md`로 고정
+- 디자인 polish보다 제품 동작을 우선하기 위해 `club_record` 최소 기능 화면을 실제 라우트에 연결하고, 대시보드/이벤트 워크스페이스/운영 랭킹 뷰와 클럽 홈 진입 CTA를 추가해 데이터/권한/운영 액션 흐름을 실제 앱 안에서 검증 가능한 상태로 올림
+
 ## 2026-04-02
 
 ### Remote Schema Sync

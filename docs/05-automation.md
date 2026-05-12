@@ -17,6 +17,36 @@
 - Vercel 환경변수 관리
 - SQL 반영 후 `docs/04-dev-log.md` 기록
 
+## CLI / External Tool Status
+
+2026-05-07 로컬 확인 기준:
+
+- Vercel CLI: `npx vercel` 사용 가능, 확인 버전 `50.26.1`
+- Vercel project link: `.vercel/project.json` 존재, `minhyuns-projects/tournament-record` 프로젝트에 연결됨
+- Vercel env: Production에 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` 등록 확인
+- Supabase CLI: `npx supabase` 사용 가능, 확인 버전 `2.98.2`
+- Supabase CLI auth: `npx supabase projects list`로 접근 가능한 프로젝트 목록 확인됨
+- Supabase local link: 설정되어 있지 않음. `npx supabase projects list`는 `Cannot find project ref. Have you run supabase link?` 안내를 함께 출력한다.
+- Supabase DB automation: 이 repo는 `supabase link` 대신 `SUPABASE_DB_PUSH_URL`/`SUPABASE_DB_URL`을 `--db-url`로 넘기는 방식이 표준이다.
+- Supabase migration state: remote에는 `club_record` 본 migration 4개와 후속 보정/동기화 migration이 반영되어 있으며, `npm run db:push:dry` 기대값은 `Remote database is up to date.`다.
+- GitHub CLI: `gh`는 현재 설치되어 있지 않음
+- GitHub access: GitHub MCP 인증과 `git` 원격 조회를 사용한다. 원격 저장소는 `m2nhyun/tournament-record`다.
+
+현재 등록된 Codex MCP:
+
+- `playwright`
+- `context7`
+- `exa`
+- `github`
+- `figma`
+
+현재 미등록 MCP:
+
+- Vercel MCP
+- Supabase MCP
+
+따라서 Vercel/Supabase 운영 확인은 MCP가 아니라 CLI와 이 문서의 npm scripts를 기준으로 한다.
+
 ## Auth Modes
 
 - 운영 권장: Kakao OAuth + Email/Password 로그인
@@ -76,6 +106,61 @@ npm run verify           # lint + build 전체 검증
 npm run automation:check # env + smoke + verify 일괄 실행
 ```
 
+## Vercel CLI Operations
+
+이 repo의 Vercel 운영 확인은 `npx vercel` 기준으로 한다.
+Vercel MCP는 현재 등록되어 있지 않다.
+
+비파괴 확인:
+
+```bash
+npx vercel --version
+npx vercel whoami
+npx vercel env ls
+```
+
+주의:
+- `npx vercel env ls`는 연결된 `.vercel/project.json` 기준 프로젝트 env 목록을 보여준다.
+- 현재 production env에는 Supabase URL/anon key/service role key가 등록되어 있다.
+- 값은 encrypted로 표시되어야 하며, 문서나 로그에 실제 값을 남기지 않는다.
+- `npx vercel env pull`은 `.env.local`을 만들거나 덮어쓸 수 있으므로 실행 전 목적을 확인한다.
+
+배포:
+
+```bash
+npx vercel           # preview deployment
+npx vercel --prod    # production deployment
+```
+
+운영 규칙:
+- production 배포 전에는 `npm run verify`를 먼저 실행한다.
+- env 변경이 필요한 작업은 Vercel Dashboard 또는 Vercel CLI로 반영하되, 실제 secret 값은 문서에 기록하지 않는다.
+- Vercel env 구조나 배포 절차가 바뀌면 `docs/05-automation.md`와 `docs/04-dev-log.md`를 함께 갱신한다.
+- 배포 URL, 배포 id, 로그 확인 결과는 필요할 때만 dev log에 요약하고 민감값은 제외한다.
+
+## GitHub Access
+
+이 repo의 GitHub 원격은 아래와 같다.
+
+```bash
+origin https://github.com/m2nhyun/tournament-record.git
+```
+
+현재 `gh` CLI는 설치되어 있지 않다.
+PR/이슈/리포지토리 상태 확인은 GitHub MCP를 우선 사용하고, 단순 remote 접근 확인은 `git` 명령을 사용한다.
+
+비파괴 확인:
+
+```bash
+git remote -v
+git ls-remote --heads origin
+```
+
+운영 규칙:
+- GitHub MCP는 `GITHUB_TOKEN`이 필요하며, 이 저장소에서는 `direnv`로 주입된 토큰을 기준으로 사용한다.
+- `gh` CLI를 도입하면 설치/로그인/사용 시점을 이 문서와 `AGENTS.md`에 추가한다.
+- push/PR/issue 변경은 사용자 요청이 명확할 때만 수행한다.
+
 ## 권장 실행 순서
 
 1. `npm run env:check`
@@ -84,6 +169,28 @@ npm run automation:check # env + smoke + verify 일괄 실행
 4. `npm run db:push:dry`
 5. `npm run db:push`
 6. `npm run verify`
+
+## Club Record SQL Smoke
+
+`club_record` migration 적용 뒤에는 아래 SQL smoke를 실행한다. 로컬에 `psql`이 없으면 Docker Postgres client를 사용한다.
+
+```bash
+psql "$SUPABASE_DB_PUSH_URL" -f supabase/tests/club_record_smoke.sql
+```
+
+```bash
+source scripts/automation/source-env.sh
+docker run --rm -i public.ecr.aws/supabase/postgres:17.6.1.106 \
+  psql "$SUPABASE_DB_PUSH_URL" -v ON_ERROR_STOP=1 < supabase/tests/club_record_smoke.sql
+```
+
+주의:
+- 이 스크립트는 `begin ... rollback`으로 감싸져 있어 테스트 데이터가 남지 않아야 한다.
+- 실제 운영 DB에서 실행하기 전에는 로컬/스테이징에서 먼저 통과하는 것이 원칙이다. 2026-05-07에는 사용자가 `nomcsuizsztyhxkehila`가 1인 개발용 local/prod 공용 메인 DB임을 확인하고 명시 승인해 운영 DB apply/smoke를 수행했다.
+- `SUPABASE_DB_PUSH_URL`가 remote pooler host로 해석되면 운영 DB일 수 있으므로, 운영 DB apply/smoke는 명시 승인 없이는 실행하지 않는다.
+- 검증 범위는 confirmed 데이터 삭제 방지, event 취소/삭제 방지, linked participant 삭제 방지, 랭킹 이동 unique 충돌 방지, 클럽 회원 랭킹 동기화 RPC, cross-club 참가자 삽입 차단, 초대 게스트 참가 RPC, 늦참 슬롯 배정 방지, 비활성 멤버 권한 차단, overview 노출 범위, 게스트 결과 입력 차단, 회원/운영진 결과 입력 경로, 월간 공개 카드 `win_rate` 0..100 scale, deleted/cancelled event의 월간 카드 집계 제외다.
+- `npm run db:push:dry`만으로는 이 도메인 규칙을 검증하지 못하므로, migration 적용 후 별도 smoke로 취급한다.
+- 로컬/스테이징에서만 먼저 실행한다. 실제 운영 DB apply 또는 운영 DB smoke 실행은 별도 승인 후 진행한다.
 
 ## Browser QA (cmux)
 
@@ -117,9 +224,14 @@ npm run browser:check
 - 코드/문서/SQL은 같은 변경 세트로 관리하고, SQL 적용 전까지 기능 완료로 보지 않는다.
 - `db:push:dry`, remote schema dump, 핵심 RPC/컬럼 조회를 먼저 보고 나서 repair 여부를 결정한다.
 - `SUPABASE_DB_PUSH_URL`가 있으면 `db:push`, `db:push:dry`, `db:schema:sync`는 이 값을 우선 사용한다.
+- `SUPABASE_DB_PUSH_URL`는 remote Supabase pooler host를 가리킬 수 있다. 호스트명이 `pooler.supabase.com`인 것만으로 local/staging 안전성은 증명되지 않는다.
+- `npm run db:push`와 `psql "$SUPABASE_DB_PUSH_URL" -f supabase/tests/club_record_smoke.sql`는 대상 DB가 disposable local/staging임을 문서나 환경 설정으로 명시 확인한 뒤에만 실행한다.
+- 대상이 확인되지 않으면 실행을 멈추고 blocker로 기록한다.
 - 비밀번호에 `@`, `:`, `/` 같은 reserved 문자가 있으면 URL 인코딩해야 한다. 예: `p@ssword` -> `p%40ssword`
 - Supabase 공식 가이드 기준으로 direct connection은 IPv6 의존성이 있을 수 있으므로, 현재 네트워크에서 5432 direct 접속이 막히면 session pooler를 사용한다.
-- 현재 기준 remote migration history와 로컬 `supabase/schema.sql`은 정합 상태이며, 정상 dry-run 기대값은 `Remote database is up to date.`다.
+- 현재 기준 remote migration history와 `supabase/schema.sql`은 `club_record` 적용 후 정합 상태다.
+- `npm run db:push:dry`의 현재 정상 기대값은 `Remote database is up to date.`다.
+- 운영 DB에 새 migration을 추가 적용하거나 smoke를 다시 실행하려면 별도 명시 승인이 필요하다.
 
 ### Execution Order
 

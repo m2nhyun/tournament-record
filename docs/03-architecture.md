@@ -14,14 +14,20 @@
   - `/auth/callback`: OAuth 콜백
   - `/onboarding/profile`: 정회원 기본 프로필 온보딩
   - `/join/[inviteCode]`: 원클릭 초대 링크 참가
-  - `/clubs/[clubId]/*`: 클럽 상세/히스토리/리더보드/경기
+  - `/club-record/join/[inviteCode]`: club_record 게스트 초대 참가
+  - `/clubs/[clubId]`: club_record 메인 홈
+  - `/clubs/[clubId]/club`: 클럽 정보/초대/일정/멤버 관리
+  - `/clubs/[clubId]/club-record/events`: 안전한 이벤트 목록/진입
+  - `/clubs/[clubId]/*`: 기존 클럽 상세/히스토리/리더보드/경기 라우트(직접 접근용으로 유지)
   - `/clubs/[clubId]/schedules/[scheduleId]`: 일정 상세/참가 현황
+  - `/clubs/[clubId]/club-record/*`: 클럽 운영용 데일리 매치/랭킹/이벤트 워크스페이스
 - `src/features/*`: 기능 단위 모듈 (components/hooks/services/types)
   - `auth`: 세션/로그인/로그아웃 책임
   - `clubs`: 클럽/멤버/초대 흐름
   - `matches`: 경기 생성/상세/히스토리
   - `schedules`: 일정 생성/모집/참가
   - `leaderboard`: 전적 집계
+  - `club-record`: 데일리 매치 이벤트, 참가자, 게스트, 초대 참가, 편성, 랭킹, 결과, 히스토리
 - `src/components/layout`: `AppShell`, `AppBar`, `BottomNav`
 - `src/components/feedback`: 로딩/상태/빈 상태 컴포넌트
 - `src/components/ui`: 공용 UI 컴포넌트
@@ -62,6 +68,11 @@
 - `match_schedule_requests`
   - 승인형 모집(`approval_required`)의 신청 대기 큐
   - 상태: `pending | accepted | rejected | cancelled_by_user`
+- `club_record_*`
+  - 클럽 운영용 데일리 매치 하위 도메인
+  - 주요 테이블: `club_record_settings`, `club_record_members`, `club_record_guest_profiles`, `club_record_events`, `club_record_guest_invites`, `club_record_event_participants`, `club_record_event_slots`, `club_record_matches`, `club_record_match_players`, `club_record_match_results`
+  - 랭킹/그룹, 게스트 초대, 이벤트 참가자, 30분 슬롯, 복식 경기, 결과/통계/RLS-RPC 경계를 별도 테이블과 함수로 관리한다
+  - 2026-05-07 기준 메인 DB에 migration 적용 및 smoke 완료
 - `audit_logs`
   - 운영/변경 추적 로그
 
@@ -69,6 +80,8 @@
 
 - `join_club_by_invite(code, nickname)`: 정회원 참가
 - `join_club_by_invite_as_guest(code, nickname)`: 게스트 참가
+- `join_club_record_event_guest_by_invite_code(code, profile_input)`: club_record 게스트 초대 참가
+- `sync_club_record_members(club_id)`: 운영진/관리자가 활성 클럽 회원을 club_record 랭킹에 append하고 그룹을 재계산
 - `regenerate_club_invite_code(club_id, days)`: 방장 초대코드 재발급
 - `remove_club_member(club_id, member_id)`: 방장 멤버 소프트 삭제
 - `update_club_name`, `update_my_club_nickname`, `update_my_club_member_settings`
@@ -99,6 +112,13 @@
   - `<div className="px-4">...</div>`
 - `AppShell`은 캔버스(`max-w`, bottom nav, 배경)만 담당
 - 상단 타이틀/뒤로가기/액션은 각 화면의 `AppBar`에서 결정
+- 클럽 계열 화면의 하단 네비게이션은 `홈 / 이벤트 / 히스토리 / 클럽`을 사용한다.
+  - `홈` -> `/clubs/[clubId]`
+  - `이벤트` -> `/clubs/[clubId]/club-record/events`
+  - `이벤트` active 범위: `/clubs/[clubId]/club-record/events`, `/clubs/[clubId]/club-record/new`, 이벤트 상세/워크스페이스 라우트
+  - `히스토리` -> `/clubs/[clubId]/club-record/history`
+  - `클럽` -> `/clubs/[clubId]/club`
+  - `홈` active 범위: `/clubs/[clubId]`, `/clubs/[clubId]/club-record`, `/clubs/[clubId]/club-record/monthly`, `/clubs/[clubId]/club-record/ranking`
 
 ## Auth Boundary
 
@@ -107,6 +127,7 @@
 - `requireUser`: 로그인 또는 게스트 세션 요구
 - `requireRegisteredUser`: 정회원(비-anonymous) 요구
 - `/auth/callback`은 정회원 로그인 뒤 `profile_completed`를 확인하고, 미완료 사용자를 `/onboarding/profile`로 보낸다
+- `/club-record/join/[inviteCode]`는 Kakao/email/anonymous session으로 진입해 초대코드 검증 후 club_record 게스트 참가를 이어간다
 - 홈(`/`)도 기존 세션의 정회원이 `profile_completed = false`면 온보딩으로 유도한다
 - 클럽 생성, 일정 생성, 경기 기록 저장/수정에는 클라이언트 서비스 레벨의 `profile_completed` 가드가 연결되어 있다
 - DB/RPC 수준의 전면 강제는 아직 후속 작업 범위다

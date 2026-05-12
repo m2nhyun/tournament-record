@@ -42,6 +42,8 @@
 5. 코드 구현
 
 문서별 책임:
+- `docs/README.md`
+  - 문서 전체 지도와 작업 유형별 읽기 경로
 - `docs/01-product-canvas.md`
   - 문제 정의, MVP 범위, 핵심 지표
 - `docs/02-design-system.md`
@@ -62,6 +64,14 @@
   - 반드시 유지해야 하는 비협상 규칙
 - `docs/10-history-ui-guidelines.md`
   - 히스토리 화면의 표시 및 QA 기준
+- `docs/11-auth-onboarding-design.md`
+  - 정회원 프로필 온보딩과 인증 UX 설계 기준
+- `docs/club_record.md`, `docs/club-record/README.md`
+  - `club_record` 도메인 작업 진입점과 세부 문서 읽기 순서
+- `docs/design/README.md`
+  - 디자인 관련 문서 묶음과 적용 순서
+- `CLAUDE.md`
+  - 보조 행동 가이드다. Codex의 자동 폴더 규칙으로 간주하지 않고, 문서에서 명시한 작업 범위에서만 함께 읽는다.
 
 ## 3. Non-Negotiable Domain Rules
 
@@ -133,6 +143,10 @@
   - 클럽, 멤버, 초대, 공개 설정 관련 도메인
 - `src/features/matches`
   - 경기 생성, 수정, 상세, 히스토리, 점수, 확인 플로우
+- `src/features/schedules`
+  - 일정 생성, 모집, 참가 신청/승인, 일정 상세
+- `src/features/club-record`
+  - 클럽 운영용 데일리 매치, 랭킹, 참가자, 편성, 결과, 히스토리
 - `src/features/leaderboard`
   - 전적 집계와 표시
 - `src/components`
@@ -157,7 +171,8 @@
 - CLI로 반영할 때 direct host(`db.<project-ref>.supabase.co:5432`)가 IPv6-only로 막히면 `SUPABASE_DB_PUSH_URL`에 session pooler 문자열을 넣어 우회한다.
 - DB 연결 문자열의 비밀번호에 `@`, `:`, `/` 같은 reserved 문자가 있으면 반드시 URL 인코딩한다.
 - remote schema 객체는 이미 있는데 migration history만 비어 있으면, SQL 재적용보다 `supabase migration repair --status applied`를 우선 검토한다.
-- 현재 기준 remote migration history와 `supabase/schema.sql`은 정합 상태이며, `npm run db:push:dry`는 `Remote database is up to date.`가 기대값이다.
+- 현재 기준 remote migration history와 `supabase/schema.sql`은 `club_record` 적용 후 정합 상태이며, `npm run db:push:dry`는 `Remote database is up to date.`가 기대값이다.
+- 새 migration을 운영 DB에 적용하거나 smoke를 다시 실행하려면 명시 승인 후 진행한다.
 - DB 작업 판단 규칙:
   - 새 migration이 있고 dry-run이 pending을 보여주면 `db:push`
   - remote schema는 최신인데 history만 비어 있으면 `migration repair`
@@ -683,21 +698,34 @@ codex --enable multi_agent
   - url: `https://api.githubcopilot.com/mcp/`
   - auth: `GITHUB_TOKEN` bearer token
   - 용도: PR, 이슈, 리포지토리 상태 확인 및 GitHub 작업 연동
+- `figma`
+  - transport: streamable HTTP
+  - url: `https://mcp.figma.com/mcp`
+  - 용도: Figma 디자인 컨텍스트, 디자인 캡처/동기화, Code Connect 매핑
+
+현재 미등록 MCP:
+- `vercel`
+  - 현재는 MCP가 아니라 Vercel CLI(`npx vercel ...`)로 확인/운영한다.
+- `supabase`
+  - 현재는 MCP가 아니라 Supabase CLI(`npx supabase ...`)와 `npm run db:*` 자동화로 확인/운영한다.
 
 이 저장소에서의 기본 우선순위:
 1. 구현 정확도: `context7`
 2. 실제 사용자 흐름 검증: `playwright`
-3. 저장소 작업 연동: `github`
-4. 최신 외부 자료 탐색: `exa`
+3. 디자인 연동: `figma`
+4. 저장소 작업 연동: `github`
+5. 최신 외부 자료 탐색: `exa`
 
 사용 규칙:
 - 구현 중 라이브러리/프레임워크 API가 헷갈리면 `context7`를 먼저 본다.
 - UI/UX 변경 후 실제 브라우저 회귀가 중요하면 `playwright`를 사용한다.
+- Figma 디자인 확인/캡처/동기화가 필요하면 `figma`를 사용한다.
 - PR, 이슈, 변경 상태 조회가 필요하면 `github`를 사용한다.
 - 최신 문서나 외부 레퍼런스가 필요할 때만 `exa`를 쓴다.
 - 공식 문서가 있는 주제는 `exa`보다 `context7` 또는 공식 사이트를 우선한다.
 - `github` MCP는 `GITHUB_TOKEN`이 설정되어 있어야 인증된 작업이 가능하다.
 - `github` MCP의 인증은 `direnv`로 주입된 `GITHUB_TOKEN`을 기준으로 사용한다.
+- Vercel/Supabase 운영 확인은 현재 MCP가 아니라 CLI 기준으로 수행하고, 절차는 `docs/05-automation.md`를 따른다.
 
 ### 12.4 Stage 4: Real-Time Monitoring
 
@@ -771,13 +799,18 @@ codex --enable multi_agent
 
 - `AGENTS.md`를 루트 실행 규칙으로 사용한다.
 - Codex global config에서 `multi_agent` feature가 활성화되어 있다.
-- Codex global MCP에 `playwright`, `context7`, `exa`, `github`가 등록되어 있다.
+- Codex global MCP에 `playwright`, `context7`, `exa`, `github`, `figma`가 등록되어 있다.
+- Vercel MCP와 Supabase MCP는 현재 등록되어 있지 않다.
+- Vercel CLI는 `npx vercel`로 사용하며, 현재 로컬 프로젝트는 `minhyuns-projects/tournament-record`에 연결되어 있다.
+- GitHub CLI(`gh`)는 현재 설치되어 있지 않다. GitHub 작업은 GitHub MCP 또는 `git` 원격 명령을 기준으로 확인한다.
+- Supabase CLI는 `npx supabase`로 사용한다. CLI 로그인은 되어 있으나 local `supabase link`는 설정되어 있지 않고, 이 저장소의 DB 자동화는 `--db-url` 기반이다.
 - 이 저장소에서는 `direnv`로 `.env.local`과 `.envrc.local`을 함께 로드한다.
 - `GITHUB_TOKEN`은 전역 `~/.zshrc`가 아니라 `.envrc.local`로 관리한다.
 - DB CLI 작업(`db:push`, `db:push:dry`, `db:schema:sync`)은 `SUPABASE_DB_PUSH_URL`가 있으면 이를 우선 사용한다.
 - 현재 Supabase 프로젝트의 direct DB host는 IPv4 호환이 아니므로, 이 환경에서는 session pooler URL을 CLI 전용 연결 문자열로 사용한다.
-- remote migration history는 `migration repair`로 정리되었고, 현재 remote schema와 로컬 `supabase/schema.sql`은 동기화된 상태다.
+- remote migration history는 `migration repair`와 후속 `db:push`로 정리되었고, 현재 remote schema와 로컬 `supabase/schema.sql`은 정합 상태다.
 - 현재 기준 `npm run db:push:dry`의 정상 기대값은 `Remote database is up to date.`다.
+- 운영 DB에 새 migration을 추가 적용하거나 smoke를 다시 실행하려면 별도 명시 승인이 필요하다.
 - 이 저장소에서는 multi-agent를 “많은 에이전트를 무조건 띄우는 기능”으로 보지 않는다.
 - 우선순위는 아래와 같다.
   1. 병렬 탐색

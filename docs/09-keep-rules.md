@@ -6,6 +6,7 @@
 
 - 인증 책임은 `src/features/auth/services/auth.ts`에 유지한다.
 - `getCurrentUser()`의 `Auth session missing` 예외 무시 처리 정책을 유지한다.
+- 같은 탭에서 동시에 들어오는 `getCurrentUser()` / `ensureSessionUser()` 호출은 공통 인증 서비스에서 in-flight 요청으로 합쳐 Supabase auth token lock 경합을 만들지 않는다.
 - 카카오 로그인 scope는 `profile_nickname profile_image`를 기본으로 유지한다.
 - 카카오 사용자 로그아웃 시 Supabase sign-out 뒤 카카오 logout URL 연동을 유지한다.
 - 이메일 로그인/회원가입 경로는 항상 활성 상태로 유지한다.
@@ -14,7 +15,8 @@
 ## 2) DB 반영 방식
 
 - 코드 변경과 DB 변경은 분리 관리한다. DB가 필요한 기능은 SQL 반영 전까지 미완료로 본다.
-- 현재 운영 정책상 DB 마이그레이션은 SQL Editor 수동 실행을 기본으로 유지한다.
+- 현재 운영 정책상 DB 마이그레이션은 `npm run db:push:dry` 선확인 후 CLI(`npm run db:push`) 반영을 기본으로 유지한다.
+- Supabase SQL Editor 수동 실행은 Dashboard-only 변경이나 CLI 적용이 불가능한 예외 경로로만 사용한다.
 - 신규 SQL은 `supabase/migrations/*.sql`에 항상 남긴다.
 
 ## 3) 클럽 권한/설정
