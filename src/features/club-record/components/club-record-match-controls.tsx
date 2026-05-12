@@ -21,6 +21,7 @@ type ClubRecordMatchControlsProps = {
   participants: ClubRecordEventParticipant[];
   access: ClubRecordAccessContext | null;
   onChanged: () => Promise<void>;
+  readOnly?: boolean;
 };
 
 type StatusState = {
@@ -125,6 +126,7 @@ export function ClubRecordMatchControls({
   participants,
   access,
   onChanged,
+  readOnly = false,
 }: ClubRecordMatchControlsProps) {
   const participantNameMap = useMemo(
     () => buildParticipantNameMap(participants),
@@ -168,7 +170,7 @@ export function ClubRecordMatchControls({
   );
   const resultEntryState = getResultEntryState({
     canEditAnyResult,
-    canSubmitResult,
+    canSubmitResult: readOnly ? false : canSubmitResult,
     isCurrentMemberInMatch,
     slot,
   });
@@ -177,8 +179,10 @@ export function ClubRecordMatchControls({
   const lockedResultMessage = getLockedResultMessage(resultEntryState);
   const selectedManualPlayerIds = new Set(manualPlayerIds.filter(Boolean));
   const canCreateManualMatch =
+    !readOnly &&
     canManageManualMatches &&
     !slot.match &&
+    slot.availableParticipantIds.length >= 4 &&
     manualPlayerIds.length === 4 &&
     selectedManualPlayerIds.size === 4;
   const scoreText = `${side1Score}-${side2Score}`;
@@ -320,7 +324,25 @@ export function ClubRecordMatchControls({
     <div className="mt-3 space-y-3 border-t pt-3">
       {status ? <StatusBox type={status.type} message={status.message} /> : null}
 
-      {!slot.match && canManageManualMatches ? (
+      {!slot.match && canManageManualMatches && readOnly ? (
+        <div className="rounded-lg border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+          지난 이벤트에서는 새 경기를 만들 수 없습니다.
+        </div>
+      ) : null}
+
+      {!slot.match &&
+      canManageManualMatches &&
+      !readOnly &&
+      slot.availableParticipantIds.length < 4 ? (
+        <div className="rounded-lg border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+          수동 편성에는 이 시간대에 출전 가능한 참가자 4명이 필요합니다.
+        </div>
+      ) : null}
+
+      {!slot.match &&
+      canManageManualMatches &&
+      !readOnly &&
+      slot.availableParticipantIds.length >= 4 ? (
         <form className="space-y-3" onSubmit={handleCreateManualMatch}>
           <div className="grid gap-2 sm:grid-cols-2">
             {playerPositions.map((position, index) => (
@@ -375,7 +397,7 @@ export function ClubRecordMatchControls({
                 )}
                 {resultActionLabel}
               </Button>
-              {canManageManualMatches && slot.match.status !== "confirmed" ? (
+              {!readOnly && canManageManualMatches && slot.match.status !== "confirmed" ? (
                 <details className="relative">
                   <summary className="flex h-9 w-9 list-none items-center justify-center rounded-md border bg-background text-sm [&::-webkit-details-marker]:hidden">
                     <MoreVertical className="size-4" />

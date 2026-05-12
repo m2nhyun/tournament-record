@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { Fragment, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   CalendarDays,
@@ -49,18 +49,80 @@ function toDateInputValue(value: string) {
 
 function getResultBadge(result: ClubRecordHistoryEntry["result"]) {
   if (result === "win") {
-    return { label: "승", variant: "success" as const, tone: "bg-emerald-50" };
+    return {
+      label: "승",
+      variant: "success" as const,
+      tone: "bg-[var(--color-green-light)]",
+    };
   }
 
   if (result === "loss") {
-    return { label: "패", variant: "destructive" as const, tone: "bg-rose-50" };
+    return {
+      label: "패",
+      variant: "destructive" as const,
+      tone: "bg-[var(--color-red-light)]",
+    };
   }
 
   return { label: "무", variant: "default" as const, tone: "bg-muted/20" };
 }
 
-function formatNames(names: string[], emptyLabel: string) {
-  return names.length > 0 ? names.join(" · ") : emptyLabel;
+function getMatchType(entry: ClubRecordHistoryEntry) {
+  const playerCount = entry.teamNames.length + entry.opponentNames.length;
+  return playerCount > 2 ? "복식" : "단식";
+}
+
+function NameText({
+  names,
+  emptyLabel,
+  highlightFirst = false,
+}: {
+  names: string[];
+  emptyLabel: string;
+  highlightFirst?: boolean;
+}) {
+  if (names.length === 0) {
+    return <span className="text-muted-foreground">{emptyLabel}</span>;
+  }
+
+  return (
+    <span>
+      {names.map((name, index) => (
+        <Fragment key={`${name}-${index}`}>
+          {index > 0 ? <span className="text-muted-foreground">, </span> : null}
+          <span
+            className={
+              highlightFirst && index === 0
+                ? "font-semibold text-[var(--color-player-highlight)]"
+                : "font-medium text-foreground"
+            }
+          >
+            {name}
+          </span>
+        </Fragment>
+      ))}
+    </span>
+  );
+}
+
+function MatchupLine({ entry }: { entry: ClubRecordHistoryEntry }) {
+  return (
+    <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-3">
+      <p className="min-w-0 break-words text-right text-sm sm:text-base">
+        <NameText
+          names={entry.teamNames}
+          emptyLabel="내 이름 정보 없음"
+          highlightFirst
+        />
+      </p>
+      <p className="font-mono text-lg font-semibold leading-none text-[var(--brand)]">
+        {entry.scoreText || "결과 없음"}
+      </p>
+      <p className="min-w-0 break-words text-left text-sm sm:text-base">
+        <NameText names={entry.opponentNames} emptyLabel="상대 정보 없음" />
+      </p>
+    </div>
+  );
 }
 
 function matchesFilter(
@@ -88,8 +150,6 @@ function HistoryCard({
   entry: ClubRecordHistoryEntry;
 }) {
   const resultBadge = getResultBadge(entry.result);
-  const partnerLabel = formatNames(entry.partnerNames, "단식");
-  const opponentLabel = formatNames(entry.opponentNames, "상대 정보 없음");
 
   return (
     <Card>
@@ -97,28 +157,14 @@ function HistoryCard({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant={resultBadge.variant}>{resultBadge.label}</Badge>
-            <Badge variant="brand">복식</Badge>
+            <Badge variant="brand">{getMatchType(entry)}</Badge>
             <Badge variant="default">확정</Badge>
           </div>
           <p className="text-xs text-muted-foreground">{formatEventDate(entry.eventDate)}</p>
         </div>
 
-        <div className="rounded-xl border bg-muted/20 px-3 py-2 text-center">
-          <p className="text-xs text-muted-foreground">스코어</p>
-          <p className="font-mono text-lg font-semibold text-[var(--brand)]">
-            {entry.scoreText || "결과 없음"}
-          </p>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1 rounded-xl border bg-background p-3">
-            <p className="text-xs text-muted-foreground">내 팀</p>
-            <p className="break-words text-sm font-medium">{partnerLabel}</p>
-          </div>
-          <div className="space-y-1 rounded-xl border bg-background p-3">
-            <p className="text-xs text-muted-foreground">상대</p>
-            <p className="break-words text-sm font-medium">{opponentLabel}</p>
-          </div>
+        <div className={`rounded-xl border px-3 py-3 ${resultBadge.tone}`}>
+          <MatchupLine entry={entry} />
         </div>
 
         <Button size="sm" variant="outline" asChild>
@@ -139,25 +185,13 @@ function HistoryListItem({
   entry: ClubRecordHistoryEntry;
 }) {
   const resultBadge = getResultBadge(entry.result);
-  const partnerLabel = formatNames(entry.partnerNames, "단식");
-  const opponentLabel = formatNames(entry.opponentNames, "상대 정보 없음");
 
   return (
     <Link
       href={`/clubs/${clubId}/club-record/${entry.eventId}`}
       className={`block rounded-xl border px-3 py-3 ${resultBadge.tone}`}
     >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs text-muted-foreground">{formatEventDate(entry.eventDate)}</p>
-        <Badge variant={resultBadge.variant}>{resultBadge.label}</Badge>
-      </div>
-      <div className="mt-2 grid gap-1 text-sm">
-        <p className="break-words font-medium">{partnerLabel}</p>
-        <p className="font-mono text-base font-semibold text-[var(--brand)]">
-          {entry.scoreText || "결과 없음"}
-        </p>
-        <p className="break-words text-muted-foreground">{opponentLabel}</p>
-      </div>
+      <MatchupLine entry={entry} />
     </Link>
   );
 }
@@ -238,7 +272,7 @@ export function ClubRecordHistoryView({
               클럽 레코드에서 확정된 내 경기만 모아 봅니다.
             </p>
             <p className="text-xs text-muted-foreground">
-              상대와 파트너 기준으로 지난 결과를 확인할 수 있습니다.
+              내 팀과 상대 기준으로 지난 결과를 확인할 수 있습니다.
             </p>
           </CardContent>
         </Card>

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Bell } from "lucide-react";
+import { Bell, Loader2 } from "lucide-react";
 import { useState } from "react";
 
 import { Modal } from "@/components/common/modal";
@@ -50,7 +50,9 @@ export function MatchConfirmationInboxAction({
           {error ? <StatusBox type="error" message={error} /> : null}
 
           {loading ? (
-            <p className="text-sm text-muted-foreground">확인 요청을 불러오는 중...</p>
+            <div className="flex min-h-20 items-center justify-center">
+              <Loader2 className="size-5 animate-spin text-muted-foreground" />
+            </div>
           ) : null}
 
           {!loading && !error && items.length === 0 ? (

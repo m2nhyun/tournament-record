@@ -49,6 +49,7 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
   } = useClubDetail(clubId);
   const [copied, setCopied] = useState<"code" | "link" | null>(null);
   const [openNameDialog, setOpenNameDialog] = useState(false);
+  const [currentTime] = useState(() => Date.now());
 
   const copyInviteCode = useCallback(async () => {
     if (!club) return;
@@ -118,6 +119,8 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
 
   if (!club) return null;
 
+  const inviteExpired = new Date(club.inviteExpiresAt).getTime() < currentTime;
+
   return (
     <div className="space-y-6">
       <AppBar
@@ -135,6 +138,7 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
             <div className="flex items-start justify-between gap-2">
               <CardTitle>클럽 정보</CardTitle>
               <div className="flex items-center gap-2">
+                {inviteExpired ? <Badge variant="warning">초대 만료</Badge> : null}
                 <Badge variant="brand">
                   {roleLabelMap[club.myRole] ?? club.myRole}
                 </Badge>
@@ -166,11 +170,17 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
                 <p className="mt-1 text-[11px] text-muted-foreground">
                   유효기간: {new Date(club.inviteExpiresAt).toLocaleDateString("ko-KR")}
                 </p>
+                {inviteExpired ? (
+                  <p className="mt-2 text-xs text-amber-700">
+                    만료된 초대 링크입니다. 새 링크를 재발급한 뒤 공유하세요.
+                  </p>
+                ) : null}
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
+                  disabled={inviteExpired}
                   onClick={() => void copyInviteCode()}
                 >
                   <Copy className="size-3.5" />
@@ -179,6 +189,7 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
                 <Button
                   variant="outline"
                   size="sm"
+                  disabled={inviteExpired}
                   onClick={() => void copyInviteLink()}
                 >
                   <Copy className="size-3.5" />
@@ -187,6 +198,7 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
                 <Button
                   variant="outline"
                   size="sm"
+                  disabled={inviteExpired}
                   onClick={() => void shareInviteLink()}
                 >
                   <Share2 className="size-3.5" />
@@ -194,7 +206,7 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
                 </Button>
                 {club.myRole === "owner" ? (
                   <Button
-                    variant="outline"
+                    variant={inviteExpired ? "default" : "outline"}
                     size="sm"
                     disabled={saving}
                     onClick={() => void regenerateInviteCode()}

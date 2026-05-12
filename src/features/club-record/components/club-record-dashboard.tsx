@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   CalendarDays,
   ChevronRight,
@@ -20,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useClubRecordDashboard } from "@/features/club-record/hooks/use-club-record-dashboard";
 import type { ClubRecordDashboardEventSummary } from "@/features/club-record/types/dashboard";
+import { MatchConfirmationPromptCard } from "@/features/matches/components/match-confirmation-prompt-card";
 
 type ClubRecordDashboardViewProps = {
   clubId: string;
@@ -115,6 +117,7 @@ function EventCard({
 export function ClubRecordDashboardView({
   clubId,
 }: ClubRecordDashboardViewProps) {
+  const router = useRouter();
   const { dashboard, loading, error, refresh } = useClubRecordDashboard(clubId);
 
   if (loading) {
@@ -156,6 +159,14 @@ export function ClubRecordDashboardView({
               월간 카드 중심으로 확인합니다.
             </p>
             <div className="flex flex-wrap gap-2">
+              {access.capabilities.canCreateEvent ? (
+                <Button size="sm" asChild>
+                  <Link href={`/clubs/${clubId}/club-record/new`}>
+                    <PlusCircle className="size-4" />
+                    새 이벤트
+                  </Link>
+                </Button>
+              ) : null}
               {access.capabilities.canViewRanking ? (
                 <Button size="sm" variant="outline" asChild>
                   <Link href={`/clubs/${clubId}/club-record/ranking`}>
@@ -172,14 +183,6 @@ export function ClubRecordDashboardView({
                   </Link>
                 </Button>
               ) : null}
-              {access.capabilities.canCreateEvent ? (
-                <Button size="sm" variant="outline" asChild>
-                  <Link href={`/clubs/${clubId}/club-record/new`}>
-                    <PlusCircle className="size-4" />
-                    새 이벤트
-                  </Link>
-                </Button>
-              ) : null}
               {currentEvent ? (
                 <Button size="sm" asChild>
                   <Link href={`/clubs/${clubId}/club-record/${currentEvent.id}`}>
@@ -191,6 +194,8 @@ export function ClubRecordDashboardView({
             </div>
           </CardContent>
         </Card>
+
+        <MatchConfirmationPromptCard clubId={clubId} />
 
         <section className="space-y-3">
           <div className="flex items-center justify-between gap-3">
@@ -206,6 +211,14 @@ export function ClubRecordDashboardView({
               icon={CalendarDays}
               title="활성 이벤트가 없습니다."
               description="이벤트가 생성되면 여기에서 바로 열 수 있습니다."
+              actionLabel={
+                access.capabilities.canCreateEvent ? "새 이벤트 만들기" : undefined
+              }
+              onAction={
+                access.capabilities.canCreateEvent
+                  ? () => router.push(`/clubs/${clubId}/club-record/new`)
+                  : undefined
+              }
             />
           )}
         </section>
@@ -223,6 +236,14 @@ export function ClubRecordDashboardView({
               icon={CalendarDays}
               title="예정된 이벤트가 없습니다."
               description="곧 시작할 데일리 매치가 없으면 이 영역이 비어 있습니다."
+              actionLabel={
+                access.capabilities.canCreateEvent ? "새 이벤트 만들기" : undefined
+              }
+              onAction={
+                access.capabilities.canCreateEvent
+                  ? () => router.push(`/clubs/${clubId}/club-record/new`)
+                  : undefined
+              }
             />
           )}
         </section>

@@ -54,9 +54,7 @@ export function MatchList({ matches, viewMode, resetKey }: MatchListProps) {
       ))}
 
       {hasMore ? (
-        <div ref={sentinelRef} className="py-4 text-center text-xs text-muted-foreground">
-          경기 기록을 더 불러오는 중...
-        </div>
+        <div ref={sentinelRef} className="h-4" aria-hidden="true" />
       ) : null}
     </div>
   );

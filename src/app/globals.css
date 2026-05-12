@@ -14,6 +14,7 @@
   --color-sidebar-ring: var(--sidebar-ring);
   --color-green-primary: var(--green-primary);
   --color-green-light: var(--green-light);
+  --color-player-highlight: var(--player-highlight);
   --color-red-primary: var(--red-primary);
   --color-red-light: var(--red-light);
   --color-sidebar-border: var(--sidebar-border);
@@ -61,6 +62,7 @@
   --brand-foreground: oklch(0.17 0.04 145);
   --green-primary: #15803d;
   --green-light: #f0fdf4;
+  --player-highlight: #1d4ed8;
   --red-primary: #b91c1c;
   --red-light: #fef2f2;
   --surface-1: oklch(0.985 0.01 145);
@@ -86,6 +88,7 @@
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
+  --player-highlight: #93c5fd;
   --sidebar: oklch(0.984 0.003 247.858);
   --sidebar-foreground: oklch(0.129 0.042 264.695);
   --sidebar-primary: oklch(0.208 0.042 265.755);

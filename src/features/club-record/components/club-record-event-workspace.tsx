@@ -48,6 +48,19 @@ function getSlotStatusLabel(status: string) {
   return status;
 }
 
+function isPastOrClosedEvent(
+  event: {
+    endsAt: string;
+    status: string;
+    isDeleted: boolean;
+  },
+  currentTime: number,
+) {
+  if (event.isDeleted) return true;
+  if (event.status === "cancelled" || event.status === "completed") return true;
+  return new Date(event.endsAt).getTime() < currentTime;
+}
+
 export function ClubRecordEventWorkspaceView({
   clubId,
   eventId,
@@ -61,6 +74,7 @@ export function ClubRecordEventWorkspaceView({
     type: "success" | "error" | "info";
     message: string;
   }>(null);
+  const [currentTime] = useState(() => Date.now());
 
   const participantNameMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -88,7 +102,17 @@ export function ClubRecordEventWorkspaceView({
     );
   }
 
+  const isReadOnlyEvent = isPastOrClosedEvent(workspace.event, currentTime);
+
   const handleRunAutoAssignment = async () => {
+    if (isReadOnlyEvent) {
+      setStatus({
+        type: "info",
+        message: "지난 이벤트에서는 자동 편성을 다시 실행하지 않습니다.",
+      });
+      return;
+    }
+
     if (!workspace.event.assignmentDirty && workspace.summary.openSlotCount === 0) {
       setStatus({
         type: "info",
@@ -156,6 +180,7 @@ export function ClubRecordEventWorkspaceView({
               <CardTitle>이벤트 요약</CardTitle>
               <div className="flex gap-2">
                 <Badge variant="brand">{workspace.event.status}</Badge>
+                {isReadOnlyEvent ? <Badge variant="default">지난 이벤트</Badge> : null}
                 {workspace.event.assignmentDirty ? (
                   <Badge variant="warning">변경됨</Badge>
                 ) : null}
@@ -181,7 +206,7 @@ export function ClubRecordEventWorkspaceView({
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              {access?.capabilities.canManageParticipants ? (
+              {access?.capabilities.canManageParticipants && !isReadOnlyEvent ? (
                 <Button size="sm" variant="outline" asChild>
                   <Link href={`/clubs/${clubId}/club-record/new`}>
                     <PlusCircle className="size-4" />
@@ -189,7 +214,7 @@ export function ClubRecordEventWorkspaceView({
                   </Link>
                 </Button>
               ) : null}
-              {access?.capabilities.canManageClubData ? (
+              {access?.capabilities.canManageClubData && !isReadOnlyEvent ? (
                 <Button
                   size="sm"
                   variant="outline"
@@ -200,7 +225,7 @@ export function ClubRecordEventWorkspaceView({
                   이벤트 수정
                 </Button>
               ) : null}
-              {access?.capabilities.canManageClubData ? (
+              {access?.capabilities.canManageClubData && !isReadOnlyEvent ? (
                 <Button
                   size="sm"
                   variant="outline"
@@ -220,7 +245,14 @@ export function ClubRecordEventWorkspaceView({
                 </Badge>
               ) : null}
             </div>
-            {workspace.summary.openSlotCount > 0 || workspace.event.assignmentDirty ? (
+            {isReadOnlyEvent ? (
+              <StatusBox
+                type="info"
+                message="종료된 이벤트입니다. 참가자와 편성은 읽기 전용으로 보고, 운영진만 필요한 경우 결과를 사후 입력하거나 수정할 수 있습니다."
+              />
+            ) : null}
+            {!isReadOnlyEvent &&
+            (workspace.summary.openSlotCount > 0 || workspace.event.assignmentDirty) ? (
               <Button
                 onClick={() => void handleRunAutoAssignment()}
                 disabled={busy}
@@ -232,7 +264,7 @@ export function ClubRecordEventWorkspaceView({
           </CardContent>
         </Card>
 
-        {access?.capabilities.canManageClubData ? (
+        {access?.capabilities.canManageClubData && !isReadOnlyEvent ? (
           <ClubRecordEventEditDialog
             event={workspace.event}
             open={editOpen}
@@ -250,8 +282,9 @@ export function ClubRecordEventWorkspaceView({
               endsAt={workspace.event.endsAt}
               participants={workspace.participants}
               onChanged={refresh}
+              readOnly={isReadOnlyEvent}
             />
-            {access.capabilities.canManageGuestInvites ? (
+            {access.capabilities.canManageGuestInvites && !isReadOnlyEvent ? (
               <ClubRecordGuestInvitePanel eventId={eventId} />
             ) : null}
           </div>
@@ -348,6 +381,7 @@ export function ClubRecordEventWorkspaceView({
                               participants={workspace.participants}
                               access={access}
                               onChanged={refresh}
+                              readOnly={isReadOnlyEvent}
                             />
                           </div>
                         ))}

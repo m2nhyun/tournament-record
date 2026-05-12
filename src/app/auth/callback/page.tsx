@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
 
 import { getCurrentUser } from "@/features/auth/services/auth";
 import { getMyProfile } from "@/features/auth/services/profile";
@@ -43,8 +44,8 @@ export default function AuthCallbackPage() {
   }, [router]);
 
   return (
-    <div className="flex min-h-[40dvh] items-center justify-center px-4 text-sm text-muted-foreground">
-      로그인 처리 중...
+    <div className="flex min-h-[40dvh] items-center justify-center px-4">
+      <Loader2 className="size-6 animate-spin text-[var(--brand)]" />
     </div>
   );
 }

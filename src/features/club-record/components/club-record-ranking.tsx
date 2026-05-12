@@ -103,7 +103,7 @@ export function ClubRecordRankingView({ clubId }: ClubRecordRankingViewProps) {
     } catch (err) {
       setStatus({
         type: "error",
-        message: err instanceof Error ? err.message : "랭킹 동기화 실패",
+        message: err instanceof Error ? err.message : "클럽 회원 불러오기 실패",
       });
     } finally {
       setSyncing(false);
@@ -150,7 +150,7 @@ export function ClubRecordRankingView({ clubId }: ClubRecordRankingViewProps) {
                 disabled={syncing}
               >
                 <Users className="size-4" />
-                {syncing ? "동기화 중..." : "회원 랭킹 동기화"}
+                {syncing ? "불러오는 중..." : "클럽 회원 불러오기"}
               </Button>
             ) : null}
           </CardContent>
@@ -160,8 +160,8 @@ export function ClubRecordRankingView({ clubId }: ClubRecordRankingViewProps) {
           <EmptyState
             icon={Users}
             title="아직 클럽 회원 랭킹이 없습니다."
-            description="활성 클럽 회원을 랭킹에 동기화한 뒤 순서를 조정하세요."
-            actionLabel={canEdit ? "회원 랭킹 동기화" : undefined}
+            description="활성 클럽 회원을 불러온 뒤 순서를 조정하세요."
+            actionLabel={canEdit ? "클럽 회원 불러오기" : undefined}
             onAction={canEdit ? () => void handleSyncMembers() : undefined}
           />
         ) : null}
@@ -178,7 +178,7 @@ export function ClubRecordRankingView({ clubId }: ClubRecordRankingViewProps) {
                     onClick={() => void handleSyncMembers()}
                     disabled={syncing}
                   >
-                    {syncing ? "동기화 중..." : "누락 회원 추가"}
+                    {syncing ? "불러오는 중..." : "클럽 회원 불러오기"}
                   </Button>
                 ) : null}
               </div>

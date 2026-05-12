@@ -26,6 +26,7 @@ type ClubRecordParticipantManagerProps = {
   endsAt: string;
   participants: ClubRecordEventParticipant[];
   onChanged: () => Promise<void>;
+  readOnly?: boolean;
 };
 
 type StatusState = {
@@ -49,6 +50,7 @@ export function ClubRecordParticipantManager({
   endsAt,
   participants,
   onChanged,
+  readOnly = false,
 }: ClubRecordParticipantManagerProps) {
   const [members, setMembers] = useState<ClubMember[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
@@ -105,6 +107,11 @@ export function ClubRecordParticipantManager({
     let active = true;
 
     const load = async () => {
+      if (readOnly) {
+        setLoadingMembers(false);
+        return;
+      }
+
       setLoadingMembers(true);
       try {
         const nextMembers = await listClubMembers(clubId);
@@ -125,7 +132,7 @@ export function ClubRecordParticipantManager({
     return () => {
       active = false;
     };
-  }, [clubId]);
+  }, [clubId, readOnly]);
 
   const joinedMemberIds = useMemo(
     () =>
@@ -260,15 +267,19 @@ export function ClubRecordParticipantManager({
             <div className="space-y-1">
               <CardTitle>참가자</CardTitle>
               <p className="text-sm text-muted-foreground">
-                현재 이벤트에 참가 중인 회원과 게스트입니다.
+                {readOnly
+                  ? "지난 이벤트에 참가했던 회원과 게스트입니다."
+                  : "현재 이벤트에 참가 중인 회원과 게스트입니다."}
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <Badge variant="default">{participants.length}명</Badge>
-              <Button size="sm" onClick={() => setAddDialogOpen(true)}>
-                <UserPlus className="size-4" />
-                참가자 추가
-              </Button>
+              {!readOnly ? (
+                <Button size="sm" onClick={() => setAddDialogOpen(true)}>
+                  <UserPlus className="size-4" />
+                  참가자 추가
+                </Button>
+              ) : null}
             </div>
           </div>
         </CardHeader>
@@ -296,15 +307,17 @@ export function ClubRecordParticipantManager({
                       : ""}
                   </p>
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={removingParticipantId === participant.id}
-                  onClick={() => void handleRemoveParticipant(participant.id)}
-                >
-                  <UserRoundMinus className="size-4" />
-                  {removingParticipantId === participant.id ? "삭제 중..." : "삭제"}
-                </Button>
+                {!readOnly ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={removingParticipantId === participant.id}
+                    onClick={() => void handleRemoveParticipant(participant.id)}
+                  >
+                    <UserRoundMinus className="size-4" />
+                    {removingParticipantId === participant.id ? "삭제 중..." : "삭제"}
+                  </Button>
+                ) : null}
               </div>
             ))
           ) : (

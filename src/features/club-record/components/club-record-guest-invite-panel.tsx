@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Copy, KeyRound, Link2, RefreshCw, ShieldOff } from "lucide-react";
+import { Copy, KeyRound, Link2, Loader2, RefreshCw, ShieldOff } from "lucide-react";
 
 import { StatusBox } from "@/components/feedback/status-box";
 import { Badge } from "@/components/ui/badge";
@@ -131,7 +131,9 @@ export function ClubRecordGuestInvitePanel({
         {status ? <StatusBox type={status.type} message={status.message} /> : null}
 
         {loading ? (
-          <p className="text-sm text-muted-foreground">초대코드를 확인하는 중...</p>
+          <div className="flex min-h-16 items-center justify-center">
+            <Loader2 className="size-5 animate-spin text-muted-foreground" />
+          </div>
         ) : invite ? (
           <div className="space-y-3">
             <div className="rounded-2xl border bg-muted/20 p-4">
