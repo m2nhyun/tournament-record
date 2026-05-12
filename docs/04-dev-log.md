@@ -2,6 +2,46 @@
 
 ## 2026-05-12
 
+### Club Record History Team Names
+
+- `내 기록` 카드의 `내 팀` 영역이 실제로는 파트너만 표시해 단식에서는 본인 이름이 비고, 복식에서는 본인 없이 파트너만 보이는 문제를 확인했다.
+- `get_my_club_record_history`, `get_club_record_member_history` RPC에 `team_names`를 추가해 조회 대상 본인/대상 회원을 첫 항목으로 포함한 팀 전체 이름을 반환하도록 했다.
+- 기존 `partner_names` / `opponent_names`는 호환성을 위해 유지하고, UI는 `team_names`를 기준으로 내 팀을 표시하며 첫 이름을 `--player-highlight` 파란 계열 텍스트 색상과 굵기로만 강조한다.
+- 카드/리스트 모두 이름 배지와 chip 표현을 제거하고 `내 팀 이름들  스코어  상대 이름들` 매치업 라인으로 통일했다.
+- 텍스트 강조 요청을 임의로 배지/칩 컴포넌트로 확장하지 않는 규칙을 디자인 시스템과 히스토리 UI 가이드에 반영했다.
+- `supabase/tests/club_record_smoke.sql`에 복식과 단식 모두에서 `team_names`가 정확한 순서로 반환되는지 확인하는 회귀 검증을 추가했다.
+- migration `20260512120500_add_club_record_history_team_names.sql`을 메인 DB에 적용하고 `supabase/schema.sql`을 동기화했다.
+- cmux browser로 이벤트 생성, 회원 참가자 추가, 자동 편성, `6-4` 결과 입력, 히스토리 카드 반영까지 확인했다. cmux의 React controlled input 한계로 수동 게스트 폼 입력은 DB 보강으로 이어서 검증했다.
+
+### Club Record History Guest Names RPC Fix
+
+- `내 기록` 카드에서 게스트 참가자가 partner/opponent 이름 배열에 누락되어 2:2 복식이 1명 vs 2명처럼 보이는 문제를 확인했다.
+- `get_my_club_record_history`, `get_club_record_member_history` RPC를 새 migration으로 재적용해, 경기 선수 이름을 `club_members.nickname`뿐 아니라 `club_record_guest_profiles.display_name`까지 명시적으로 포함하도록 보강했다.
+- migration `20260512113000_fix_club_record_history_guest_names.sql`을 메인 DB에 적용하고 `supabase/schema.sql`을 동기화했다.
+- `supabase/tests/club_record_smoke.sql`에 내 기록/운영진 타인 기록 RPC가 게스트 표시명을 반환하는지 확인하는 회귀 검증을 추가했다.
+- `cmux browser`로 `/clubs/{clubId}/club-record/history`에서 `테스트 게스트`가 상대 목록에 표시되는 것을 확인했다.
+
+### Match Confirmation Home Prompt
+
+- 현재 클럽 홈이 `club_record` 대시보드로 바뀐 뒤 일반 경기의 확인 요청 벨이 예전 히스토리 화면에만 남아 있어, 사용자가 `기록됨/재검토 필요` 후속 액션을 놓칠 수 있는 구조를 확인했다.
+- 클럽 홈에 `확인할 경기` 프롬프트 카드를 추가해, 처리해야 할 경기 확인 요청이 있을 때 최대 3개를 바로 상세 화면으로 연결한다.
+- 확인 요청이 없거나 로딩/오류 상태일 때는 홈을 어지럽히지 않도록 카드를 숨긴다.
+- auth callback과 게스트 초대코드 패널에 남아 있던 독립 로딩 문구를 스피너 단독 표시로 정리했다.
+- 이번 변경에는 DB/RLS 수정이 없다.
+
+### Club Record Event Visibility And Loading UI
+
+- 홈/이벤트 목록이 현재/미래 이벤트가 없을 때 최신 과거 이벤트를 fallback으로 보여주던 동작을 제거했다.
+- 종료 시간이 지난 `club_record` 이벤트와 `completed`/`cancelled`/삭제 이벤트는 홈의 `현재 이벤트`와 이벤트 탭의 목록 후보에서 제외한다.
+- 직접 URL로 지난 이벤트 워크스페이스에 진입하면 `지난 이벤트` 배지를 표시하고, 이벤트 수정/취소/자동 편성/참가자 추가/수동 경기 생성은 막는다.
+- 지난 이벤트의 경기 결과는 운영진 사후 입력/수정 경로만 남기고, 회원용 결과 입력은 막는다.
+- 같은 시간대 가능 인원이 4명 미만인 빈 코트는 수동 경기 생성 select를 숨기고 사유만 표시한다.
+- 만료된 클럽 초대코드는 `초대 만료` 배지와 안내를 표시하고 복사/공유를 비활성화하며, owner에게 재발급을 primary CTA로 보여준다.
+- 홈/이벤트 empty state에 `새 이벤트 만들기` CTA를 추가하고, 랭킹의 회원 동기화 문구를 `클럽 회원 불러오기`로 통일했다.
+- 공통 `LoadingSpinner`는 텍스트 없이 스피너만 표시하도록 바꿨고, 히스토리 무한 스크롤/확인 요청 모달의 로딩 문구도 제거했다.
+- 과거 이벤트 노출 방지 로직을 `dashboard-events` 순수 유틸로 분리하고 단위 테스트를 추가했다.
+- 이번 변경에는 DB/RLS 수정이 없다.
+
 ### Club Record Auto Assignment Fill Priority
 
 - 자동 편성이 `같은 페어 반복 금지`와 `같은 사람 조합 최대 2회`를 하드 차단으로 사용해, 참가자가 적은 이벤트에서 뒤 시간대 슬롯을 생성하지 못하던 문제를 수정했다.

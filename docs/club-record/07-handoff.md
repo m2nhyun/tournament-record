@@ -57,6 +57,8 @@
   - `20260507100500_fix_club_record_result_update_conflict.sql`
   - `20260508093000_add_club_record_member_sync.sql`
   - `20260508094000_restrict_club_record_member_sync_grant.sql`
+  - `20260512113000_fix_club_record_history_guest_names.sql`
+  - `20260512120500_add_club_record_history_team_names.sql`
 - remote dry-run: 최종 `Remote database is up to date.`
 - schema sync: `npm run db:push` 후 `supabase/schema.sql` 동기화 완료
 - smoke SQL: Docker의 Postgres `psql` 클라이언트로 `supabase/tests/club_record_smoke.sql` 실행 완료, `ROLLBACK`으로 종료
@@ -65,6 +67,7 @@
 - 게스트 초대 진입: `/club-record/join/[inviteCode]` route와 `ClubRecordGuestJoinView`를 추가했고, `verifyGuestInviteCode` / `joinEventAsGuestByInviteCode` 기존 서비스 경로를 재사용한다.
 - 게스트 초대 링크: `ClubRecordGuestInvitePanel`이 `/club-record/join/{code}` 링크를 복사하도록 맞췄다.
 - 회원 자기 기록: `canViewOwnHistory`가 있는 멤버는 `/clubs/{clubId}/club-record/history`에서 `내 기록`으로 들어가 카드/리스트 보기, 날짜/상대 이름 필터, 이벤트 링크를 볼 수 있다.
+- 회원 자기 기록과 운영진 타인 기록 RPC는 정회원 닉네임과 게스트 프로필 표시명을 모두 팀/상대 이름 배열에 포함한다. `team_names`는 본인/대상 회원을 첫 항목으로 포함한 팀 전체이며, UI는 첫 이름을 `--player-highlight` 파란 계열 텍스트 색상/굵기로만 강조한다. 이름을 배지나 chip 형태로 바꾸지 않는다.
 - 월간 공개 카드 상세: `/clubs/{clubId}/club-record/monthly` route, `ClubRecordMonthlyCard`, `useClubRecordMonthlyCard`를 추가했고 대시보드 월간 카드 미리보기에서 이 경로로 이동한다. 상세 화면은 read-only이며 기존 `getMonthlyPublicCard` RPC/service를 재사용한다.
 - 이벤트 수정 진입: 워크스페이스 요약 카드에서 운영진/관리자가 `ClubRecordEventEditDialog`를 열어 이름/날짜/시간/코트 수를 수정할 수 있다.
 - 이벤트 수정 경고: 날짜/시간/코트 수 변경은 참가자와 편성을 초기화하므로 UI에서 체크 확인을 요구한다. 확정 경기가 있으면 기존 서비스 가드가 저장을 차단한다.
@@ -74,6 +77,13 @@
 - 자동 편성: 같은 페어 반복과 같은 사람 조합 2회 초과는 점수 페널티로만 처리한다. 참가자가 부족하면 조합 반복보다 뒤 시간대 슬롯 생성을 우선한다.
 - 자동 편성 동시성: 같은 시작 시간의 여러 코트에는 한 참가자를 중복 배정하지 않는다. 참가자가 4명인 2코트 이벤트는 같은 30분 구간에 1경기만 만들고 다음 시간대로 넘어간다.
 - 이벤트 요약: `편성 가능 슬롯`은 실제 빈 코트 수가 아니라 현재 참가자/동시성 조건으로 4명을 배정할 수 있는 슬롯 수를 뜻한다.
+- 이벤트 노출: 홈/이벤트 탭은 종료 시간이 지난 이벤트를 현재/예정 이벤트 fallback으로 보여주지 않는다. 과거 이벤트는 히스토리/상세 직접 진입 범위로 남긴다.
+- 지난 이벤트 워크스페이스: 직접 URL 진입 시 `지난 이벤트` 배지를 표시하고, 이벤트 수정/취소/자동 편성/참가자 추가/수동 경기 생성은 숨긴다. 운영진 사후 결과 입력/수정은 허용한다.
+- 빈 코트 편성: 가능 인원이 4명 미만이면 수동 경기 생성 폼을 숨기고 사유만 표시한다.
+- 클럽 초대코드: 만료된 초대코드는 복사/공유를 비활성화하고 owner에게 재발급 CTA를 우선 노출한다.
+- Empty state: 홈/이벤트 탭의 이벤트 없음 상태는 운영진에게 `새 이벤트 만들기` CTA를 직접 제공한다.
+- 랭킹 관리: 클럽 회원 랭킹 누락 회원 append 액션은 `클럽 회원 불러오기` 문구로 통일한다.
+- 로딩 UI: 공통 로딩 상태는 텍스트 없이 스피너만 표시한다.
 - 남은 DB 검증 리스크: 현재 handoff 기준 주요 DB smoke regression은 통과했고, 이후 신규 DB 변경 시 smoke를 다시 확장한다
 
 이번 시점의 핵심 판단:
@@ -178,6 +188,8 @@
 - `supabase/migrations/20260507100500_fix_club_record_result_update_conflict.sql`
 - `supabase/migrations/20260508093000_add_club_record_member_sync.sql`
 - `supabase/migrations/20260508094000_restrict_club_record_member_sync_grant.sql`
+- `supabase/migrations/20260512113000_fix_club_record_history_guest_names.sql`
+- `supabase/migrations/20260512120500_add_club_record_history_team_names.sql`
 
 주의:
 
@@ -218,6 +230,8 @@ DB smoke 결과:
   - `docker run --rm -i public.ecr.aws/supabase/postgres:17.6.1.106 psql "$SUPABASE_DB_PUSH_URL" -v ON_ERROR_STOP=1 < supabase/tests/club_record_smoke.sql`
 - 스크립트는 `rollback`으로 끝나며, confirmed 삭제 방지/RLS-RPC 권한/늦참 배정/결과 입력 경로를 확인한다.
 - smoke에는 ranking move, 클럽 회원 랭킹 동기화, cross-club participant insert 차단, 초대 게스트 참가 RPC, 월간 공개 카드 `win_rate` scale도 포함되어 있다.
+- 히스토리 RPC는 게스트 참가자의 `display_name`을 partner/opponent 이름 배열에 포함해야 한다. UI 검증은 `/clubs/{clubId}/club-record/history`에서 게스트 이름이 보이는지 확인한다.
+- 히스토리 RPC는 `team_names`에 본인/대상 회원을 첫 항목으로 포함해야 한다. smoke는 단식/복식 모두에서 `team_names` 순서를 검증한다.
 - 최종 실행은 `ROLLBACK`으로 종료했고 테스트 데이터가 남지 않아야 한다.
 
 ## Known Open Items

@@ -82,6 +82,7 @@
 - `join_club_by_invite_as_guest(code, nickname)`: 게스트 참가
 - `join_club_record_event_guest_by_invite_code(code, profile_input)`: club_record 게스트 초대 참가
 - `sync_club_record_members(club_id)`: 운영진/관리자가 활성 클럽 회원을 club_record 랭킹에 append하고 그룹을 재계산
+- `get_my_club_record_history(club_id)`, `get_club_record_member_history(club_id, member_id)`: club_record 확정 경기 히스토리 조회. `team_names`는 조회 대상 본인/대상 회원을 첫 항목으로 포함한 내 팀 전체이며, `partner_names`는 기존 호환용 파트너 목록이다. 팀/상대 이름에는 정회원 닉네임과 게스트 프로필 표시명을 모두 포함한다.
 - `regenerate_club_invite_code(club_id, days)`: 방장 초대코드 재발급
 - `remove_club_member(club_id, member_id)`: 방장 멤버 소프트 삭제
 - `update_club_name`, `update_my_club_nickname`, `update_my_club_member_settings`

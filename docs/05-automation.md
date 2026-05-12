@@ -28,7 +28,7 @@
 - Supabase CLI auth: `npx supabase projects list`로 접근 가능한 프로젝트 목록 확인됨
 - Supabase local link: 설정되어 있지 않음. `npx supabase projects list`는 `Cannot find project ref. Have you run supabase link?` 안내를 함께 출력한다.
 - Supabase DB automation: 이 repo는 `supabase link` 대신 `SUPABASE_DB_PUSH_URL`/`SUPABASE_DB_URL`을 `--db-url`로 넘기는 방식이 표준이다.
-- Supabase migration state: remote에는 `club_record` 본 migration 4개와 후속 보정/동기화 migration이 반영되어 있으며, `npm run db:push:dry` 기대값은 `Remote database is up to date.`다.
+- Supabase migration state: remote에는 `club_record` 본 migration 4개, 후속 보정/동기화 migration, 히스토리 게스트 이름 RPC 보정 migration, 히스토리 `team_names` migration이 반영되어 있으며, `npm run db:push:dry` 기대값은 `Remote database is up to date.`다.
 - GitHub CLI: `gh`는 현재 설치되어 있지 않음
 - GitHub access: GitHub MCP 인증과 `git` 원격 조회를 사용한다. 원격 저장소는 `m2nhyun/tournament-record`다.
 
@@ -188,7 +188,7 @@ docker run --rm -i public.ecr.aws/supabase/postgres:17.6.1.106 \
 - 이 스크립트는 `begin ... rollback`으로 감싸져 있어 테스트 데이터가 남지 않아야 한다.
 - 실제 운영 DB에서 실행하기 전에는 로컬/스테이징에서 먼저 통과하는 것이 원칙이다. 2026-05-07에는 사용자가 `nomcsuizsztyhxkehila`가 1인 개발용 local/prod 공용 메인 DB임을 확인하고 명시 승인해 운영 DB apply/smoke를 수행했다.
 - `SUPABASE_DB_PUSH_URL`가 remote pooler host로 해석되면 운영 DB일 수 있으므로, 운영 DB apply/smoke는 명시 승인 없이는 실행하지 않는다.
-- 검증 범위는 confirmed 데이터 삭제 방지, event 취소/삭제 방지, linked participant 삭제 방지, 랭킹 이동 unique 충돌 방지, 클럽 회원 랭킹 동기화 RPC, cross-club 참가자 삽입 차단, 초대 게스트 참가 RPC, 늦참 슬롯 배정 방지, 비활성 멤버 권한 차단, overview 노출 범위, 게스트 결과 입력 차단, 회원/운영진 결과 입력 경로, 월간 공개 카드 `win_rate` 0..100 scale, deleted/cancelled event의 월간 카드 집계 제외다.
+- 검증 범위는 confirmed 데이터 삭제 방지, event 취소/삭제 방지, linked participant 삭제 방지, 랭킹 이동 unique 충돌 방지, 클럽 회원 랭킹 동기화 RPC, cross-club 참가자 삽입 차단, 초대 게스트 참가 RPC, 늦참 슬롯 배정 방지, 비활성 멤버 권한 차단, overview 노출 범위, 게스트 결과 입력 차단, 회원/운영진 결과 입력 경로, 히스토리의 내 팀 전체 이름/게스트 표시명 포함, 월간 공개 카드 `win_rate` 0..100 scale, deleted/cancelled event의 월간 카드 집계 제외다.
 - `npm run db:push:dry`만으로는 이 도메인 규칙을 검증하지 못하므로, migration 적용 후 별도 smoke로 취급한다.
 - 로컬/스테이징에서만 먼저 실행한다. 실제 운영 DB apply 또는 운영 DB smoke 실행은 별도 승인 후 진행한다.
 
