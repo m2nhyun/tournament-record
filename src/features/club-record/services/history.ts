@@ -17,6 +17,7 @@ type HistoryRow = {
   event_date: string;
   score_text: string;
   result: ClubRecordHistoryEntry["result"];
+  team_names: string[] | null;
   partner_names: string[] | null;
   opponent_names: string[] | null;
 };
@@ -37,6 +38,7 @@ function toHistoryEntry(row: HistoryRow): ClubRecordHistoryEntry {
     eventDate: row.event_date,
     scoreText: row.score_text,
     result: row.result,
+    teamNames: row.team_names ?? row.partner_names ?? [],
     partnerNames: row.partner_names ?? [],
     opponentNames: row.opponent_names ?? [],
   };

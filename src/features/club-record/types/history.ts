@@ -4,6 +4,7 @@ export type ClubRecordHistoryEntry = {
   eventDate: string;
   scoreText: string;
   result: "win" | "loss" | "draw";
+  teamNames: string[];
   partnerNames: string[];
   opponentNames: string[];
 };

@@ -51,6 +51,7 @@ declare
   v_slot_member_submit_id uuid := gen_random_uuid();
   v_slot_admin_update_id uuid := gen_random_uuid();
   v_slot_extra_id uuid := gen_random_uuid();
+  v_slot_singles_id uuid := gen_random_uuid();
   v_owner_participant_id uuid := gen_random_uuid();
   v_manager_participant_id uuid := gen_random_uuid();
   v_member_participant_id uuid := gen_random_uuid();
@@ -58,6 +59,7 @@ declare
   v_guest_participant_id uuid := gen_random_uuid();
   v_late_participant_id uuid := gen_random_uuid();
   v_confirmed_match_id uuid := gen_random_uuid();
+  v_singles_match_id uuid := gen_random_uuid();
   v_member_submit_match_id uuid := gen_random_uuid();
   v_admin_update_match_id uuid := gen_random_uuid();
 begin
@@ -202,7 +204,8 @@ begin
     (v_slot_late_guard_id, v_event_id, 2, 1, current_date + time '10:00', current_date + time '10:30', 'scheduled', false),
     (v_slot_member_submit_id, v_event_id, 1, 2, current_date + time '10:30', current_date + time '11:00', 'ready', true),
     (v_slot_admin_update_id, v_event_id, 2, 2, current_date + time '10:30', current_date + time '11:00', 'cancelled', true),
-    (v_slot_extra_id, v_event_id, 1, 3, current_date + time '11:00', current_date + time '11:30', 'scheduled', false);
+    (v_slot_extra_id, v_event_id, 1, 3, current_date + time '11:00', current_date + time '11:30', 'scheduled', false),
+    (v_slot_singles_id, v_event_id, 2, 3, current_date + time '11:00', current_date + time '11:30', 'completed', true);
 
   insert into public.club_record_event_participants (
     id,
@@ -241,6 +244,7 @@ begin
   )
   values
     (v_confirmed_match_id, v_event_id, v_slot_confirmed_id, 'confirmed', 'manual', true, v_member_user_id, now(), now(), v_owner_user_id, v_owner_user_id),
+    (v_singles_match_id, v_event_id, v_slot_singles_id, 'confirmed', 'manual', true, v_member_user_id, now(), now(), v_owner_user_id, v_owner_user_id),
     (v_member_submit_match_id, v_event_id, v_slot_member_submit_id, 'pending_result', 'manual', true, null, null, null, v_owner_user_id, v_owner_user_id),
     (v_admin_update_match_id, v_event_id, v_slot_admin_update_id, 'cancelled', 'manual', true, null, null, null, v_owner_user_id, v_owner_user_id);
 
@@ -250,6 +254,8 @@ begin
     (v_confirmed_match_id, v_manager_participant_id, 1, 2),
     (v_confirmed_match_id, v_member_participant_id, 2, 1),
     (v_confirmed_match_id, v_guest_participant_id, 2, 2),
+    (v_singles_match_id, v_member_participant_id, 1, 1),
+    (v_singles_match_id, v_owner_participant_id, 2, 1),
     (v_member_submit_match_id, v_owner_participant_id, 1, 1),
     (v_member_submit_match_id, v_manager_participant_id, 1, 2),
     (v_member_submit_match_id, v_member_participant_id, 2, 1),
@@ -267,14 +273,9 @@ begin
     score_text,
     entered_by_participant_id
   )
-  values (
-    v_confirmed_match_id,
-    1,
-    2,
-    false,
-    '6-4',
-    v_member_participant_id
-  );
+  values
+    (v_confirmed_match_id, 1, 2, false, '6-4', v_member_participant_id),
+    (v_singles_match_id, 1, 2, false, '6-2', v_member_participant_id);
 
   insert into club_record_smoke_ids (key, value)
   values
@@ -299,11 +300,13 @@ begin
     ('club_member_other', v_other_member_id),
     ('slot_confirmed', v_slot_confirmed_id),
     ('slot_late_guard', v_slot_late_guard_id),
+    ('slot_singles', v_slot_singles_id),
     ('participant_owner', v_owner_participant_id),
     ('participant_member', v_member_participant_id),
     ('participant_guest', v_guest_participant_id),
     ('participant_late', v_late_participant_id),
     ('match_confirmed', v_confirmed_match_id),
+    ('match_singles', v_singles_match_id),
     ('match_member_submit', v_member_submit_match_id),
     ('match_admin_update', v_admin_update_match_id);
 end $$;
@@ -661,6 +664,9 @@ select set_config(
 do $$
 declare
   v_count integer;
+  v_team_names text[];
+  v_partner_names text[];
+  v_opponent_names text[];
 begin
   select count(*)
     into v_count
@@ -693,7 +699,76 @@ begin
     raise exception 'member saw ranking_position in participant RPC';
   end if;
 
+  select h.team_names, h.partner_names, h.opponent_names
+    into v_team_names, v_partner_names, v_opponent_names
+  from public.get_my_club_record_history(
+    (select value from club_record_smoke_ids where key = 'club')
+  ) h
+  where h.match_id = (select value from club_record_smoke_ids where key = 'match_confirmed');
+
+  if coalesce(v_team_names, '{}'::text[]) <> array['Smoke Member', 'Smoke Guest']::text[] then
+    raise exception 'my club record history did not include full team names: %', v_team_names;
+  end if;
+
+  if not ('Smoke Guest' = any(coalesce(v_partner_names, '{}'::text[]))) then
+    raise exception 'my club record history did not include guest partner display name: %', v_partner_names;
+  end if;
+
+  if not ('Smoke Owner' = any(coalesce(v_opponent_names, '{}'::text[])))
+    or not ('Smoke Manager' = any(coalesce(v_opponent_names, '{}'::text[]))) then
+    raise exception 'my club record history did not include registered opponent names: %', v_opponent_names;
+  end if;
+
+  select h.team_names, h.partner_names, h.opponent_names
+    into v_team_names, v_partner_names, v_opponent_names
+  from public.get_my_club_record_history(
+    (select value from club_record_smoke_ids where key = 'club')
+  ) h
+  where h.match_id = (select value from club_record_smoke_ids where key = 'match_singles');
+
+  if coalesce(v_team_names, '{}'::text[]) <> array['Smoke Member']::text[] then
+    raise exception 'my club record singles history did not include only self team name: %', v_team_names;
+  end if;
+
+  if coalesce(v_partner_names, '{}'::text[]) <> '{}'::text[] then
+    raise exception 'my club record singles history should not include partner names: %', v_partner_names;
+  end if;
+
+  if not ('Smoke Owner' = any(coalesce(v_opponent_names, '{}'::text[]))) then
+    raise exception 'my club record singles history did not include opponent name: %', v_opponent_names;
+  end if;
+
   raise notice 'ok: event participant overview allowed and sensitive fields redacted';
+end $$;
+
+select set_config(
+  'request.jwt.claim.sub',
+  (select value::text from club_record_smoke_ids where key = 'manager_user'),
+  true
+);
+
+do $$
+declare
+  v_team_names text[];
+  v_partner_names text[];
+begin
+  select h.team_names, h.partner_names
+    into v_team_names, v_partner_names
+  from public.get_club_record_member_history(
+    (select value from club_record_smoke_ids where key = 'club'),
+    (select value from club_record_smoke_ids where key = 'club_member_member')
+  ) h
+  where h.match_id = (select value from club_record_smoke_ids where key = 'match_confirmed');
+
+  if coalesce(v_team_names, '{}'::text[]) <> array['Smoke Member', 'Smoke Guest']::text[] then
+    raise exception 'admin member history did not include full team names: %', v_team_names;
+  end if;
+
+  if not ('Smoke Guest' = any(coalesce(v_partner_names, '{}'::text[]))) then
+    raise exception 'admin member history did not include guest partner display name: %', v_partner_names;
+  end if;
+
+  raise notice 'ok: history RPCs include full team names and guest display names';
 end $$;
 
 select set_config(
@@ -915,14 +990,14 @@ begin
   )
   where club_member_id = (select value from club_record_smoke_ids where key = 'club_member_owner');
 
-  if v_wins <> 2 or v_losses <> 0 or v_draws <> 1 then
+  if v_wins <> 2 or v_losses <> 1 or v_draws <> 1 then
     raise exception 'monthly public card included archived/cancelled event stats: wins %, losses %, draws %',
       v_wins,
       v_losses,
       v_draws;
   end if;
 
-  if v_win_rate is null or round(v_win_rate, 0) <> 67 then
+  if v_win_rate is null or round(v_win_rate, 0) <> 50 then
     raise exception 'monthly public card win_rate scale mismatch: %', v_win_rate;
   end if;
 

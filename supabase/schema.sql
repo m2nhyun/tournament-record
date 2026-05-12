@@ -969,7 +969,7 @@ $$;
 ALTER FUNCTION "public"."get_club_record_event_slots_overview"("p_event_id" "uuid") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_club_record_member_history"("p_club_id" "uuid", "p_target_club_member_id" "uuid") RETURNS TABLE("match_id" "uuid", "event_id" "uuid", "event_date" "date", "score_text" "text", "result" "text", "partner_names" "text"[], "opponent_names" "text"[])
+CREATE OR REPLACE FUNCTION "public"."get_club_record_member_history"("p_club_id" "uuid", "p_target_club_member_id" "uuid") RETURNS TABLE("match_id" "uuid", "event_id" "uuid", "event_date" "date", "score_text" "text", "result" "text", "team_names" "text"[], "partner_names" "text"[], "opponent_names" "text"[])
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -1001,11 +1001,31 @@ begin
       on e.id = m.event_id
     join public.club_record_match_results mr
       on mr.match_id = m.id
-      where ep.club_member_id = p_target_club_member_id
-        and e.club_id = p_club_id
-        and e.is_deleted = false
-        and e.status <> 'cancelled'
-        and m.status = 'confirmed'
+    where ep.club_member_id = p_target_club_member_id
+      and e.club_id = p_club_id
+      and e.is_deleted = false
+      and e.status <> 'cancelled'
+      and m.status = 'confirmed'
+  ),
+  match_player_names as (
+    select
+      mp.match_id,
+      mp.side,
+      mp.position,
+      ep.club_member_id,
+      coalesce(
+        nullif(cm.nickname, ''),
+        nullif(gp.display_name, ''),
+        case when ep.participant_type = 'guest' then '게스트' else '이름 없음' end
+      ) as player_name
+    from public.club_record_match_players mp
+    join public.club_record_event_participants ep
+      on ep.id = mp.participant_id
+    left join public.club_members cm
+      on cm.id = ep.club_member_id
+    left join public.club_record_guest_profiles gp
+      on gp.id = ep.guest_profile_id
+    where mp.match_id in (select target_matches.match_id from target_matches)
   )
   select
     tm.match_id,
@@ -1018,24 +1038,28 @@ begin
       else 'loss'
     end as result,
     coalesce(
-      array_agg(distinct coalesce(cm.nickname, gp.display_name, '게스트'))
-        filter (where mp.side = tm.target_side and ep.club_member_id is distinct from p_target_club_member_id),
+      array_agg(mpn.player_name order by
+        case when mpn.club_member_id = p_target_club_member_id then 0 else 1 end,
+        mpn.position asc
+      ) filter (where mpn.side = tm.target_side),
+      '{}'::text[]
+    ) as team_names,
+    coalesce(
+      array_agg(distinct mpn.player_name)
+        filter (
+          where mpn.side = tm.target_side
+            and mpn.club_member_id is distinct from p_target_club_member_id
+        ),
       '{}'::text[]
     ) as partner_names,
     coalesce(
-      array_agg(distinct coalesce(cm.nickname, gp.display_name, '게스트'))
-        filter (where mp.side <> tm.target_side),
+      array_agg(distinct mpn.player_name)
+        filter (where mpn.side <> tm.target_side),
       '{}'::text[]
     ) as opponent_names
   from target_matches tm
-  join public.club_record_match_players mp
-    on mp.match_id = tm.match_id
-  join public.club_record_event_participants ep
-    on ep.id = mp.participant_id
-  left join public.club_members cm
-    on cm.id = ep.club_member_id
-  left join public.club_record_guest_profiles gp
-    on gp.id = ep.guest_profile_id
+  join match_player_names mpn
+    on mpn.match_id = tm.match_id
   group by
     tm.match_id,
     tm.event_id,
@@ -1119,7 +1143,7 @@ $$;
 ALTER FUNCTION "public"."get_my_active_club_member_id"("p_club_id" "uuid") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_my_club_record_history"("p_club_id" "uuid") RETURNS TABLE("match_id" "uuid", "event_id" "uuid", "event_date" "date", "score_text" "text", "result" "text", "partner_names" "text"[], "opponent_names" "text"[])
+CREATE OR REPLACE FUNCTION "public"."get_my_club_record_history"("p_club_id" "uuid") RETURNS TABLE("match_id" "uuid", "event_id" "uuid", "event_date" "date", "score_text" "text", "result" "text", "team_names" "text"[], "partner_names" "text"[], "opponent_names" "text"[])
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -1150,6 +1174,26 @@ CREATE OR REPLACE FUNCTION "public"."get_my_club_record_history"("p_club_id" "uu
       and e.is_deleted = false
       and e.status <> 'cancelled'
       and m.status = 'confirmed'
+  ),
+  match_player_names as (
+    select
+      mp.match_id,
+      mp.side,
+      mp.position,
+      ep.club_member_id,
+      coalesce(
+        nullif(cm.nickname, ''),
+        nullif(gp.display_name, ''),
+        case when ep.participant_type = 'guest' then '게스트' else '이름 없음' end
+      ) as player_name
+    from public.club_record_match_players mp
+    join public.club_record_event_participants ep
+      on ep.id = mp.participant_id
+    left join public.club_members cm
+      on cm.id = ep.club_member_id
+    left join public.club_record_guest_profiles gp
+      on gp.id = ep.guest_profile_id
+    where mp.match_id in (select my_matches.match_id from my_matches)
   )
   select
     mm.match_id,
@@ -1162,25 +1206,29 @@ CREATE OR REPLACE FUNCTION "public"."get_my_club_record_history"("p_club_id" "uu
       else 'loss'
     end as result,
     coalesce(
-      array_agg(distinct coalesce(cm.nickname, gp.display_name, '게스트'))
-        filter (where mp.side = mm.my_side and ep.club_member_id is distinct from me.club_member_id),
+      array_agg(mpn.player_name order by
+        case when mpn.club_member_id = me.club_member_id then 0 else 1 end,
+        mpn.position asc
+      ) filter (where mpn.side = mm.my_side),
+      '{}'::text[]
+    ) as team_names,
+    coalesce(
+      array_agg(distinct mpn.player_name)
+        filter (
+          where mpn.side = mm.my_side
+            and mpn.club_member_id is distinct from me.club_member_id
+        ),
       '{}'::text[]
     ) as partner_names,
     coalesce(
-      array_agg(distinct coalesce(cm.nickname, gp.display_name, '게스트'))
-        filter (where mp.side <> mm.my_side),
+      array_agg(distinct mpn.player_name)
+        filter (where mpn.side <> mm.my_side),
       '{}'::text[]
     ) as opponent_names
   from my_matches mm
   join my_member me on true
-  join public.club_record_match_players mp
-    on mp.match_id = mm.match_id
-  join public.club_record_event_participants ep
-    on ep.id = mp.participant_id
-  left join public.club_members cm
-    on cm.id = ep.club_member_id
-  left join public.club_record_guest_profiles gp
-    on gp.id = ep.guest_profile_id
+  join match_player_names mpn
+    on mpn.match_id = mm.match_id
   group by
     mm.match_id,
     mm.event_id,
