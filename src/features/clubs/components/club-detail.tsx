@@ -3,8 +3,8 @@
 import Link from "next/link";
 import {
   Copy,
+  ListOrdered,
   Pencil,
-  PlusCircle,
   RefreshCw,
   Share2,
   Users,
@@ -208,31 +208,23 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
           </CardContent>
         </Card>
 
-        {club.myRole !== "guest" ? (
-          <div className="grid gap-2 sm:grid-cols-2">
-            <Button
-              className="flex-1 bg-[var(--brand)] text-white hover:opacity-90"
-              asChild
-            >
-              <Link href={`/clubs/${clubId}/matches/new`}>
-                <PlusCircle className="size-4" />새 경기 기록
-              </Link>
-            </Button>
-            <Button variant="outline" className="flex-1" asChild>
-              <Link href={`/clubs/${clubId}/matches/new?mode=schedule`}>
-                <PlusCircle className="size-4" />일정 잡기
-              </Link>
-            </Button>
-          </div>
-        ) : null}
-
         <ClubScheduleList clubId={clubId} myRole={club.myRole} />
 
         <section className="space-y-3">
-          <h2 className="flex items-center gap-2 text-lg font-semibold">
-            <Users className="size-5" />
-            멤버 ({members.length})
-          </h2>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="flex items-center gap-2 text-lg font-semibold">
+              <Users className="size-5" />
+              멤버 ({members.length})
+            </h2>
+            {club.myRole === "owner" || club.myRole === "manager" ? (
+              <Button size="sm" variant="outline" asChild>
+                <Link href={`/clubs/${clubId}/club-record/ranking`}>
+                  <ListOrdered className="size-4" />
+                  랭킹 관리
+                </Link>
+              </Button>
+            ) : null}
+          </div>
           {members.length > 0 ? (
             <ClubMemberList
               members={members}

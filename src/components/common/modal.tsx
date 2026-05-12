@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -13,6 +14,7 @@ type ModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
+  description?: string;
   children: ReactNode;
   preventAutoFocus?: boolean;
 };
@@ -21,6 +23,7 @@ export function Modal({
   open,
   onOpenChange,
   title,
+  description,
   children,
   preventAutoFocus = true,
 }: ModalProps) {
@@ -33,6 +36,9 @@ export function Modal({
       >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
+          <DialogDescription className={description ? undefined : "sr-only"}>
+            {description ?? title}
+          </DialogDescription>
         </DialogHeader>
         {children}
       </DialogContent>

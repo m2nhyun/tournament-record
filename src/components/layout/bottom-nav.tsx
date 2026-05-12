@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { History, Home, PlusCircle, Trophy } from "lucide-react";
+import { CalendarDays, History, Home, Users } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -30,31 +30,46 @@ function buildNavItems(clubId?: string): NavItem[] {
   }
 
   const base = `/clubs/${clubId}`;
+  const clubRecordBase = `${base}/club-record`;
+  const clubRecordEventList = new Set([
+    `${clubRecordBase}/events`,
+    `${clubRecordBase}/new`,
+    `${clubRecordBase}/history`,
+    `${clubRecordBase}/monthly`,
+    `${clubRecordBase}/ranking`,
+  ]);
 
   return [
     {
       icon: Home,
       label: "홈",
       href: base,
-      match: (p) => p === base,
+      match: (p) =>
+        p === base ||
+        p === clubRecordBase ||
+        p === `${clubRecordBase}/monthly` ||
+        p === `${clubRecordBase}/ranking`,
     },
     {
-      icon: PlusCircle,
-      label: "새 경기",
-      href: `${base}/matches/new`,
-      match: (p) => p === `${base}/matches/new`,
+      icon: CalendarDays,
+      label: "이벤트",
+      href: `${clubRecordBase}/events`,
+      match: (p) =>
+        p === `${clubRecordBase}/events` ||
+        p === `${clubRecordBase}/new` ||
+        (p.startsWith(`${clubRecordBase}/`) && !clubRecordEventList.has(p)),
     },
     {
       icon: History,
       label: "히스토리",
-      href: `${base}/history`,
-      match: (p) => p === `${base}/history`,
+      href: `${clubRecordBase}/history`,
+      match: (p) => p === `${clubRecordBase}/history`,
     },
     {
-      icon: Trophy,
-      label: "리더보드",
-      href: `${base}/leaderboard`,
-      match: (p) => p === `${base}/leaderboard`,
+      icon: Users,
+      label: "클럽",
+      href: `${base}/club`,
+      match: (p) => p === `${base}/club`,
     },
   ];
 }

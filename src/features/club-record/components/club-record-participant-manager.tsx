@@ -1,0 +1,536 @@
+"use client";
+
+import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { Check, UserPlus, UserRoundMinus, Users } from "lucide-react";
+
+import { Modal } from "@/components/common/modal";
+import { LoadingSpinner } from "@/components/feedback/loading-spinner";
+import { StatusBox } from "@/components/feedback/status-box";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { listClubMembers } from "@/features/clubs/services/clubs";
+import type { ClubMember } from "@/features/clubs/types/club";
+import { addGuestParticipant, addMemberParticipant, removeParticipant } from "@/features/club-record/services/participants";
+import { createManualGuestProfile } from "@/features/club-record/services/guests";
+import type { ClubRecordGroupCode } from "@/features/club-record/types/member";
+import type { ClubRecordEventParticipant } from "@/features/club-record/types/participant";
+
+type ClubRecordParticipantManagerProps = {
+  clubId: string;
+  eventId: string;
+  startsAt: string;
+  endsAt: string;
+  participants: ClubRecordEventParticipant[];
+  onChanged: () => Promise<void>;
+};
+
+type StatusState = {
+  type: "success" | "error";
+  message: string;
+} | null;
+
+type AddParticipantTab = "members" | "guest";
+
+const memberRoleLabels = {
+  owner: "관리자",
+  manager: "운영진",
+  member: "회원",
+  guest: "게스트",
+} as const;
+
+export function ClubRecordParticipantManager({
+  clubId,
+  eventId,
+  startsAt,
+  endsAt,
+  participants,
+  onChanged,
+}: ClubRecordParticipantManagerProps) {
+  const [members, setMembers] = useState<ClubMember[]>([]);
+  const [loadingMembers, setLoadingMembers] = useState(true);
+  const [status, setStatus] = useState<StatusState>(null);
+  const [memberBusy, setMemberBusy] = useState(false);
+  const [guestBusy, setGuestBusy] = useState(false);
+  const [removingParticipantId, setRemovingParticipantId] = useState<string | null>(null);
+
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [addTab, setAddTab] = useState<AddParticipantTab>("members");
+  const [selectedClubMemberIds, setSelectedClubMemberIds] = useState<string[]>([]);
+  const [memberArrivalTime, setMemberArrivalTime] = useState("");
+
+  const [guestName, setGuestName] = useState("");
+  const [guestGender, setGuestGender] = useState("");
+  const [guestCareerText, setGuestCareerText] = useState("");
+  const [guestGroupCode, setGuestGroupCode] = useState<"" | ClubRecordGroupCode>("");
+  const [guestOperatorNote, setGuestOperatorNote] = useState("");
+  const [guestArrivalTime, setGuestArrivalTime] = useState("");
+
+  const arrivalOptions = useMemo(() => {
+    const start = new Date(startsAt);
+    const end = new Date(endsAt);
+    const values: string[] = [];
+
+    const cursor = new Date(start);
+    while (cursor.getTime() < end.getTime() - 30 * 60 * 1000) {
+      const hours = String(cursor.getHours()).padStart(2, "0");
+      const minutes = String(cursor.getMinutes()).padStart(2, "0");
+      values.push(`${hours}:${minutes}`);
+      cursor.setMinutes(cursor.getMinutes() + 30);
+    }
+
+    return values;
+  }, [endsAt, startsAt]);
+
+  const toArrivalTimestamp = (value: string) => {
+    if (!value) return null;
+
+    const [hoursText, minutesText] = value.split(":");
+    const hours = Number(hoursText);
+    const minutes = Number(minutesText);
+
+    if (!Number.isInteger(hours) || !Number.isInteger(minutes)) {
+      throw new Error("도착 시간 형식이 올바르지 않습니다.");
+    }
+
+    const base = new Date(startsAt);
+    base.setHours(hours, minutes, 0, 0);
+    return base.toISOString();
+  };
+
+  useEffect(() => {
+    let active = true;
+
+    const load = async () => {
+      setLoadingMembers(true);
+      try {
+        const nextMembers = await listClubMembers(clubId);
+        if (!active) return;
+        setMembers(nextMembers);
+      } catch (error) {
+        if (!active) return;
+        setStatus({
+          type: "error",
+          message: error instanceof Error ? error.message : "클럽 멤버를 불러오지 못했습니다.",
+        });
+      } finally {
+        if (active) setLoadingMembers(false);
+      }
+    };
+
+    void load();
+    return () => {
+      active = false;
+    };
+  }, [clubId]);
+
+  const joinedMemberIds = useMemo(
+    () =>
+      new Set(
+        participants
+          .map((participant) => participant.clubMemberId)
+          .filter((clubMemberId): clubMemberId is string => Boolean(clubMemberId)),
+      ),
+    [participants],
+  );
+
+  const availableMembers = useMemo(
+    () =>
+      members.filter(
+        (member) => member.role !== "guest" && !joinedMemberIds.has(member.id),
+      ),
+    [joinedMemberIds, members],
+  );
+
+  const selectedClubMemberIdSet = useMemo(
+    () => new Set(selectedClubMemberIds),
+    [selectedClubMemberIds],
+  );
+
+  const toggleSelectedClubMember = (memberId: string) => {
+    setSelectedClubMemberIds((current) =>
+      current.includes(memberId)
+        ? current.filter((id) => id !== memberId)
+        : [...current, memberId],
+    );
+  };
+
+  const handleAddMembers = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (selectedClubMemberIds.length === 0) {
+      setStatus({ type: "error", message: "참가시킬 회원을 선택해주세요." });
+      return;
+    }
+
+    setMemberBusy(true);
+    setStatus(null);
+    try {
+      const arrivalTime = toArrivalTimestamp(memberArrivalTime);
+      for (const clubMemberId of selectedClubMemberIds) {
+        await addMemberParticipant(eventId, {
+          clubMemberId,
+          arrivalTime,
+        });
+      }
+      setStatus({
+        type: "success",
+        message: `${selectedClubMemberIds.length}명의 회원을 참가자로 추가했습니다.`,
+      });
+      setMemberArrivalTime("");
+      setSelectedClubMemberIds([]);
+      setAddDialogOpen(false);
+      await onChanged();
+    } catch (error) {
+      setStatus({
+        type: "error",
+        message: error instanceof Error ? error.message : "회원 참가자 추가 실패",
+      });
+    } finally {
+      setMemberBusy(false);
+    }
+  };
+
+  const handleAddGuest = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setGuestBusy(true);
+    setStatus(null);
+    try {
+      const guestProfile = await createManualGuestProfile(clubId, {
+        displayName: guestName,
+        gender: guestGender || undefined,
+        careerText: guestCareerText || undefined,
+        groupCode: guestGroupCode || null,
+        operatorNote: guestOperatorNote || undefined,
+      });
+
+      await addGuestParticipant(eventId, {
+        guestProfileId: guestProfile.id,
+        arrivalTime: toArrivalTimestamp(guestArrivalTime),
+      });
+
+      setStatus({ type: "success", message: "수동 게스트를 추가했습니다." });
+      setGuestName("");
+      setGuestGender("");
+      setGuestCareerText("");
+      setGuestGroupCode("");
+      setGuestOperatorNote("");
+      setGuestArrivalTime("");
+      setAddDialogOpen(false);
+      await onChanged();
+    } catch (error) {
+      setStatus({
+        type: "error",
+        message: error instanceof Error ? error.message : "수동 게스트 추가 실패",
+      });
+    } finally {
+      setGuestBusy(false);
+    }
+  };
+
+  const handleRemoveParticipant = async (participantId: string) => {
+    setRemovingParticipantId(participantId);
+    setStatus(null);
+    try {
+      await removeParticipant(eventId, participantId);
+      setStatus({
+        type: "success",
+        message: "참가자를 삭제했습니다. 확정 경기가 포함된 참가자는 삭제할 수 없습니다.",
+      });
+      await onChanged();
+    } catch (error) {
+      setStatus({
+        type: "error",
+        message: error instanceof Error ? error.message : "참가자 삭제 실패",
+      });
+    } finally {
+      setRemovingParticipantId(null);
+    }
+  };
+
+  return (
+    <section className="space-y-4">
+      {status ? <StatusBox type={status.type} message={status.message} /> : null}
+
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
+              <CardTitle>참가자</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                현재 이벤트에 참가 중인 회원과 게스트입니다.
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <Badge variant="default">{participants.length}명</Badge>
+              <Button size="sm" onClick={() => setAddDialogOpen(true)}>
+                <UserPlus className="size-4" />
+                참가자 추가
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {participants.length > 0 ? (
+            participants.map((participant) => (
+              <div
+                key={participant.id}
+                className="flex items-center justify-between gap-3 rounded-xl border bg-background px-3 py-3"
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="truncate font-medium">{participant.displayName}</p>
+                    <Badge variant={participant.participantType === "guest" ? "warning" : "brand"}>
+                      {participant.participantType === "guest" ? "게스트" : "회원"}
+                    </Badge>
+                    {participant.groupCode ? (
+                      <Badge variant="default">그룹 {participant.groupCode}</Badge>
+                    ) : null}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {participant.arrivalTime ? `${participant.arrivalTime} 도착` : "정시 참가"}
+                    {typeof participant.rankingPosition === "number"
+                      ? ` · 랭킹 ${participant.rankingPosition}`
+                      : ""}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={removingParticipantId === participant.id}
+                  onClick={() => void handleRemoveParticipant(participant.id)}
+                >
+                  <UserRoundMinus className="size-4" />
+                  {removingParticipantId === participant.id ? "삭제 중..." : "삭제"}
+                </Button>
+              </div>
+            ))
+          ) : (
+            <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+              <Users className="mx-auto mb-2 size-5" />
+              아직 등록된 참가자가 없습니다.
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Modal
+        open={addDialogOpen}
+        onOpenChange={setAddDialogOpen}
+        title="참가자 추가"
+        description="클럽 회원 또는 현장 게스트를 이벤트 참가자로 추가합니다."
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 rounded-lg border bg-muted/20 p-1">
+            <button
+              type="button"
+              className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                addTab === "members"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground"
+              }`}
+              onClick={() => setAddTab("members")}
+            >
+              클럽 회원
+            </button>
+            <button
+              type="button"
+              className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                addTab === "guest"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground"
+              }`}
+              onClick={() => setAddTab("guest")}
+            >
+              게스트
+            </button>
+          </div>
+
+          {addTab === "members" ? (
+            <form className="space-y-4" onSubmit={handleAddMembers}>
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-sm text-muted-foreground">
+                  {selectedClubMemberIds.length}명 선택됨
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={availableMembers.length === 0}
+                    onClick={() => setSelectedClubMemberIds(availableMembers.map((item) => item.id))}
+                  >
+                    전체 선택
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={selectedClubMemberIds.length === 0}
+                    onClick={() => setSelectedClubMemberIds([])}
+                  >
+                    해제
+                  </Button>
+                </div>
+              </div>
+
+              {loadingMembers ? (
+                <LoadingSpinner title="멤버 로딩 중" message="클럽 멤버 목록을 불러오는 중..." />
+              ) : availableMembers.length > 0 ? (
+                <div className="max-h-[320px] space-y-2 overflow-y-auto pr-1">
+                  {availableMembers.map((member) => {
+                    const selected = selectedClubMemberIdSet.has(member.id);
+                    return (
+                      <button
+                        key={member.id}
+                        type="button"
+                        className={`flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-3 text-left transition-colors ${
+                          selected
+                            ? "border-[var(--brand)] bg-[var(--brand)]/5"
+                            : "bg-background hover:bg-muted/30"
+                        }`}
+                        onClick={() => toggleSelectedClubMember(member.id)}
+                      >
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-medium">
+                            {member.nickname}
+                          </span>
+                          <span className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                            <Badge variant="default">
+                              {memberRoleLabels[member.role]}
+                            </Badge>
+                            {member.isMe ? "내 계정" : "미참가"}
+                          </span>
+                        </span>
+                        <span
+                          className={`flex size-6 shrink-0 items-center justify-center rounded-full border ${
+                            selected
+                              ? "border-[var(--brand)] bg-[var(--brand)] text-white"
+                              : "bg-background"
+                          }`}
+                        >
+                          {selected ? <Check className="size-4" /> : null}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+                  추가할 수 있는 미참가 회원이 없습니다.
+                </div>
+              )}
+
+              <div className="grid gap-2">
+                <Label htmlFor="club-record-member-arrival">늦참 시간</Label>
+                <select
+                  id="club-record-member-arrival"
+                  className="h-11 rounded-xl border bg-background px-3 text-sm"
+                  value={memberArrivalTime}
+                  onChange={(event) => setMemberArrivalTime(event.target.value)}
+                >
+                  <option value="">정시 참가</option>
+                  {arrivalOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={memberBusy || selectedClubMemberIds.length === 0}
+              >
+                <UserPlus className="size-4" />
+                {memberBusy ? "추가 중..." : "선택한 회원 추가"}
+              </Button>
+            </form>
+          ) : (
+            <form className="space-y-4" onSubmit={handleAddGuest}>
+              <div className="grid gap-2">
+                <Label htmlFor="club-record-guest-name">이름</Label>
+                <Input
+                  id="club-record-guest-name"
+                  value={guestName}
+                  onChange={(event) => setGuestName(event.target.value)}
+                  placeholder="게스트 이름"
+                />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label htmlFor="club-record-guest-gender">성별</Label>
+                  <Input
+                    id="club-record-guest-gender"
+                    value={guestGender}
+                    onChange={(event) => setGuestGender(event.target.value)}
+                    placeholder="예: 남성"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="club-record-guest-group">그룹</Label>
+                  <select
+                    id="club-record-guest-group"
+                    className="h-11 rounded-xl border bg-background px-3 text-sm"
+                    value={guestGroupCode}
+                    onChange={(event) =>
+                      setGuestGroupCode(event.target.value as "" | ClubRecordGroupCode)
+                    }
+                  >
+                    <option value="">미지정</option>
+                    <option value="A">A</option>
+                    <option value="B">B</option>
+                    <option value="C">C</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label htmlFor="club-record-guest-career">구력</Label>
+                  <Input
+                    id="club-record-guest-career"
+                    value={guestCareerText}
+                    onChange={(event) => setGuestCareerText(event.target.value)}
+                    placeholder="예: 2년"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="club-record-guest-arrival">늦참 시간</Label>
+                  <select
+                    id="club-record-guest-arrival"
+                    className="h-11 rounded-xl border bg-background px-3 text-sm"
+                    value={guestArrivalTime}
+                    onChange={(event) => setGuestArrivalTime(event.target.value)}
+                  >
+                    <option value="">정시 참가</option>
+                    {arrivalOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="club-record-guest-note">운영 메모</Label>
+                <Textarea
+                  id="club-record-guest-note"
+                  value={guestOperatorNote}
+                  onChange={(event) => setGuestOperatorNote(event.target.value)}
+                  placeholder="게스트 메모"
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={guestBusy}>
+                <UserPlus className="size-4" />
+                {guestBusy ? "추가 중..." : "게스트 추가"}
+              </Button>
+            </form>
+          )}
+        </div>
+      </Modal>
+    </section>
+  );
+}
