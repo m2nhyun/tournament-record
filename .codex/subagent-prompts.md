@@ -100,13 +100,18 @@ Task: [한 줄 목표]
 You are the `ux` agent for tournament-record.
 
 Goal
-- Implement the UI change while preserving the repo's design system and UX rules.
+- Design and implement the UI change while preserving the repo's design system, IA, and operational UX rules.
 
 Read First
+- AGENTS.md sections 3.4 and 3.5
 - docs/02-design-system.md
+- docs/design/00-ui-ux-agent-rules.md
+- docs/design/club-record-design-direction.md
+- docs/design/club-record-design-merge-strategy.md
+- docs/design/club-record-design-tokens.md
+- docs/design/club-record-primitive-spec.md
 - docs/10-history-ui-guidelines.md
 - src/app/globals.css
-- AGENTS.md sections 3.4 and 3.5
 - [관련 컴포넌트 파일]
 
 Editable Scope
@@ -115,16 +120,23 @@ Editable Scope
 Constraints
 - Keep the AppBar + content(px-4) layout pattern.
 - Prefer edit icon + modal/dialog flows.
-- Use tennis tokens from globals.css.
+- Use tennis tokens from globals.css and avoid one-off hardcoded colors.
+- Use shadcn/Radix for dropdown, menu, option picker, popover, dialog, tabs, toggle, and command picker interactions.
+- Do not use native `<select>` or browser default dropdowns in new UI; document legacy native controls as follow-up conversion candidates.
 - Keep unconfirmed match states neutral and status-first.
+- Keep card/list/detail visual grammar consistent for the same data.
 - Check 320px layout behavior.
+- Verify IA/browser flow when navigation or major screen structure changes.
 - Do not edit docs or SQL files directly.
 
 Deliverables
 - Changed component file list
+- Information hierarchy decision
+- shadcn/Radix primitives used and remaining legacy native-control candidates
 - 320px mobile check note
+- IA/browser verification route and result when applicable
 - Design token deviation: yes/no
-- Docs flags: docs/02-design-system.md yes/no, docs/10-history-ui-guidelines.md yes/no
+- Docs flags: docs/02-design-system.md yes/no, docs/design/* yes/no, docs/10-history-ui-guidelines.md yes/no
 ```
 
 ## 4. `doc-sync` Template

@@ -254,14 +254,19 @@ DB smoke 결과:
 - `/matches/new`, `/history`, `/leaderboard`의 legacy 진입 유지 여부와 폐기 시점 정리
 - 새 `홈 / 이벤트 / 히스토리 / 클럽` IA에 대한 실제 브라우저 검증
 - `/clubs/[clubId]/club-record/events` 이벤트 목록의 모바일/게스트 접근성 검증
+- native select/dropdown을 shadcn/Radix primitive로 전환
+  - 완료: shadcn/Radix `Popover` primitive 추가, 새 이벤트/이벤트 수정 시간 선택은 `ClubRecordTimeSelect`로 교체
+  - 남은 후보: 참가자 관리자 수동 경기 생성 select, 경기 컨트롤 select, 일정 생성 시간 선택
+  - 2026-05-13 cmux 확인에서 새 이벤트 화면의 native time select가 긴 combobox 문자열로 노출되는 friction 확인 후 1차 교체 완료
 
 ## Next Recommended Task Split
 
 다음 작업자는 아래 중 하나만 골라 작은 단위로 끝낸다.
 
-1. 새 `홈 / 이벤트 / 히스토리 / 클럽` IA Playwright/browser 실사용 검증
-2. 월간 공개 카드 상세 화면 Playwright/browser 실사용 검증
-3. 결과 입력 UX Playwright/browser 실사용 검증
+1. 참가자 관리자/경기 컨트롤/일정 생성에 남은 native select를 shadcn/Radix primitive로 순차 교체
+2. 새 `홈 / 이벤트 / 히스토리 / 클럽` IA를 운영진/멤버/게스트별로 Playwright/browser 실사용 검증
+3. 월간 공개 카드 상세 화면 Playwright/browser 실사용 검증
+4. 결과 입력 UX Playwright/browser 실사용 검증
 
 각 작업은 시작 전에 가정, 성공 기준, 검증 명령을 짧게 적고 진행한다.
 

@@ -43,6 +43,19 @@
 ### 1) UI 일관성 강화
 - AppBar + content(px-4) 구조를 전 화면에 지속 적용
 - 컴포넌트별 간격/타이포 편차 정리
+- 상태: UI/UX 에이전트 실행 규칙 1차 정리 완료
+- 반영 내용: `docs/design/00-ui-ux-agent-rules.md`, `design-ui-designer.md`, `design-ux-designer.md`, `.codex/agents/ux.toml`에 프로젝트 전용 디자인 판단 기준, shadcn/Radix 우선 정책, IA 브라우저 검증 계약을 반영
+
+### 1-1) shadcn/Radix primitive 전환
+- 목표: native select/dropdown과 브라우저 기본 UI를 shadcn/Radix primitive로 전환해 화면 일관성과 조작감을 높인다
+- 원칙: 새 UI에 native `<select>`를 사용하지 않고, 긴 옵션 목록은 `Popover` 기반 picker, 액션 목록은 `DropdownMenu`, 선택 집합은 `Tabs`/`ToggleGroup`/`RadioGroup`을 우선한다
+- 1차 발견 위치:
+  - 완료: `src/features/club-record/components/club-record-event-form.tsx` 시작/종료 시간 select
+  - 완료: `src/features/club-record/components/club-record-event-edit-dialog.tsx` 시작/종료 시간 select
+  - `src/features/club-record/components/club-record-participant-manager.tsx` 수동 경기 생성/선수 선택 select
+  - `src/features/club-record/components/club-record-match-controls.tsx` 경기/슬롯 선택 select
+  - `src/features/schedules/components/match-schedule-form.tsx` 시작/종료 시간 select
+- 상태: shadcn/Radix `Popover` primitive 추가, 새 이벤트/이벤트 수정 시간 선택 1차 전환 완료
 
 ### 2) Auth / 온보딩 설계 고정
 - 이메일/카카오 병행 정회원 구조와 프로필 완료 가드를 설계 문서로 고정
@@ -68,6 +81,18 @@
 - 채팅/댓글 같은 커뮤니티 기능은 독립 도메인으로 급하게 분리하기보다, 우선 `일정` 엔티티를 중심으로 대화와 참가 컨텍스트를 쌓는 방향을 우선 검토
 
 ## Backlog (P0)
+
+### 0) IA 실사용 검증 후속
+- 목표: `홈 / 이벤트 / 히스토리 / 클럽` 하단 IA가 운영진/멤버/게스트에게 예상대로 읽히는지 실제 브라우저로 확인하고 마찰을 제거한다
+- 1차 확인:
+  - 홈: 운영 상태, 새 이벤트, 클럽 회원 랭킹, 내 기록, 현재/다음 이벤트, 월간 공개 카드 진입 확인
+  - 이벤트: 데일리 매치 이벤트 목록과 새 이벤트 진입 확인
+  - 히스토리: 내 경기 기록 카드/리스트, 필터, 이벤트 보기 진입 확인
+  - 클럽: 클럽 정보, 초대 링크, 다가오는 일정, 멤버, 랭킹 관리 진입 확인
+- 발견한 friction:
+  - 새 이벤트 화면의 native time select가 긴 combobox 문자열로 노출되어 조작감과 접근성 품질이 낮다
+- 반영 내용: shadcn/Radix `Popover` 기반 `ClubRecordTimeSelect`를 추가해 새 이벤트/이벤트 수정 시간 선택을 교체했다
+- 다음 액션: 참가자 관리자/경기 컨트롤/일정 생성에 남은 native select를 순차 교체
 
 ### 1) 클럽 도입 퍼널 단순화
 - 목표: 클럽 생성 -> 초대 링크 공유 -> 첫 경기 기록까지의 마찰 최소화

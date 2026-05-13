@@ -1,5 +1,18 @@
 # Dev Log
 
+## 2026-05-13
+
+### UI/UX Agent Rules And IA Verification
+
+- 흩어져 있던 디자인 기준을 `docs/design/00-ui-ux-agent-rules.md`로 모아, UI/UX 에이전트가 정보 위계, shadcn/Radix 우선 사용, 새 UI의 native control 금지, IA 브라우저 검증을 먼저 판단하도록 고정했다.
+- `design-ui-designer.md`, `design-ux-designer.md`, `docs/design/AGENTS.md`, `.codex/agents/ux.toml`, `.codex/subagent-prompts.md`를 프로젝트 전용 실행 지침으로 정리했다.
+- `docs/02-design-system.md`, `docs/README.md`, `docs/00-map.md`에 새 디자인 실행 규칙과 read path를 연결했다.
+- cmux browser로 `홈 / 이벤트 / 히스토리 / 클럽 / 새 이벤트` IA를 1차 확인했다.
+- 새 이벤트 화면의 native time select가 긴 combobox 문자열로 노출되는 friction을 확인했고, shadcn/Radix `Popover` 기반 picker로 새 이벤트/이벤트 수정 시간 선택부터 교체하는 후속 작업으로 기록했다.
+- shadcn/Radix `Popover` primitive를 추가하고 `ClubRecordTimeSelect`를 만들어 새 이벤트/이벤트 수정 시작/종료 시간 선택을 native select에서 교체했다.
+- 참가자 관리자, 경기 컨트롤, 일정 생성에 남은 native select는 다음 순차 전환 후보로 남겼다.
+- 이번 변경에는 DB/RLS 수정이 없다.
+
 ## 2026-05-12
 
 ### Club Record History Team Names

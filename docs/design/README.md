@@ -6,17 +6,22 @@
 ## Read Order
 
 1. `../02-design-system.md`
-2. `club-record-design-direction.md`
-3. `club-record-design-merge-strategy.md`
-4. `club-record-design-tokens.md`
-5. `club-record-primitive-spec.md`
-6. `club-record-primitive-plan.md`
+2. `00-ui-ux-agent-rules.md`
+3. `club-record-design-direction.md`
+4. `club-record-design-merge-strategy.md`
+5. `club-record-design-tokens.md`
+6. `club-record-primitive-spec.md`
+7. `club-record-primitive-plan.md`
+8. 필요 시 `design-ui-designer.md`, `design-ux-designer.md`
 
 `DESIGN-spotify.md`는 참고 레퍼런스 아카이브다.
 현재 제품 방향은 `club-record-design-direction.md`와 `club-record-design-merge-strategy.md`를 우선한다.
 
 ## Usage Rule
 
+- UI/UX 에이전트 실행 기준: `00-ui-ux-agent-rules.md`
+- 화면 표현, shadcn/Radix 사용, native control 금지/전환 기준: `design-ui-designer.md`
+- IA, 사용자 흐름, 실사용 검증: `design-ux-designer.md`
 - 색/타이포/반경/상태 표현 판단: `club-record-design-tokens.md`
 - 현재 UI와 외부 레퍼런스 혼합 기준: `club-record-design-merge-strategy.md`
 - 공통 컴포넌트 variant나 primitive 계약: `club-record-primitive-spec.md`

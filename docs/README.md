@@ -31,18 +31,20 @@
 ### 디자인 문서
 
 - `design/README.md`: 디자인 문서 묶음과 읽기 순서
+- `design/00-ui-ux-agent-rules.md`: UI/UX 에이전트 실행 규칙, shadcn/Radix 우선 정책, IA 검증 기준
 - `design/club-record-design-direction.md`: club_record 전용 시각 방향과 레퍼런스 혼합 원칙
 - `design/club-record-design-tokens.md`: club_record 전용 토큰/타이포/사용성 기준
 - `design/club-record-primitive-plan.md`: 공통 컴포넌트 정리 순서와 primitive audit
 - `design/club-record-design-merge-strategy.md`: 현재 UI에서 유지할 것과 외부 레퍼런스로 보강할 것을 구분하는 기준
 - `design/club-record-primitive-spec.md`: 공통 primitive별 유지/변경/variant 계약
+- `design/design-ui-designer.md`, `design/design-ux-designer.md`: 프로젝트 전용 UI/UX 에이전트 역할과 출력 계약
 
 ## 빠른 읽기 경로
 
 - 작업 시작: `AGENTS.md` -> `docs/00-map.md`
 - 일반 기능 변경: `docs/09-keep-rules.md` -> `docs/03-architecture.md` -> 대상 기능 문서
 - DB/RLS/RPC 변경: `docs/09-keep-rules.md` -> `docs/05-automation.md` -> `docs/03-architecture.md`
-- UI/UX 변경: `docs/02-design-system.md` -> 관련 기능 문서 -> 필요 시 `docs/design/README.md`
+- UI/UX 변경: `docs/02-design-system.md` -> `docs/design/00-ui-ux-agent-rules.md` -> 관련 기능 문서 -> 필요 시 `docs/design/README.md`
 - 인증/온보딩 변경: `docs/11-auth-onboarding-design.md` -> `docs/03-architecture.md` -> `docs/05-automation.md`
 - `club_record` 변경: `docs/club_record.md` -> `docs/club-record/README.md`
 

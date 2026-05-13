@@ -54,6 +54,8 @@
   - 외부 디자인 전달 규격
 - `docs/design/README.md`
   - 디자인 세부 문서 진입점
+- `docs/design/00-ui-ux-agent-rules.md`
+  - UI/UX 에이전트 실행 규칙, shadcn/Radix 우선 정책, IA 검증 기준
 
 읽는 시점:
 - 화면 구조, 시각 규칙, 컴포넌트 variant가 바뀔 때
@@ -141,10 +143,11 @@
 
 1. `AGENTS.md`
 2. `docs/02-design-system.md`
-3. 관련 기능 문서
-4. 히스토리 화면이면 `docs/10-history-ui-guidelines.md`
-5. `club_record` 디자인이면 `docs/design/README.md`
-6. 변경 후 `docs/04-dev-log.md`
+3. `docs/design/00-ui-ux-agent-rules.md`
+4. 관련 기능 문서
+5. 히스토리 화면이면 `docs/10-history-ui-guidelines.md`
+6. `club_record` 디자인이면 `docs/design/README.md`
+7. 변경 후 `docs/04-dev-log.md`
 
 ### Auth / Onboarding 변경
 

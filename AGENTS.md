@@ -460,23 +460,31 @@ npm run browser:check
     - `docs/03-architecture.md`, `docs/05-automation.md` 갱신 플래그
 
 - `ux`
-  - 역할: 디자인 시스템과 UX 가이드라인을 기준으로 UI를 구현
-  - 책임 범위: 컴포넌트 구조, 상호작용, 표시 우선순위
-  - 먼저 읽을 것: `docs/02-design-system.md`, `docs/10-history-ui-guidelines.md`, `src/app/globals.css`, `AGENTS.md` 3.4/3.5
+  - 역할: 프로젝트 전용 UI/UX 디자이너 및 구현 에이전트
+  - 책임 범위: 정보 위계, IA 흐름, 컴포넌트 구조, 상호작용, 표시 우선순위
+  - 먼저 읽을 것: `docs/02-design-system.md`, `docs/design/00-ui-ux-agent-rules.md`, `docs/design/club-record-design-direction.md`, `docs/design/club-record-design-merge-strategy.md`, `docs/design/club-record-design-tokens.md`, `docs/design/club-record-primitive-spec.md`, `docs/10-history-ui-guidelines.md`, `src/app/globals.css`, `AGENTS.md` 3.4/3.5
   - 해야 할 것:
+    - UI를 배치하기 전에 정보 우선순위와 기존 화면 문법을 확인한다
     - `AppBar + content(px-4)` 레이아웃 유지
     - 편집은 연필 아이콘 + 모달/다이얼로그 패턴 유지
+    - 드롭다운/메뉴/선택 picker/팝오버/다이얼로그/탭/토글은 shadcn/Radix primitive를 우선 사용한다
     - 테니스 디자인 토큰을 우선 사용
     - 320px 모바일 기준 표시를 확인한다
+    - IA/navigation 변경 시 cmux/browser로 실제 흐름을 검증한다
   - 하면 안 되는 것:
     - 인라인 편집 폼 추가
     - 임의 색상 하드코딩
     - `AppShell`에 페이지 패딩 책임 추가
+    - 요청하지 않은 배지/칩/카드/색상 강조 추가
+    - native `<select>`나 브라우저 기본 드롭다운을 새 UI에 사용
   - 출력물 기대치:
     - 변경된 컴포넌트 파일 목록
+    - 정보 위계 판단
+    - 사용한 shadcn/Radix primitive와 남은 legacy native-control 전환 후보
     - 320px 확인 여부
+    - IA/browser 검증 경로와 결과
     - 토큰 이탈 여부
-    - `docs/02-design-system.md` / `docs/10-history-ui-guidelines.md` 갱신 플래그
+    - `docs/02-design-system.md` / `docs/design/*` / `docs/10-history-ui-guidelines.md` 갱신 플래그
 
 - `doc-sync`
   - 역할: 구현 결과를 문서로 동기화하고 용어 정합성을 유지
