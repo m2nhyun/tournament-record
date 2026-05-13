@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ClubRecordTimeSelect } from "@/features/club-record/components/club-record-time-select";
 import { useClubRecordAccess } from "@/features/club-record/hooks/use-club-record-access";
 import { createClubRecordEvent } from "@/features/club-record/services/events";
 
@@ -203,39 +204,23 @@ export function ClubRecordEventFormView({
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="grid gap-2">
                   <Label htmlFor="club-record-start-time">시작 시간</Label>
-                  <div className="flex items-center gap-2 rounded-xl border bg-muted/20 px-3">
-                    <Clock3 className="size-4 text-muted-foreground" />
-                    <select
-                      id="club-record-start-time"
-                      className="h-11 w-full bg-transparent text-sm outline-none"
-                      value={startTime}
-                      onChange={(event) => setStartTime(event.target.value)}
-                    >
-                      {halfHourOptions.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  <ClubRecordTimeSelect
+                    id="club-record-start-time"
+                    value={startTime}
+                    options={halfHourOptions}
+                    onValueChange={setStartTime}
+                    icon={Clock3}
+                  />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="club-record-end-time">종료 시간</Label>
-                  <div className="flex items-center gap-2 rounded-xl border bg-muted/20 px-3">
-                    <CalendarDays className="size-4 text-muted-foreground" />
-                    <select
-                      id="club-record-end-time"
-                      className="h-11 w-full bg-transparent text-sm outline-none"
-                      value={endTime}
-                      onChange={(event) => setEndTime(event.target.value)}
-                    >
-                      {halfHourOptions.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  <ClubRecordTimeSelect
+                    id="club-record-end-time"
+                    value={endTime}
+                    options={halfHourOptions}
+                    onValueChange={setEndTime}
+                    icon={CalendarDays}
+                  />
                 </div>
               </div>
 

@@ -1,12 +1,14 @@
 "use client";
 
 import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { CalendarDays, Clock3 } from "lucide-react";
 
 import { Modal } from "@/components/common/modal";
 import { StatusBox } from "@/components/feedback/status-box";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ClubRecordTimeSelect } from "@/features/club-record/components/club-record-time-select";
 import { updateClubRecordEvent } from "@/features/club-record/services/events";
 import type { ClubRecordEvent } from "@/features/club-record/types/event";
 
@@ -177,34 +179,24 @@ export function ClubRecordEventEditDialog({
 
         <div className="space-y-1.5">
           <Label htmlFor="club-record-edit-start-time">시작 시간</Label>
-          <select
+          <ClubRecordTimeSelect
             id="club-record-edit-start-time"
-            className="h-11 w-full rounded-xl border bg-muted/20 px-3 text-sm outline-none"
             value={startTime}
-            onChange={(changeEvent) => setStartTime(changeEvent.target.value)}
-          >
-            {halfHourOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
+            options={halfHourOptions}
+            onValueChange={setStartTime}
+            icon={Clock3}
+          />
         </div>
 
         <div className="space-y-1.5">
           <Label htmlFor="club-record-edit-end-time">종료 시간</Label>
-          <select
+          <ClubRecordTimeSelect
             id="club-record-edit-end-time"
-            className="h-11 w-full rounded-xl border bg-muted/20 px-3 text-sm outline-none"
             value={endTime}
-            onChange={(changeEvent) => setEndTime(changeEvent.target.value)}
-          >
-            {halfHourOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
+            options={halfHourOptions}
+            onValueChange={setEndTime}
+            icon={CalendarDays}
+          />
         </div>
 
         <div className="space-y-1.5">
