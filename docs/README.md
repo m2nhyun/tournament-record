@@ -21,6 +21,7 @@
 - `09-keep-rules.md`: 반드시 유지해야 하는 기준(인증/권한/DB/경기 UX/표기 규칙)
 - `10-history-ui-guidelines.md`: 경기 히스토리 UI 큰틀 원칙 + 디테일 체크리스트
 - `11-auth-onboarding-design.md`: 정회원 프로필 온보딩과 인증 UX 설계
+- `12-project-review.md`: 제품/IA/DB/테스트/문서 총괄 리뷰와 권장 작업 순서
 
 ### 기능별 문서
 
@@ -47,6 +48,7 @@
 - UI/UX 변경: `docs/02-design-system.md` -> `docs/design/00-ui-ux-agent-rules.md` -> 관련 기능 문서 -> 필요 시 `docs/design/README.md`
 - 인증/온보딩 변경: `docs/11-auth-onboarding-design.md` -> `docs/03-architecture.md` -> `docs/05-automation.md`
 - `club_record` 변경: `docs/club_record.md` -> `docs/club-record/README.md`
+- 전체 상태 점검: `docs/12-project-review.md` -> 필요한 영역별 source of truth
 
 ## 운영 원칙
 

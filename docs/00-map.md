@@ -24,11 +24,14 @@
   - 제품 정의, MVP 범위, 핵심 지표, 비범위
 - `docs/08-ux-tasks.md`
   - UX 과제 현황, Done/Doing/Backlog
+- `docs/12-project-review.md`
+  - 제품/IA/DB/테스트/문서 총괄 리뷰와 권장 작업 순서
 
 읽는 시점:
 - 기능 범위가 바뀔 때
 - 우선순위나 MVP 포함 여부를 판단할 때
 - backlog 상태를 바꿀 때
+- 전체 제품/기술 상태를 한 번에 점검할 때
 
 ### Engineering / Architecture
 
@@ -166,6 +169,16 @@
 4. 작업 성격에 맞는 `docs/club-record/*`
 5. DB/RLS가 있으면 `docs/05-automation.md`
 6. 변경 후 `docs/04-dev-log.md`
+
+### 전체 상태 리뷰 / 작업 우선순위 재정렬
+
+1. `AGENTS.md`
+2. `docs/12-project-review.md`
+3. `docs/01-product-canvas.md`
+4. `docs/03-architecture.md`
+5. `docs/08-ux-tasks.md`
+6. 필요한 영역별 source of truth
+7. 변경 후 `docs/04-dev-log.md`
 
 ## Codex / Claude Notes
 
