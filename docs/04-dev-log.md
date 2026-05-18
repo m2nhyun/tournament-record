@@ -1,5 +1,24 @@
 # Dev Log
 
+## 2026-05-18
+
+### CI / Quality Gate 강화
+
+- `eslint-config-next`를 `16.1.6`에서 `^16.2.6`으로 올려 Next.js 버전(`16.2.6`)과 일치시켰다.
+- `verify` 스크립트에 `npm run test`를 추가했다. 기존 `lint && build`에서 `test && lint && build`로 변경되어 로컬 검증과 CI가 동일한 게이트를 가진다.
+- `.github/workflows/ci.yml`에 `Test` 단계를 추가했다. 이제 PR/push 시 lint, build 외에 vitest 53개 테스트가 CI에서 실행된다.
+- `12-project-review.md` P0 항목 중 "CI에 `npm run test` 없음" 리스크가 해소됐다.
+- 이번 변경에는 DB/RLS 수정이 없다.
+- 미해결 P1: `packageManager`(pnpm)와 실제 운영(npm) 불일치 — npm/pnpm 기준 확정은 별도 판단 필요.
+
+## 2026-05-14
+
+### Project Review
+
+- `docs/12-project-review.md`를 추가해 제품 목적, 현재 IA, 문서 정합성, UI/UX, DB/RLS, 테스트/자동화, risk register, 권장 작업 순서를 PCD 흐름으로 정리했다.
+- `docs/README.md`와 `docs/00-map.md`에 총괄 리뷰 문서를 연결해 전체 상태 점검 시 읽기 경로를 추가했다.
+- 이번 변경에는 DB/RLS 수정이 없다.
+
 ## 2026-05-13
 
 ### UI/UX Agent Rules And IA Verification
@@ -11,6 +30,13 @@
 - 새 이벤트 화면의 native time select가 긴 combobox 문자열로 노출되는 friction을 확인했고, shadcn/Radix `Popover` 기반 picker로 새 이벤트/이벤트 수정 시간 선택부터 교체하는 후속 작업으로 기록했다.
 - shadcn/Radix `Popover` primitive를 추가하고 `ClubRecordTimeSelect`를 만들어 새 이벤트/이벤트 수정 시작/종료 시간 선택을 native select에서 교체했다.
 - 참가자 관리자, 경기 컨트롤, 일정 생성에 남은 native select는 다음 순차 전환 후보로 남겼다.
+- 이번 변경에는 DB/RLS 수정이 없다.
+
+### Dependency Audit Patch
+
+- `npm audit fix`로 Hono, Vite, picomatch, brace-expansion, fast-uri, flatted, express-rate-limit 등 lockfile 패치 가능한 보안 경고를 정리했다.
+- Next.js를 `16.1.6`에서 registry 최신 `16.2.6`으로 올려 high severity Next audit 항목을 낮췄다.
+- 남은 audit 항목은 `next@16.2.6` 내부 `postcss@8.4.31`에 대한 moderate 경고이며, npm이 제안하는 `npm audit fix --force`는 `next@9.3.3` 다운그레이드를 유도하므로 적용하지 않는다.
 - 이번 변경에는 DB/RLS 수정이 없다.
 
 ## 2026-05-12
@@ -697,6 +723,7 @@
 - GitHub 공식 MCP를 `GITHUB_TOKEN` bearer auth 방식으로 등록하고, PR/이슈 연동 용도를 `AGENTS.md`에 추가
 - 프로젝트 전용 시크릿은 `direnv`(`.envrc` + `.envrc.local`)로 주입하는 방향으로 정리
 - `~/.zshrc`의 전역 `GITHUB_TOKEN` export를 제거하고, 이 저장소에서만 `direnv`로 GitHub MCP 인증을 주입하도록 정리
+
 ## 2026-03-20
 
 - 일정 생성 화면의 날짜 선택 강조를 캘린더 셀 자체의 원형 선택 상태로 정리하고, `내일/이번 일` 빠른 날짜 버튼과 시간 기본값을 제거했다. 사용자가 직접 날짜와 시간을 명확히 고르는 흐름으로 맞췄다.
