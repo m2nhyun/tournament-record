@@ -5,7 +5,23 @@ import { Minus, MoreVertical, Pencil, Plus, Save, Trash2, UsersRound } from "luc
 
 import { Modal } from "@/components/common/modal";
 import { StatusBox } from "@/components/feedback/status-box";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { createManualMatch, deleteMatch } from "@/features/club-record/services/assignment";
 import { submitMatchResult, updateMatchResult } from "@/features/club-record/services/results";
@@ -144,6 +160,7 @@ export function ClubRecordMatchControls({
   const [side1Score, setSide1Score] = useState(initialScore.side1);
   const [side2Score, setSide2Score] = useState(initialScore.side2);
   const [resultDialogOpen, setResultDialogOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<StatusState>(null);
 
@@ -262,9 +279,6 @@ export function ClubRecordMatchControls({
   const handleDeleteMatch = async () => {
     if (!slot.match) return;
 
-    const confirmed = window.confirm("이 경기를 삭제할까요? 확정된 경기는 삭제할 수 없습니다.");
-    if (!confirmed) return;
-
     setBusy(true);
     setStatus(null);
     try {
@@ -284,16 +298,6 @@ export function ClubRecordMatchControls({
   const handleSaveResult = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!slot.match) return;
-
-    if (resultEntryState === "admin-editable" && slot.match.status === "confirmed") {
-      const confirmed = window.confirm(
-        `${formatMatchTeam(slot.match.players, 1)} ${scoreText} ${formatMatchTeam(
-          slot.match.players,
-          2,
-        )} 결과로 수정할까요?`,
-      );
-      if (!confirmed) return;
-    }
 
     setBusy(true);
     setStatus(null);
@@ -378,6 +382,27 @@ export function ClubRecordMatchControls({
         </form>
       ) : null}
 
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>경기 삭제</AlertDialogTitle>
+            <AlertDialogDescription>
+              이 경기를 삭제할까요? 확정된 경기는 삭제할 수 없습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={busy}>취소</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={busy}
+              onClick={() => void handleDeleteMatch()}
+            >
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {slot.match ? (
         <div className="space-y-3">
           {canShowResultAction ? (
@@ -398,23 +423,24 @@ export function ClubRecordMatchControls({
                 {resultActionLabel}
               </Button>
               {!readOnly && canManageManualMatches && slot.match.status !== "confirmed" ? (
-                <details className="relative">
-                  <summary className="flex h-9 w-9 list-none items-center justify-center rounded-md border bg-background text-sm [&::-webkit-details-marker]:hidden">
-                    <MoreVertical className="size-4" />
-                    <span className="sr-only">경기 메뉴</span>
-                  </summary>
-                  <div className="absolute right-0 z-20 mt-2 min-w-32 rounded-md border bg-background p-1 shadow-lg">
-                    <button
-                      type="button"
-                      className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm text-destructive hover:bg-muted"
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button type="button" size="sm" variant="outline" className="size-9 p-0">
+                      <MoreVertical className="size-4" />
+                      <span className="sr-only">경기 메뉴</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
                       disabled={busy}
-                      onClick={() => void handleDeleteMatch()}
+                      onSelect={() => setDeleteConfirmOpen(true)}
                     >
                       <Trash2 className="size-4" />
                       경기 삭제
-                    </button>
-                  </div>
-                </details>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               ) : null}
             </div>
           ) : lockedResultMessage ? (

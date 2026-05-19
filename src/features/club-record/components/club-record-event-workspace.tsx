@@ -5,6 +5,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CalendarDays, Pencil, PlusCircle, RefreshCw, Trash2 } from "lucide-react";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { AppBar } from "@/components/layout/app-bar";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { LoadingSpinner } from "@/components/feedback/loading-spinner";
@@ -70,6 +80,7 @@ export function ClubRecordEventWorkspaceView({
   const { access } = useClubRecordAccess(clubId);
   const [busy, setBusy] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
   const [status, setStatus] = useState<null | {
     type: "success" | "error" | "info";
     message: string;
@@ -141,11 +152,6 @@ export function ClubRecordEventWorkspaceView({
   };
 
   const handleArchiveEvent = async () => {
-    const confirmed = window.confirm(
-      "이 이벤트를 취소하면 목록에서 숨겨집니다. 계속할까요?",
-    );
-    if (!confirmed) return;
-
     setBusy(true);
     setStatus(null);
     try {
@@ -230,7 +236,7 @@ export function ClubRecordEventWorkspaceView({
                   size="sm"
                   variant="outline"
                   disabled={busy}
-                  onClick={() => void handleArchiveEvent()}
+                  onClick={() => setArchiveConfirmOpen(true)}
                 >
                   <Trash2 className="size-4" />
                   이벤트 취소
@@ -263,6 +269,27 @@ export function ClubRecordEventWorkspaceView({
             ) : null}
           </CardContent>
         </Card>
+
+        <AlertDialog open={archiveConfirmOpen} onOpenChange={setArchiveConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>이벤트 취소</AlertDialogTitle>
+              <AlertDialogDescription>
+                이 이벤트를 취소하면 목록에서 숨겨집니다. 계속할까요?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={busy}>닫기</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled={busy}
+                onClick={() => void handleArchiveEvent()}
+              >
+                이벤트 취소
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {access?.capabilities.canManageClubData && !isReadOnlyEvent ? (
           <ClubRecordEventEditDialog

@@ -1,5 +1,15 @@
 # Dev Log
 
+## 2026-05-19
+
+### P0/P1 UI/Config 정리
+
+- `packageManager`를 `pnpm@10.26.0`에서 `npm@10.9.2`로 변경해 CI/scripts/docs와 실제 운영 도구를 일치시켰다.
+- `window.confirm` 3곳(이벤트 취소, 경기 삭제, 확정 결과 덮어쓰기)과 native `<details>` 경기 메뉴를 shadcn `AlertDialog` + `DropdownMenu`로 전환했다. `AlertDialog`와 `DropdownMenu` 컴포넌트를 신규 추가했다.
+- 확정 결과 덮어쓰기의 경우 Modal 내 기존 "운영진 수정은 확정 결과를 덮어씁니다" 안내가 confirm 역할을 대신하므로, 별도 AlertDialog 없이 경고 문구로 대체했다.
+- 이번 변경에는 DB/RLS 수정이 없다.
+- legacy `/history`, `/leaderboard`는 bottom nav에 이미 없음이 확인됨(bottom-nav.tsx는 club_record 라우트만 포함). URL 직접 접근 시에는 여전히 접근 가능하며, 정책은 문서에만 명시(legacy 경로는 URL 직접 접근 허용, nav에서 미노출).
+
 ## 2026-05-18
 
 ### CI / Quality Gate 강화
