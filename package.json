@@ -13,6 +13,7 @@
     "browser:check": "bash scripts/automation/cmux-browser-check.sh",
     "env:check": "bash scripts/automation/check-env.sh",
     "db:smoke": "bash scripts/automation/smoke-db.sh",
+    "db:smoke:sql": "bash scripts/automation/smoke-db-sql.sh",
     "db:push:dry": "bash scripts/automation/db-push.sh --dry-run",
     "db:push": "bash scripts/automation/db-push.sh",
     "db:schema:sync": "bash scripts/automation/db-sync-schema.sh",

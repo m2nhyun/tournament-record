@@ -1,5 +1,14 @@
 # Dev Log
 
+## 2026-05-19 (2)
+
+### P1/P2 기능 정리 — SQL Smoke, Product Canvas, Infinite Scroll
+
+- `scripts/automation/smoke-db-sql.sh`를 추가했다. `SUPABASE_DB_PUSH_URL` (또는 `SUPABASE_DB_URL`)을 읽어 `supabase/tests/club_record_smoke.sql`을 psql로 실행한다. `package.json`에 `db:smoke:sql` 스크립트를 연결했다.
+- `docs/01-product-canvas.md`를 클럽 레코드 중심으로 전면 재작성했다. 이벤트 → 슬롯 → 참가자 → 자동 편성 → 경기 → 결과 → 히스토리/월간 카드/랭킹 흐름 전체를 정리했다.
+- `club-record-history.tsx`에 무한 스크롤을 도입했다. `match-list.tsx`와 동일한 패턴: `PAGE_SIZE=16`, `IntersectionObserver` (rootMargin 300px), sentinel div, `visibleCountByKey` Map(`dateFilter-opponentFilter-viewMode` 키). 필터나 뷰 모드가 바뀌면 자동으로 처음부터 다시 로드된다.
+- 이번 변경에는 DB/RLS 수정이 없다.
+
 ## 2026-05-19
 
 ### P0/P1 UI/Config 정리

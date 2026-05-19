@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   CalendarDays,
@@ -28,6 +28,8 @@ type ClubRecordHistoryViewProps = {
 };
 
 type ViewMode = "card" | "list";
+
+const PAGE_SIZE = 16;
 
 function formatEventDate(value: string) {
   return new Date(value).toLocaleDateString("ko-KR", {
@@ -206,6 +208,8 @@ export function ClubRecordHistoryView({
   const [filterOpen, setFilterOpen] = useState(false);
   const [dateFilter, setDateFilter] = useState("");
   const [opponentFilter, setOpponentFilter] = useState("");
+  const [visibleCountByKey, setVisibleCountByKey] = useState<Record<string, number>>({});
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   if (!loading) {
     hasResolvedOnceRef.current = true;
@@ -215,6 +219,36 @@ export function ClubRecordHistoryView({
     () => entries.filter((entry) => matchesFilter(entry, dateFilter, opponentFilter)),
     [dateFilter, entries, opponentFilter],
   );
+
+  const resetKey = `${dateFilter}-${opponentFilter}-${viewMode}`;
+  const visibleCount = visibleCountByKey[resetKey] ?? PAGE_SIZE;
+
+  useEffect(() => {
+    const node = sentinelRef.current;
+    if (!node) return;
+    if (visibleCount >= filteredEntries.length) return;
+
+    const observer = new IntersectionObserver(
+      (observerEntries) => {
+        const first = observerEntries[0];
+        if (!first?.isIntersecting) return;
+        setVisibleCountByKey((prev) => ({
+          ...prev,
+          [resetKey]: Math.min((prev[resetKey] ?? PAGE_SIZE) + PAGE_SIZE, filteredEntries.length),
+        }));
+      },
+      { rootMargin: "300px 0px" },
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [filteredEntries.length, resetKey, visibleCount]);
+
+  const visibleEntries = useMemo(
+    () => filteredEntries.slice(0, visibleCount),
+    [filteredEntries, visibleCount],
+  );
+  const hasMore = visibleCount < filteredEntries.length;
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -347,7 +381,7 @@ export function ClubRecordHistoryView({
 
         <div className="flex items-center justify-between gap-3">
           <p className="text-sm text-muted-foreground">
-            전체 {entries.length}경기 · 표시 {filteredEntries.length}경기
+            전체 {entries.length}경기 · 표시 {visibleEntries.length}/{filteredEntries.length}경기
           </p>
           {isRefreshing ? (
             <p className="text-xs text-muted-foreground">새로고침 중...</p>
@@ -368,13 +402,16 @@ export function ClubRecordHistoryView({
           />
         ) : (
           <section className="space-y-3">
-            {filteredEntries.map((entry) =>
+            {visibleEntries.map((entry) =>
               viewMode === "card" ? (
                 <HistoryCard key={entry.matchId} clubId={clubId} entry={entry} />
               ) : (
                 <HistoryListItem key={entry.matchId} clubId={clubId} entry={entry} />
               ),
             )}
+            {hasMore ? (
+              <div ref={sentinelRef} className="h-4" aria-hidden="true" />
+            ) : null}
           </section>
         )}
       </div>
