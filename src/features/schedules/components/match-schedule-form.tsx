@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { ClubRecordTimeSelect } from "@/features/club-record/components/club-record-time-select";
 import {
   suggestedScheduleTimes,
   useMatchScheduleCreation,
@@ -304,17 +305,13 @@ export function MatchScheduleForm({ clubId }: MatchScheduleFormProps) {
                     >
                       시작
                     </Label>
-                    <select
+                    <ClubRecordTimeSelect
                       id="schedule-start-time"
                       value={selectedStartTime}
-                      className="h-10 rounded-xl border bg-background px-3 text-sm"
-                      onChange={(event) => {
-                        const nextStart = event.target.value;
-                        if (!nextStart) {
-                          setSelectedTimeSlots([]);
-                          return;
-                        }
-
+                      placeholder="시작 선택"
+                      options={suggestedScheduleTimes}
+                      icon={Clock3}
+                      onValueChange={(nextStart) => {
                         const nextStartIndex = suggestedScheduleTimes.indexOf(nextStart);
                         const currentEndIndex = suggestedScheduleTimes.indexOf(endTime);
                         const fallbackEnd =
@@ -327,14 +324,7 @@ export function MatchScheduleForm({ clubId }: MatchScheduleFormProps) {
 
                         setTimeRange(nextStart, fallbackEnd);
                       }}
-                    >
-                      <option value="">시작 선택</option>
-                      {suggestedScheduleTimes.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
+                    />
                   </div>
                   <div className="grid gap-2">
                     <Label
@@ -343,22 +333,15 @@ export function MatchScheduleForm({ clubId }: MatchScheduleFormProps) {
                     >
                       종료
                     </Label>
-                    <select
+                    <ClubRecordTimeSelect
                       id="schedule-end-time"
                       value={selectedEndTime}
-                      className="h-10 rounded-xl border bg-background px-3 text-sm"
+                      placeholder="종료 선택"
+                      options={endTimeOptions.map((o) => o.endLabel)}
+                      icon={Clock3}
                       disabled={!selectedStartTime}
-                      onChange={(event) =>
-                        setTimeRange(selectedStartTime, event.target.value)
-                      }
-                    >
-                      <option value="">종료 선택</option>
-                      {endTimeOptions.map((option) => (
-                        <option key={option.endLabel} value={option.endLabel}>
-                          {option.endLabel}
-                        </option>
-                      ))}
-                    </select>
+                      onValueChange={(value) => setTimeRange(selectedStartTime, value)}
+                    />
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-2 sm:grid-cols-2">

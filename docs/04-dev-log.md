@@ -1,5 +1,17 @@
 # Dev Log
 
+## 2026-05-22
+
+### Native Select 전면 교체 — UI Primitive 통일
+
+- `ClubRecordTimeSelect`에 `placeholder` prop을 추가해 선택 전 안내 문구를 표시할 수 있게 했다.
+- `match-schedule-form.tsx` 시작/종료 시간 native `<select>` 2개를 `ClubRecordTimeSelect`(Popover 기반)로 교체했다. 이미 만들어진 컴포넌트를 재사용했다.
+- `club-record-participant-manager.tsx` 늦참 시간 native `<select>` 2개(회원/게스트)를 버튼 그리드로 교체했다. "정시" + 30분 단위 시간 버튼, 선택 상태 토글.
+- `club-record-participant-manager.tsx` 게스트 그룹 native `<select>`(A/B/C/미지정)를 4개 토글 버튼으로 교체했다.
+- `club-record-match-controls.tsx` 수동 경기 선수 선택 native `<select>` × 4를 각각 Popover + 이름 목록 버튼으로 교체했다. 각 포지션마다 독립된 open 상태를 관리한다.
+- 이번 변경에는 DB/RLS 수정이 없다.
+- 남은 native select: 없음. 디자인 규칙과 전체 일치 완료.
+
 ## 2026-05-19 (2)
 
 ### P1/P2 기능 정리 — SQL Smoke, Product Canvas, Infinite Scroll

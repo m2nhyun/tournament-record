@@ -437,20 +437,28 @@ export function ClubRecordParticipantManager({
               )}
 
               <div className="grid gap-2">
-                <Label htmlFor="club-record-member-arrival">늦참 시간</Label>
-                <select
-                  id="club-record-member-arrival"
-                  className="h-11 rounded-xl border bg-background px-3 text-sm"
-                  value={memberArrivalTime}
-                  onChange={(event) => setMemberArrivalTime(event.target.value)}
-                >
-                  <option value="">정시 참가</option>
+                <Label>늦참 시간</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={memberArrivalTime === "" ? "default" : "outline"}
+                    onClick={() => setMemberArrivalTime("")}
+                  >
+                    정시
+                  </Button>
                   {arrivalOptions.map((option) => (
-                    <option key={option} value={option}>
+                    <Button
+                      key={option}
+                      type="button"
+                      size="sm"
+                      variant={memberArrivalTime === option ? "default" : "outline"}
+                      onClick={() => setMemberArrivalTime(option)}
+                    >
                       {option}
-                    </option>
+                    </Button>
                   ))}
-                </select>
+                </div>
               </div>
 
               <Button
@@ -484,20 +492,21 @@ export function ClubRecordParticipantManager({
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="club-record-guest-group">그룹</Label>
-                  <select
-                    id="club-record-guest-group"
-                    className="h-11 rounded-xl border bg-background px-3 text-sm"
-                    value={guestGroupCode}
-                    onChange={(event) =>
-                      setGuestGroupCode(event.target.value as "" | ClubRecordGroupCode)
-                    }
-                  >
-                    <option value="">미지정</option>
-                    <option value="A">A</option>
-                    <option value="B">B</option>
-                    <option value="C">C</option>
-                  </select>
+                  <Label>그룹</Label>
+                  <div className="flex gap-1.5">
+                    {(["", "A", "B", "C"] as const).map((code) => (
+                      <Button
+                        key={code || "none"}
+                        type="button"
+                        size="sm"
+                        variant={guestGroupCode === code ? "default" : "outline"}
+                        className="flex-1"
+                        onClick={() => setGuestGroupCode(code as "" | ClubRecordGroupCode)}
+                      >
+                        {code || "미지정"}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
@@ -511,20 +520,28 @@ export function ClubRecordParticipantManager({
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="club-record-guest-arrival">늦참 시간</Label>
-                  <select
-                    id="club-record-guest-arrival"
-                    className="h-11 rounded-xl border bg-background px-3 text-sm"
-                    value={guestArrivalTime}
-                    onChange={(event) => setGuestArrivalTime(event.target.value)}
-                  >
-                    <option value="">정시 참가</option>
+                  <Label>늦참 시간</Label>
+                  <div className="flex flex-wrap gap-1.5">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={guestArrivalTime === "" ? "default" : "outline"}
+                      onClick={() => setGuestArrivalTime("")}
+                    >
+                      정시
+                    </Button>
                     {arrivalOptions.map((option) => (
-                      <option key={option} value={option}>
+                      <Button
+                        key={option}
+                        type="button"
+                        size="sm"
+                        variant={guestArrivalTime === option ? "default" : "outline"}
+                        onClick={() => setGuestArrivalTime(option)}
+                      >
                         {option}
-                      </option>
+                      </Button>
                     ))}
-                  </select>
+                  </div>
                 </div>
               </div>
               <div className="grid gap-2">

@@ -15,6 +15,7 @@ import {
 type ClubRecordTimeSelectProps = {
   id: string;
   value: string;
+  placeholder?: string;
   options: string[];
   onValueChange: (value: string) => void;
   icon: ComponentType<LucideProps>;
@@ -24,6 +25,7 @@ type ClubRecordTimeSelectProps = {
 export function ClubRecordTimeSelect({
   id,
   value,
+  placeholder,
   options,
   onValueChange,
   icon: Icon,
@@ -43,7 +45,9 @@ export function ClubRecordTimeSelect({
         >
           <span className="flex min-w-0 items-center gap-2">
             <Icon className="size-4 shrink-0 text-muted-foreground" />
-            <span>{value}</span>
+            <span className={value ? undefined : "text-muted-foreground"}>
+              {value || placeholder}
+            </span>
           </span>
           <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
         </Button>

@@ -1,7 +1,7 @@
 "use client";
 
 import { type FormEvent, useEffect, useMemo, useState } from "react";
-import { Minus, MoreVertical, Pencil, Plus, Save, Trash2, UsersRound } from "lucide-react";
+import { ChevronDown, Minus, MoreVertical, Pencil, Plus, Save, Trash2, UsersRound } from "lucide-react";
 
 import { Modal } from "@/components/common/modal";
 import { StatusBox } from "@/components/feedback/status-box";
@@ -23,6 +23,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { createManualMatch, deleteMatch } from "@/features/club-record/services/assignment";
 import { submitMatchResult, updateMatchResult } from "@/features/club-record/services/results";
 import type { ClubRecordAccessContext } from "@/features/club-record/types/access";
@@ -161,6 +166,7 @@ export function ClubRecordMatchControls({
   const [side2Score, setSide2Score] = useState(initialScore.side2);
   const [resultDialogOpen, setResultDialogOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [playerPopoverOpen, setPlayerPopoverOpen] = useState([false, false, false, false]);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<StatusState>(null);
 
@@ -351,22 +357,55 @@ export function ClubRecordMatchControls({
           <div className="grid gap-2 sm:grid-cols-2">
             {playerPositions.map((position, index) => (
               <div key={position.key} className="grid gap-1.5">
-                <Label htmlFor={`${slot.id}-${position.key}`} className="text-xs">
-                  {position.label}
-                </Label>
-                <select
-                  id={`${slot.id}-${position.key}`}
-                  className="h-10 rounded-xl border bg-background px-3 text-sm"
-                  value={manualPlayerIds[index] ?? ""}
-                  onChange={(event) => handleManualPlayerChange(index, event.target.value)}
+                <Label className="text-xs">{position.label}</Label>
+                <Popover
+                  open={playerPopoverOpen[index]}
+                  onOpenChange={(open) =>
+                    setPlayerPopoverOpen((prev) => {
+                      const next = [...prev];
+                      next[index] = open;
+                      return next;
+                    })
+                  }
                 >
-                  <option value="">선택</option>
-                  {slot.availableParticipantIds.map((participantId) => (
-                    <option key={participantId} value={participantId}>
-                      {participantNameMap.get(participantId) ?? participantId}
-                    </option>
-                  ))}
-                </select>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-10 w-full justify-between rounded-xl px-3 font-normal"
+                    >
+                      <span className="truncate">
+                        {manualPlayerIds[index]
+                          ? (participantNameMap.get(manualPlayerIds[index] ?? "") ?? "알 수 없음")
+                          : <span className="text-muted-foreground">선택</span>}
+                      </span>
+                      <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-48 p-1">
+                    <div className="space-y-0.5">
+                      {slot.availableParticipantIds.map((participantId) => (
+                        <Button
+                          key={participantId}
+                          type="button"
+                          variant={manualPlayerIds[index] === participantId ? "secondary" : "outline"}
+                          size="sm"
+                          className="w-full justify-start"
+                          onClick={() => {
+                            handleManualPlayerChange(index, participantId);
+                            setPlayerPopoverOpen((prev) => {
+                              const next = [...prev];
+                              next[index] = false;
+                              return next;
+                            });
+                          }}
+                        >
+                          {participantNameMap.get(participantId) ?? participantId}
+                        </Button>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
             ))}
           </div>
