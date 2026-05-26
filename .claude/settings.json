@@ -1,0 +1,36 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash /Users/minhyun/Desktop/tournament-record/.claude/hooks/pre-write.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash /Users/minhyun/Desktop/tournament-record/.claude/hooks/post-write.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'INPUT=$(cat); [[ $(echo \"$INPUT\" | jq -r \".stop_hook_active\") == \"true\" ]] && exit 0; cd /Users/minhyun/Desktop/tournament-record && npm run verify 2>&1 || (echo \"verify 실패 (test+lint+build): 수정 후 완료해주세요\" >&2 && exit 2)'"
+          }
+        ]
+      }
+    ]
+  }
+}
