@@ -104,7 +104,6 @@ export function MatchScheduleForm({ clubId }: MatchScheduleFormProps) {
     toggleTimeSlot,
     startTime,
     endTime,
-    setSelectedTimeSlots,
     setTimeRange,
     location,
     setLocation,
