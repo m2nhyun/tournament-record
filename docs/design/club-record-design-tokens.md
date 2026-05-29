@@ -5,6 +5,12 @@
 `club_record`의 첫 UI 구현 전에, 색/타이포/반경/그림자/상태 표현을 먼저 고정한다.
 이 문서는 예쁜 화면을 위한 문서가 아니라 `운영툴의 일관성과 사용성`을 위한 기준이다.
 
+> 2026-05-27 검증 메모: 본 문서가 선언한 토큰 중 일부는 아직 `src/app/globals.css`에 정의되지 않았다.
+> - 누락: `--surface-3`, `--brand-soft`, `--brand-border`, `--success`, `--warning`, `--info`
+> - 의미 차이: `--muted`/`--ring`은 현재 blue-neutral 계열로 정의되어 있어 "green neutral / green ring" 의도가 반영되지 않음
+> - radius 체계 불일치: 본 문서는 `xs/sm/md/lg/pill` 명칭을, globals.css는 `--radius-sm/md/lg/xl/2xl/3xl/4xl` 명칭을 사용
+> 후속 작업으로 globals 토큰을 본 문서 기준으로 확장하거나, 본 문서를 현재 globals 기준으로 좁히는 결정이 필요하다. 결정 전까지 `src/components/ui/badge.tsx`, `feedback/status-box.tsx`는 emerald/amber/rose Tailwind 컬러 하드코딩이 남아 있다.
+
 ## Core Principle
 
 - 기본 배경은 `밝게`

@@ -1,7 +1,11 @@
 # Tournament Record Project Review
 
-작성일: 2026-05-14  
+작성일: 2026-05-14 (2026-05-27 갱신)
 검토 범위: 제품 문서, App Router 구조, `src/features/*`, Supabase schema/migration, 자동화 스크립트, 테스트, UI/UX 규칙
+
+> 2026-05-27 갱신 메모
+>
+> 본 리뷰의 초기 진단(2026-05-14) 중 다수 항목이 이후 작업으로 이미 해소되었다. 갱신된 사실은 본문 표/섹션에 인라인 반영했고, 해결 시점은 `docs/04-dev-log.md`에서 추적한다.
 
 ## 목차
 
@@ -37,21 +41,25 @@
 
 가장 강한 부분은 `club_record` 도메인이다. 별도 테이블군, RPC, smoke SQL, 자동 편성 유틸 테스트, 게스트 초대, 월간 카드, 히스토리 RPC까지 꽤 깊게 들어가 있다. 특히 “운영 DB 적용 후 smoke로 검증한 상태”가 문서에 남아 있어, DB 작업의 추적 가능성이 좋다.
 
-가장 큰 정리 과제는 세 가지다.
+가장 큰 정리 과제는 다음이다.
 
-1. 제품 표면의 이중화
-   - `club_record`가 메인인데 기존 일반 경기/히스토리/리더보드 라우트도 살아 있다.
-   - 유지할 것인지, legacy로 남길 것인지, `club_record`로 흡수할 것인지 결정이 필요하다.
+1. 제품 표면의 이중화 (여전히 미해결)
+   - `club_record`가 메인이지만 `/clubs/[clubId]/history`, `/clubs/[clubId]/leaderboard`, `/clubs/[clubId]/matches/*` 라우트는 살아 있다.
+   - 바텀 네비게이션은 이미 `club_record`만 가리키지만, 매치/일정 플로우 내부 링크는 여전히 legacy 라우트를 사용한다.
+   - 특히 club_record 대시보드의 `MatchConfirmationPromptCard`가 legacy `/history`로 진입시키는 cross-track 진입점이 남아 있다.
+   - 또 `/leaderboard`는 어떤 Link에서도 참조되지 않는 orphan이지만 빌드/라우팅에는 남아 있다.
 
-2. 검증 게이트의 불완전함
-   - `npm run test`는 존재하지만 CI와 `verify`에는 포함되어 있지 않다.
-   - `club_record` SQL smoke는 강력하지만 npm script로 승격되어 있지 않아 수동성이 높다.
+2. 검증 게이트 (해소됨, 2026-05-27 확인)
+   - `.github/workflows/ci.yml`에 이미 test → lint → build 순서로 모두 포함되어 있다.
+   - `package.json`의 `verify`는 `npm run test && npm run lint && npm run build`로 묶여 있다.
+   - `db:smoke`, `db:smoke:sql`도 npm script로 승격되어 있다.
 
-3. UI/UX 규칙과 남은 구현의 차이
-   - 새 UI에 native `<select>` 금지 규칙은 생겼지만, 참가자/수동 경기/일정 생성에 아직 native select가 남아 있다.
-   - 위험 액션 일부가 `window.confirm`, native `<details>`에 의존한다.
+3. UI/UX 규칙과 남은 구현의 차이 (대부분 해소됨, 2026-05-27 확인)
+   - native `<select>`: src 전체 grep 결과 0건.
+   - native `<details>`: src 전체 grep 결과 0건.
+   - `window.confirm`: 0건 (member 제외 1건이 마지막이었고 `AlertDialog`로 전환됨).
 
-현재 상태는 제품적으로 “기능 골격은 상당히 많이 왔고, 운영 도구로 쓰기 시작할 수 있는 수준”이다. 다만 다음 단계는 새 기능 추가보다 IA 정리, 검증 자동화, legacy 경계 정리, UI primitive 통일이 더 중요하다.
+현재 상태는 제품적으로 “기능 골격은 상당히 많이 왔고, 운영 도구로 쓰기 시작할 수 있는 수준”이다. 다음 단계는 새 기능 추가보다 legacy IA 경계 정리(특히 cross-track 진입점), DB/RPC 트랜잭션 보강, 일정 호스트 액션/일정→경기 연결이 더 중요하다.
 
 ## PCD Review
 
@@ -102,9 +110,15 @@ App Router 기준 핵심 IA는 다음과 같다.
 - `docs/01-product-canvas.md`의 MVP 설명은 아직 일반 경기 기록 중심으로 읽힌다.
 - `club_record`가 메인인데 legacy 일반 경기 경로가 제품 표면에 남아 있어 사용자가 “어느 히스토리/랭킹이 진짜인가”를 헷갈릴 수 있다.
 - `docs/club-record/README.md` 일부 open item은 handoff의 완료 상태와 충돌할 수 있다.
-- `npm run test`가 CI에 없다.
-- `packageManager`는 pnpm인데 실제 scripts/CI/운영 문서는 npm 중심이다.
-- Next는 `16.2.6`으로 올라갔지만 `eslint-config-next`는 아직 `16.1.6`이다.
+
+> 이전에 P0/P1로 기록되어 있던 다음 항목은 2026-05-27 기준 모두 해소되었다.
+> - `npm run test`가 CI에 없음 → `.github/workflows/ci.yml`에 추가됨
+> - `verify`에 test 누락 → `npm run test && npm run lint && npm run build`로 통합됨
+> - `packageManager`가 pnpm → `npm@10.9.2`로 고정됨
+> - `eslint-config-next` 버전 미일치 → `^16.2.6`로 동기화됨
+> - club_record SQL smoke 미승격 → `db:smoke:sql` npm script로 승격됨
+> - native `<select>` 잔존 → src 전체 0건
+> - `window.confirm`/native `<details>` 잔존 → club-record/매치 컨트롤 영역에서 모두 제거됨
 
 ### Direction
 
@@ -112,27 +126,20 @@ App Router 기준 핵심 IA는 다음과 같다.
 
 우선순위는 아래 순서가 합리적이다.
 
-1. 품질 게이트 고정
-   - CI에 `npm run test` 추가
-   - `verify`에 test 포함 여부 결정
-   - `club_record` SQL smoke를 명시 npm script로 승격
-
-2. IA와 legacy 경계 확정
+1. IA와 legacy 경계 확정
    - `/history`, `/leaderboard`, `/matches/new`를 유지/폐기/흡수 중 하나로 결정
    - 확인 요청 카드가 어느 히스토리로 가야 하는지 정리
 
-3. UI primitive 통일
-   - 남은 native select 제거
-   - `window.confirm`, native `<details>`를 Dialog/Popover/DropdownMenu 계열로 전환
-
-4. DB/RLS 고위험 경계 강화
+2. DB/RLS 고위험 경계 강화
    - core match create/update/approve/reject를 RPC transaction으로 옮길지 결정
    - anon/default privileges 재검토
-   - `profile_completed` DB 강제 여부 결정
+   - `profile_completed` DB 강제 여부 결정 (현재는 서비스 계층 `requireCompletedProfile`만, DB 정책은 없음)
 
-5. 제품 문서 최신화
+3. 제품 문서 최신화
    - `01-product-canvas.md`를 현재 `club_record` 중심 제품 shape에 맞게 갱신
    - 완료된 review finding과 open item 정리
+
+> 완료된 항목: 품질 게이트(CI test/verify/SQL smoke), UI primitive 통일(native select/confirm/details 제거). 자세한 내용은 위 Executive Summary 참고.
 
 ## 현재 제품 구조
 
@@ -240,24 +247,14 @@ App Router 기준 핵심 IA는 다음과 같다.
 
 ### 마찰
 
-아직 native control이 남아 있다.
+UI primitive 정합성은 2026-05-27 기준 거의 해소됐다.
 
-- `src/features/schedules/components/match-schedule-form.tsx`
-- `src/features/club-record/components/club-record-participant-manager.tsx`
-- `src/features/club-record/components/club-record-match-controls.tsx`
+- native `<select>`: src 전체 0건. `ClubRecordTimeSelect`(Popover 기반)와 `DropdownMenu`/`Popover`로 모두 교체됨.
+- native `<details>`: src 전체 0건. 경기 메뉴는 `DropdownMenu`로 통합됨.
+- `window.confirm`: 운영진 위험 액션(이벤트 취소/경기 삭제/확정 결과 덮어쓰기) 영역에서 0건. `AlertDialog`로 전환됨.
+- `club-record-history`: 카드/리스트/필터 + `PAGE_SIZE=16` + `IntersectionObserver` sentinel 기반 무한 스크롤 구현됨.
 
-이것은 최근 추가된 디자인 규칙과 충돌한다. 새 이벤트 시간 선택은 `ClubRecordTimeSelect`로 바뀌었으므로, 같은 패턴을 확장하면 된다.
-
-위험 액션 UX도 통일이 필요하다.
-
-- 이벤트 취소: `window.confirm`
-- 경기 삭제: `window.confirm`
-- 확정 결과 덮어쓰기: `window.confirm`
-- 경기 메뉴: native `<details>`
-
-이들은 운영자가 실수하면 데이터 보존에 영향을 줄 수 있는 액션이다. 공통 `Modal/Dialog`, `Popover`, `DropdownMenu` 계열로 바꾸는 편이 현재 UI 규칙과 맞다.
-
-히스토리도 정리가 필요하다. `club-record-history`는 카드/리스트/필터를 갖추었지만, 기존 match history처럼 초기 제한과 무한 스크롤이 명확히 구현되어 있지 않다. 문서 규칙은 히스토리 무한 스크롤을 유지하라고 말한다.
+남은 정리 후보는 IA/제품 경계 쪽이다. 운영진 위험 액션이 늘어날 경우 동일한 `AlertDialog` 패턴 유지가 핵심이고, 새 native control이 들어오지 않도록 디자인 규칙(`docs/design/00-ui-ux-agent-rules.md`)으로 가드한다.
 
 ### 용어 경계
 
@@ -320,25 +317,22 @@ RLS는 켜져 있지만 `schema.sql` 기준 anon/default grant가 넓다. RLS와
 - 사용자 플로우 E2E
 - Supabase service mock 테스트
 - core match/schedule/profile SQL smoke
-- CI의 test 실행
 
 ### CI / 검증 게이트
 
-현재 `.github/workflows/ci.yml`은 `npm ci`, `npm run lint`, `npm run build`만 실행한다.
+2026-05-27 기준 `.github/workflows/ci.yml`은 `npm ci` 다음에 `test → lint → build` 순서를 실행한다.
 
-`package.json`에는 `test`가 있지만 `verify`에는 포함되어 있지 않다.
+`package.json`의 `verify`는 `npm run test && npm run lint && npm run build`로 묶여 있다.
 
-현재 권장 게이트는 다음처럼 바꾸는 것이 좋다.
+권장 로컬 게이트는 다음과 같다.
 
 ```bash
-npm run test
-npm run lint
-npm run build
+npm run verify
 npm run env:check
 npm run db:push:dry
 ```
 
-DB/RLS/RPC 변경이 있으면 추가로 다음을 별도 승인된 대상에서 실행한다.
+DB/RLS/RPC 변경이 있으면 추가로 다음을 별도 승인된 대상에서 실행한다(또는 wrapper `npm run db:smoke:sql`).
 
 ```bash
 psql "$SUPABASE_DB_PUSH_URL" -v ON_ERROR_STOP=1 < supabase/tests/club_record_smoke.sql
@@ -346,65 +340,65 @@ psql "$SUPABASE_DB_PUSH_URL" -v ON_ERROR_STOP=1 < supabase/tests/club_record_smo
 
 ### 패키지/의존성 상태
 
-현재 dependency audit 대응 변경이 작업 중이다.
+dependency audit 대응 결과는 다음과 같다.
 
-- `next`: `16.1.6`에서 `16.2.6`으로 변경됨
+- `next`: `16.2.6` 정합
+- `eslint-config-next`: `^16.2.6`로 next와 동기화
+- `packageManager`: `npm@10.9.2`로 고정, scripts/CI/docs와 일관
 - high severity audit은 해결됨
 - 남은 moderate audit은 `next@16.2.6` 내부 `postcss@8.4.31`
 - `npm audit fix --force`는 `next@9.3.3` 다운그레이드를 제안하므로 적용하면 안 됨
 
-추가로 확인할 점이 있다.
-
-- `eslint-config-next`는 아직 `16.1.6`이다.
-- `packageManager`는 pnpm으로 적혀 있지만, scripts/CI/docs는 npm을 기준으로 운영한다.
-
-둘 다 즉시 장애는 아니지만, 재현성과 유지보수를 위해 정리하는 편이 좋다.
-
 ## Risk Register
+
+2026-05-27 갱신: 해소된 항목은 표 아래 별도로 분리했다.
+
+### 미해결
 
 | 우선순위 | 리스크 | 영향 | 근거/위치 | 권장 대응 |
 | --- | --- | --- | --- | --- |
-| P0 | CI에 `npm run test` 없음 | 테스트가 깨져도 main에 들어갈 수 있음 | `.github/workflows/ci.yml`, `package.json` | CI와 `verify`에 test 포함 |
-| P0 | legacy 히스토리/리더보드와 club_record 히스토리 공존 | 사용자 혼란, 제품 표면 이중화 | `src/app/clubs/[clubId]/history`, `src/app/clubs/[clubId]/club-record/history` | 유지/폐기/흡수 정책 결정 |
-| P0 | native select 잔존 | 최근 디자인 규칙과 불일치, 모바일 조작감 저하 | schedules, participant-manager, match-controls | Popover/Command/Toggle 계열로 전환 |
+| P0 | legacy 히스토리/리더보드와 club_record 히스토리 공존 | 사용자 혼란, 제품 표면 이중화 | `src/app/clubs/[clubId]/history`, `src/app/clubs/[clubId]/club-record/history`, `src/app/clubs/[clubId]/leaderboard` | 유지/폐기/흡수 정책 결정 |
+| P0 | confirmation prompt card가 cross-track 이동 | club_record 대시보드에서 legacy /history로 점프 | `src/features/matches/components/match-confirmation-prompt-card.tsx:48` | 진입점을 어느 history로 보낼지 결정 |
+| P0 | `/leaderboard` orphan 라우트 | 빌드/라우팅 표면에는 있지만 어떤 Link도 가리키지 않음 | `src/app/clubs/[clubId]/leaderboard/page.tsx` | 진입점 만들거나 라우트 제거 |
 | P1 | core match 쓰기 다중 DML | partial write, race condition | `src/features/matches/services/matches.ts` | RPC transaction화 검토 |
-| P1 | SQL smoke 수동성 | DB 회귀 검증 누락 가능 | `supabase/tests/club_record_smoke.sql` | npm script로 승격 |
 | P1 | anon/default grant 넓음 | RLS 실수 시 노출 범위 확대 | `supabase/schema.sql` | least privilege audit |
-| P1 | 위험 액션 native confirm | 운영 실수/UX 불일치 | event workspace, match controls | 공통 Dialog로 전환 |
-| P1 | `packageManager`와 실제 운영 불일치 | 설치 재현성 혼선 | `package.json`, CI | npm 또는 pnpm 중 하나로 고정 |
-| P2 | 제품 캔버스가 현재 구현보다 오래됨 | 의사결정 기준 흐림 | `docs/01-product-canvas.md` | club_record 중심으로 갱신 |
+| P2 | 제품 캔버스가 현재 구현보다 오래됨 | 의사결정 기준 흐림 | `docs/01-product-canvas.md` | club_record 중심 + matches 보조 트랙으로 갱신 |
 | P2 | service test 부족 | Supabase 호출 회귀를 build가 못 잡음 | `src/features/*/services` | mock client 기반 테스트 추가 |
+
+### 해소됨 (2026-05-27 검증)
+
+| 원래 우선순위 | 항목 | 해소 상태 |
+| --- | --- | --- |
+| P0 | CI에 `npm run test` 없음 | `.github/workflows/ci.yml`에 test 단계 존재 |
+| P0 | native select 잔존 | src/ 전수 grep 결과 0건 |
+| P1 | SQL smoke 수동성 | `db:smoke`, `db:smoke:sql` npm script 존재 |
+| P1 | 위험 액션 native confirm | `window.confirm` 0건 (마지막 1건은 `club-member-list.tsx` `AlertDialog` 전환) |
+| P1 | `packageManager` 불일치 | `package.json`은 `npm@10.9.2`로 명시되어 운영과 일관 |
+| P1 | native `<details>` 메뉴 | src/ 전수 grep 결과 0건 |
+| P0 | `eslint-config-next` 버전 불일치 | `next@16.2.6`과 동일하게 `eslint-config-next@^16.2.6` 정합 |
 
 ## 권장 작업 순서
 
-### P0. 릴리즈 안전성 고정
+### P0. 릴리즈 안전성 고정 (해소됨, 2026-05-27)
 
-1. CI에 `npm run test` 추가
-2. `verify` 스크립트에 test 포함 여부 결정
-3. `eslint-config-next`를 Next 버전과 맞춤
-4. npm/pnpm 운영 기준 하나로 확정
-5. 현재 dependency audit 변경 커밋
+원래 항목(CI test, verify 묶음, eslint-config-next 정렬, npm 일관성)은 모두 해소되었다. 자세한 검증은 위 Risk Register §해소됨 참조.
 
-이 단계의 목표는 “기능을 더 만들기 전에 깨진 상태가 main에 들어가지 않게 하는 것”이다.
-
-### P0. IA 충돌 제거
+### P0. IA 충돌 제거 (진행 중)
 
 1. legacy `/history`, `/leaderboard`, `/matches/new` 정책 결정
-2. 확인 요청 카드 링크가 기존 히스토리로 가야 하는지, club_record 히스토리로 가야 하는지 결정
-3. `이벤트`, `일정`, `새 경기` 용어 정의
-4. `docs/01-product-canvas.md`를 현재 제품 구조에 맞게 갱신
+   - `/leaderboard`는 어떤 Link에서도 참조되지 않는 orphan이라 “라우트 제거”가 가장 단순한 옵션이다.
+   - `/history`, `/matches/*`는 매치 confirmation, 경기 상세, 일정 잡기 진입로로 여전히 사용된다. 단순 폐기보다는 “단일 매치/일정 진입로”로 명시하는 편이 자연스럽다.
+2. `MatchConfirmationPromptCard`가 club_record 대시보드에서 legacy `/history`로 점프하는 cross-track 진입점 정리
+   - 옵션 A: club_record `/club-record/history`로 진입점을 옮긴다 (단, 해당 화면이 confirmation 카드를 노출하도록 보강 필요)
+   - 옵션 B: club_record 대시보드에서 카드 자체를 club_record 매치만 보여주도록 분리
+3. `이벤트`, `일정`, `새 경기`, `히스토리` 용어 정의
+4. `docs/01-product-canvas.md`를 현재 제품 구조(club_record 메인 + matches 보조 트랙)에 맞게 갱신
 
 이 단계의 목표는 “사용자가 어디로 가야 하는지 헷갈리지 않게 하는 것”이다.
 
-### P1. UI primitive 정리
+### P1. UI primitive 정리 (해소됨, 2026-05-27)
 
-1. 일정 생성 시간 select 제거
-2. 참가자 추가의 늦참/그룹 select 제거
-3. 수동 경기 선수 select 제거
-4. `window.confirm` 제거
-5. native `<details>` 메뉴 제거
-
-이 단계의 목표는 “최근 만든 디자인 규칙과 실제 UI를 일치시키는 것”이다.
+native select, native `<details>`, `window.confirm`은 모두 0건. 새 규칙 위반은 PR 단계에서 grep 게이트만 유지하면 회귀를 막을 수 있다.
 
 ### P1. DB / 권한 경계 보강
 
@@ -418,11 +412,12 @@ psql "$SUPABASE_DB_PUSH_URL" -v ON_ERROR_STOP=1 < supabase/tests/club_record_smo
 
 ### P2. 사용성 고도화
 
-1. club_record 히스토리 무한 스크롤
-2. 월간 카드 상세 브라우저 검증
-3. 결과 입력 플로우 E2E
-4. 초대 링크/게스트 참가 E2E
-5. 일정에서 실제 경기 기록으로 연결
+1. 월간 카드 상세 브라우저 검증
+2. 결과 입력 플로우 E2E
+3. 초대 링크/게스트 참가 E2E
+4. 일정에서 실제 경기 기록으로 연결
+
+> club_record 히스토리 무한 스크롤은 2026-05-19 이후 `PAGE_SIZE=16 + IntersectionObserver` sentinel로 구현됨(`club-record-history.tsx`).
 
 이 단계의 목표는 “운영자가 실제 정모 후 반복 사용해도 마찰이 적은 상태”다.
 
@@ -434,27 +429,25 @@ psql "$SUPABASE_DB_PUSH_URL" -v ON_ERROR_STOP=1 < supabase/tests/club_record_smo
 
 릴리즈 전 최소 조건은 다음으로 보는 것이 합리적이다.
 
-- `npm run test`가 CI에서 실행된다.
-- `npm run lint`와 `npm run build`가 통과한다.
-- DB 변경이 있다면 `db:push:dry`와 SQL smoke가 통과한다.
-- 남은 native select 중 club_record 운영 핵심 화면은 제거된다.
+- `npm run verify`(test + lint + build)가 CI에서 통과한다.
+- DB 변경이 있다면 `db:push:dry`와 `db:smoke:sql`이 통과한다.
 - legacy 히스토리/리더보드 진입 정책이 문서화된다.
 - dependency audit high severity는 0을 유지한다.
 
 현재 이미 만족하는 조건은 다음이다.
 
+- `npm run test`/`lint`/`build`가 CI에서 모두 실행된다.
 - `club_record` DB apply/smoke 이력이 문서화되어 있다.
 - `club_record` 핵심 유틸 테스트가 존재한다.
 - Next high severity audit은 `16.2.6` 업그레이드로 해소되었다.
+- native `<select>`/`<details>`/`window.confirm`이 운영 핵심 화면에서 제거되었다.
 - 주요 제품 규칙은 `AGENTS.md`, `docs/09-keep-rules.md`, `docs/club-record/*`에 남아 있다.
 
 아직 미흡한 조건은 다음이다.
 
-- CI test 누락
-- legacy IA 정책 미정
-- native select 잔존
-- SQL smoke 자동화 부족
-- 제품 캔버스 최신화 부족
+- legacy IA 정책 미정 (특히 `/leaderboard` orphan, confirmation 카드 cross-track 진입)
+- 제품 캔버스 최신화 부족 (matches 보조 트랙 반영 안 됨)
+- core match 다중 DML의 RPC 트랜잭션화 결정 미정
 
 ## Appendix
 

@@ -151,27 +151,31 @@ DB/RPC 가드:
 - 프론트에서만 막지 않는다.
 - 핵심 쓰기 기능은 서비스 계층과 DB 양쪽에서 같이 막는다.
 
+> 2026-05-27 현재 구현: 서비스 계층 `requireCompletedProfile`이 clubs/schedules/matches/club-record events 쓰기에 적용되어 있다. DB(RLS/RPC) 단계의 `profile_completed` 강제는 아직 도입되지 않았다. `docs/12-project-review.md` P1 항목으로 추적.
+
 ## 6. Route Design
 
 ### 6.1 New / Updated Routes
 
-- `/auth/callback`
+- `/auth/callback` (구현됨)
   - OAuth / 이메일 인증 완료 후 세션 복구
   - 프로필 완료 여부 확인
   - 완료되지 않았으면 온보딩으로 이동
 
-- `/auth/check-email`
+- `/auth/check-email` (설계 단계, 미구현)
   - 이메일 회원가입 직후 인증 안내
   - 재전송
   - “인증 완료 후 계속” CTA
 
-- `/auth/reset-password`
+- `/auth/reset-password` (설계 단계, 미구현)
   - 비밀번호 재설정
 
-- `/onboarding/profile`
+- `/onboarding/profile` (구현됨)
   - 닉네임
   - 성별
   - 저장 후 원래 목적지로 이동
+
+> 2026-05-27 기준 `src/app/auth/`에는 `callback`만 존재한다. `/auth/check-email`과 `/auth/reset-password`는 본 문서가 선언한 향후 작업이며, 실제 라우트로 추가될 때 dev-log에 기록한다.
 
 ### 6.2 Redirect Rule
 

@@ -5,6 +5,13 @@
 공통 primitive를 실제로 수정하기 전에, 각 컴포넌트의 최종 의도와 변경 범위를 고정한다.
 이 문서는 구현 직전 계약이다.
 
+> 2026-05-27 구현 상태 점검 (스펙 vs 코드):
+> - Button: 스펙은 `ghost`/`destructive`/`icon`을 추가하지만 `src/components/ui/button.tsx`는 `default`/`secondary`/`outline` + `default`/`sm`/`lg`만 구현. 여전히 `rounded-md`이고 default variant는 `bg-primary`(navy)로 brand green이 아니다.
+> - Badge: 스펙은 7종(default/brand/success/warning/destructive/info/neutral) 요구. 실제는 5종, `info`/`neutral` 없음.
+> - StatusBox: 스펙은 4종(success/error/info/warning) 요구. 실제는 3종, `warning` 없음.
+> - Card: 스펙은 variants(`default/muted/interactive/highlight`)와 gradient 축소를 요구. 실제는 cva variant가 없고 기존 gradient 유지.
+> 위 항목은 본 spec이 선언한 contract이며 코드에 아직 반영되지 않은 상태다. 후속 구현 작업으로 추적한다.
+
 ## Shared Rules
 
 - 디자인 변경은 전역 구조를 뒤집지 않는다

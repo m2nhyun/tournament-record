@@ -92,12 +92,22 @@
 
 ## Migration Split
 
-1. `add_club_record_core`
-2. `add_club_record_event_tables`
-3. `add_club_record_result_tables`
-4. `add_club_record_rls_and_functions`
-5. `add_club_record_member_sync`
-6. `restrict_club_record_member_sync_grant`
+핵심 도입(2026-05-06 ~ 05-08):
+
+1. `20260506120000_add_club_record_core.sql`
+2. `20260506121000_add_club_record_event_tables.sql`
+3. `20260506122000_add_club_record_result_tables.sql`
+4. `20260506123000_add_club_record_rls_and_functions.sql`
+5. `20260508093000_add_club_record_member_sync.sql`
+6. `20260508094000_restrict_club_record_member_sync_grant.sql`
+
+후속 fix / 보강:
+
+7. `20260507094500_fix_club_record_ranking_move.sql` — `move_club_record_ranking` 임시 오프셋 알고리즘 (RF-001)
+8. `20260507095500_fix_club_record_guest_join_conflicts.sql` — 게스트 초대 RPC on-conflict 명시 (RF-002)
+9. `20260507100500_fix_club_record_result_update_conflict.sql` — 결과 업데이트 충돌 해소
+10. `20260512113000_fix_club_record_history_guest_names.sql` — 히스토리에 게스트 표시명 포함
+11. `20260512120500_add_club_record_history_team_names.sql` — history RPC가 `team_names text[]`를 반환하도록 확장
 
 ## Existing Integration
 

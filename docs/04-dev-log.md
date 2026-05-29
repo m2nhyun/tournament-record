@@ -1,5 +1,35 @@
 # Dev Log
 
+## 2026-05-27
+
+### docs 전수 검증 및 stale 항목 갱신 (2회차)
+
+- 5개 검증 에이전트를 병렬로 띄워 `docs/` 전체(6,064 LOC)를 코드/마이그레이션/스크립트와 대조했다. 발견된 불일치를 일괄 정리.
+- `docs/01-product-canvas.md`:
+  - 이벤트 상태 전이에 누락됐던 `draft`/`in_progress`를 추가.
+  - 결과 입력 흐름이 club_record(`pending_result → confirmed`)와 일반 matches(`submitted → confirmed/disputed`)를 혼동하던 부분을 분리.
+  - 비범위에서 "카카오 비범위, 이메일 OTP 사용 중" 표기를 제거(실제로는 둘 다 활성).
+- `docs/05-automation.md`:
+  - 명령어 표에 `db:smoke:sql`을 추가하고 `verify` 설명을 `test + lint + build`로 갱신.
+  - Club Record SQL Smoke 섹션이 wrapper script(`npm run db:smoke:sql`)를 우선 안내하도록 수정.
+- `docs/07-auth-handoff.md`: 2026-04-02 user_profiles/onboarding 흐름과 카카오 logout 분기를 archive 차이 항목에 반영.
+- `docs/11-auth-onboarding-design.md`: `/auth/check-email`, `/auth/reset-password` 미구현 상태 명시. `profile_completed` DB 강제는 미도입(서비스 계층만 차단).
+- `docs/12-project-review.md`: Diagnosis/마찰/CI 게이트/Risk Register/Release Readiness/P2 사용성 항목을 모두 2026-05-27 코드 상태로 재정렬.
+- `docs/08-ux-tasks.md`: 4) 히스토리 뷰 개선에 `team_names`/club_record 무한 스크롤(2026-05-19) 완료 사실을 추가. Backlog(P0) 0)의 native select 후속 액션을 완료로 정정.
+- `docs/club-record/03-schema.md`: Migration Split에 후속 fix 5개(`fix_ranking_move`, `fix_guest_join_conflicts`, `fix_result_update_conflict`, `fix_history_guest_names`, `add_history_team_names`)를 추가.
+- `docs/club-record/06-checklist.md`: Apply Order를 실제 운영 적용 순서(11개)와 맞춤.
+- `docs/club-record/07-handoff.md`: snapshot 기준일을 2026-05-22로 갱신, native select 전환 항목을 완료로 정리, Next Recommended Task Split에서 완료된 1번 작업 제거.
+- `docs/club-record/05-implementation.md`: Suggested Hook Files에 `use-club-record-monthly-card.ts` 추가.
+
+### 문서-코드 정합성 갱신 + 마지막 window.confirm 제거
+
+- `docs/12-project-review.md`(2026-05-14)의 진단을 코드 현재 상태로 재검증하고 stale 항목을 갱신했다.
+  - CI/`verify`에 test 포함, `eslint-config-next` 정렬, `packageManager` npm 일관성, `db:smoke` npm script 승격, native select/`<details>` 0건은 이미 모두 해소되어 있었다.
+  - 미해결 P0는 legacy IA 정책(특히 `MatchConfirmationPromptCard` cross-track, `/leaderboard` orphan)으로 좁혀졌다.
+- `src/features/clubs/components/club-member-list.tsx`의 멤버 제외 `window.confirm`을 공통 `AlertDialog`로 전환했다. src 전체 `window.confirm` 0건.
+- `docs/01-product-canvas.md`에 matches 보조 트랙(`/matches/*`, `/history`, `/schedules/*`)을 명시했다.
+- `docs/08-ux-tasks.md`의 primitive 전환 항목을 "완료"로 정리하고 최근 업데이트에 갱신 사실을 남겼다.
+
 ## 2026-05-22
 
 ### Native Select 전면 교체 — UI Primitive 통일

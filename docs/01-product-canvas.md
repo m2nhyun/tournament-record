@@ -18,8 +18,8 @@
 
 - 클럽 운영진이 정모 일정을 이벤트로 등록한다.
 - 이벤트는 날짜, 시작/종료 시각, 코트 수로 구성된다.
-- 상태: `open` → `completed` / `cancelled`
-- 종료 시각이 지나거나 상태가 closed이면 읽기 전용으로 전환된다.
+- 상태: `draft` / `open` / `in_progress` / `completed` / `cancelled`
+- 종료 시각이 지나거나 `completed`/`cancelled`이면 읽기 전용으로 전환된다.
 
 ### 슬롯 (Club Record Event Slot)
 
@@ -49,8 +49,9 @@
 
 ### 결과 입력
 
-- 경기 참가자(정회원)이 점수를 입력하면 자동으로 `confirmed` 상태가 된다.
+- 클럽 레코드 경기는 참가자(정회원)가 결과를 입력/제출하면 `pending_result → confirmed`로 전환된다(별도 상대 확인 단계 없음).
 - 운영진은 어느 경기든 결과를 사후 입력하거나 수정할 수 있다.
+- 일반 matches 경로(`/clubs/[clubId]/matches/*`)는 별도 `submitted → confirmed/disputed` 흐름을 유지하며, 클럽 레코드 매치와는 상태 머신이 다르다.
 
 ### 랭킹 / 클럽 레코드 멤버
 
@@ -114,6 +115,17 @@
 | 클럽 레코드 멤버 랭킹 | 완료 |
 | 이벤트 워크스페이스 보드 | 완료 |
 
+### 보조 트랙: 단일 매치 / 일정 모집 (matches feature)
+
+`club_record`와 별개로 `/clubs/[clubId]/matches/*`, `/clubs/[clubId]/history`, `/clubs/[clubId]/schedules/*` 라우트가 다음 용도로 살아 있다.
+
+- 일회성 경기 기록 (`/matches/new`)
+- 일정 잡기 진입 (`/matches/new?mode=schedule` → 일정 모집)
+- 경기 상세 보기 / 확인 처리 (`/matches/[matchId]`)
+- 일반 경기 히스토리 뷰 (`/history`)
+
+바텀 네비게이션에서는 노출되지 않고, club_record 대시보드의 confirmation 카드와 일정 카드의 내부 링크에서 진입한다. `/leaderboard`는 현재 어떤 Link에서도 참조되지 않는 orphan 라우트이며 정책 결정 대기 상태다.
+
 ---
 
 ## 비범위 (현재)
@@ -121,7 +133,8 @@
 - 글로벌 레이팅 / 외부 클럽 간 교류전
 - 경기 영상 분석
 - 범용 커뮤니티/게시판
-- 카카오 소셜 로그인 (이메일 OTP 사용 중)
+
+> 인증은 현재 카카오 OAuth와 이메일/비밀번호(`signInWithPassword` / `signUp`)를 모두 활성으로 유지한다. 자세한 흐름은 `docs/11-auth-onboarding-design.md` 참고.
 
 ---
 

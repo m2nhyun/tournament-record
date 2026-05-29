@@ -14,6 +14,8 @@
 ### 4) 히스토리 뷰 개선
 - 완료: 카드/리스트 모드, 필터, 무한 스크롤
 - 완료: 리스트 모드 최소형(`팀A x:y 팀B`) + 배경색 승패 표시
+- 완료: club_record 히스토리에 `team_names` 기반 내 팀 전체 이름 표시(2026-05-12)
+- 완료: club_record 히스토리 `PAGE_SIZE=16` + `IntersectionObserver` sentinel 기반 무한 스크롤(2026-05-19)
 
 ### 5) 초대 플로우 개선
 - 완료: 원클릭 초대 링크(`/join/[inviteCode]`)
@@ -46,16 +48,17 @@
 - 상태: UI/UX 에이전트 실행 규칙 1차 정리 완료
 - 반영 내용: `docs/design/00-ui-ux-agent-rules.md`, `design-ui-designer.md`, `design-ux-designer.md`, `.codex/agents/ux.toml`에 프로젝트 전용 디자인 판단 기준, shadcn/Radix 우선 정책, IA 브라우저 검증 계약을 반영
 
-### 1-1) shadcn/Radix primitive 전환
+### 1-1) shadcn/Radix primitive 전환 (완료, 2026-05-27 검증)
 - 목표: native select/dropdown과 브라우저 기본 UI를 shadcn/Radix primitive로 전환해 화면 일관성과 조작감을 높인다
 - 원칙: 새 UI에 native `<select>`를 사용하지 않고, 긴 옵션 목록은 `Popover` 기반 picker, 액션 목록은 `DropdownMenu`, 선택 집합은 `Tabs`/`ToggleGroup`/`RadioGroup`을 우선한다
-- 1차 발견 위치:
-  - 완료: `src/features/club-record/components/club-record-event-form.tsx` 시작/종료 시간 select
-  - 완료: `src/features/club-record/components/club-record-event-edit-dialog.tsx` 시작/종료 시간 select
-  - `src/features/club-record/components/club-record-participant-manager.tsx` 수동 경기 생성/선수 선택 select
-  - `src/features/club-record/components/club-record-match-controls.tsx` 경기/슬롯 선택 select
-  - `src/features/schedules/components/match-schedule-form.tsx` 시작/종료 시간 select
-- 상태: shadcn/Radix `Popover` primitive 추가, 새 이벤트/이벤트 수정 시간 선택 1차 전환 완료
+- 완료 위치:
+  - `src/features/club-record/components/club-record-event-form.tsx` 시작/종료 시간 select
+  - `src/features/club-record/components/club-record-event-edit-dialog.tsx` 시작/종료 시간 select
+  - `src/features/club-record/components/club-record-participant-manager.tsx`
+  - `src/features/club-record/components/club-record-match-controls.tsx`
+  - `src/features/schedules/components/match-schedule-form.tsx`
+- 검증: 2026-05-27 src 전체 grep 기준 `<select>` 0건, `<details>` 0건, `window.confirm` 0건
+- 다음: PR 단계에서 grep 회귀 방지 정도만 유지
 
 ### 2) Auth / 온보딩 설계 고정
 - 이메일/카카오 병행 정회원 구조와 프로필 완료 가드를 설계 문서로 고정
@@ -91,8 +94,8 @@
   - 클럽: 클럽 정보, 초대 링크, 다가오는 일정, 멤버, 랭킹 관리 진입 확인
 - 발견한 friction:
   - 새 이벤트 화면의 native time select가 긴 combobox 문자열로 노출되어 조작감과 접근성 품질이 낮다
-- 반영 내용: shadcn/Radix `Popover` 기반 `ClubRecordTimeSelect`를 추가해 새 이벤트/이벤트 수정 시간 선택을 교체했다
-- 다음 액션: 참가자 관리자/경기 컨트롤/일정 생성에 남은 native select를 순차 교체
+- 반영 내용: shadcn/Radix `Popover` 기반 `ClubRecordTimeSelect`를 추가해 새 이벤트/이벤트 수정 시간 선택을 교체했고, 참가자 관리자/경기 컨트롤/일정 생성의 native select도 모두 전환했다(상세는 Doing 1-1)
+- 상태: 완료(2026-05-27 grep 검증)
 
 ### 1) 클럽 도입 퍼널 단순화
 - 목표: 클럽 생성 -> 초대 링크 공유 -> 첫 경기 기록까지의 마찰 최소화
@@ -174,6 +177,19 @@
 - 주간/월간 활동량, 기록 누락 점검, 자주 뛰는 멤버 가시화
 
 ## Recent Updates
+
+### 2026-05-27 문서-코드 정합성 갱신
+- `12-project-review.md`(2026-05-14) 진단 중 다음 항목이 이미 해소되었음을 코드/CI 검증으로 확인하고 문서에 반영
+  - CI에 `npm run test` 단계 존재 (`.github/workflows/ci.yml`)
+  - `package.json` `verify`가 test + lint + build를 묶고 있음
+  - `eslint-config-next`가 `next@16.2.6`과 동일 버전군으로 정렬됨
+  - `packageManager`가 `npm@10.9.2`로 명시되어 운영(npm)과 일관
+  - `db:smoke`, `db:smoke:sql` npm script로 승격됨
+  - native `<select>`, `<details>`는 src 전체 grep 0건
+- `club-member-list.tsx`의 멤버 제외 `window.confirm`을 `AlertDialog`로 전환 → src 전체 `window.confirm` 0건
+- 남은 P0 IA 결정 사안만 미해결 상태로 좁혀짐: legacy 라우트 정책, `MatchConfirmationPromptCard` cross-track 진입, `/leaderboard` orphan 처리
+
+
 
 ### 2026-03-10 경기 확인 UX 정리 완료
 - `submitted`는 `기록됨`, `disputed`는 `재검토 필요` 중심 카피로 정리

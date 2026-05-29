@@ -50,10 +50,21 @@
 
 ### Apply Order
 
+핵심 도입:
+
 1. `20260506120000_add_club_record_core.sql`
 2. `20260506121000_add_club_record_event_tables.sql`
 3. `20260506122000_add_club_record_result_tables.sql`
 4. `20260506123000_add_club_record_rls_and_functions.sql`
+5. `20260507094500_fix_club_record_ranking_move.sql`
+6. `20260507095500_fix_club_record_guest_join_conflicts.sql`
+7. `20260507100500_fix_club_record_result_update_conflict.sql`
+8. `20260508093000_add_club_record_member_sync.sql`
+9. `20260508094000_restrict_club_record_member_sync_grant.sql`
+10. `20260512113000_fix_club_record_history_guest_names.sql`
+11. `20260512120500_add_club_record_history_team_names.sql`
+
+> 운영 DB 적용 이력: 2026-05-08(1~9), 2026-05-12(10~11). 자세한 내용은 `docs/club-record/07-handoff.md` "Migration Apply Log" 참고.
 
 ### After Each Migration
 

@@ -69,6 +69,7 @@
 - `src/features/club-record/hooks/use-club-record-event-workspace.ts`
 - `src/features/club-record/hooks/use-club-record-access.ts`
 - `src/features/club-record/hooks/use-club-record-dashboard.ts`
+- `src/features/club-record/hooks/use-club-record-monthly-card.ts`
 
 ## Suggested Route Candidates
 

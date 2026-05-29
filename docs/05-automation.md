@@ -98,11 +98,12 @@ export SUPABASE_DB_PUSH_URL='postgresql://postgres.<project-ref>:<url-encoded-pa
 ```bash
 npm run browser:check   # cmux browser로 페이지 접속/스냅샷 확인
 npm run env:check        # 앱 필수 env 확인
-npm run db:smoke         # Supabase 연결 스모크 체크
+npm run db:smoke         # Supabase 연결 스모크 체크 (head/count)
+npm run db:smoke:sql     # club_record 도메인 규칙 SQL smoke (psql 필요)
 npm run db:push:dry      # 원격 DB 반영 예정 마이그레이션 확인
 npm run db:push          # 원격 DB 마이그레이션 실제 반영 + schema.sql 동기화
 npm run db:schema:sync   # 원격 public schema를 schema.sql로 다시 덤프
-npm run verify           # lint + build 전체 검증
+npm run verify           # test + lint + build 전체 검증
 npm run automation:check # env + smoke + verify 일괄 실행
 ```
 
@@ -172,11 +173,15 @@ git ls-remote --heads origin
 
 ## Club Record SQL Smoke
 
-`club_record` migration 적용 뒤에는 아래 SQL smoke를 실행한다. 로컬에 `psql`이 없으면 Docker Postgres client를 사용한다.
+`club_record` migration 적용 뒤에는 아래 SQL smoke를 실행한다. 로컬에 `psql`이 있으면 wrapper를 우선 사용한다.
 
 ```bash
-psql "$SUPABASE_DB_PUSH_URL" -f supabase/tests/club_record_smoke.sql
+npm run db:smoke:sql
 ```
+
+wrapper(`scripts/automation/smoke-db-sql.sh`)는 `SUPABASE_DB_PUSH_URL`(없으면 `SUPABASE_DB_URL`)로 `psql -v ON_ERROR_STOP=1 -f supabase/tests/club_record_smoke.sql`을 실행한다.
+
+`psql`이 없으면 Docker Postgres client로 동일하게 실행한다.
 
 ```bash
 source scripts/automation/source-env.sh
