@@ -49,6 +49,16 @@ npm run db:smoke:sql  # 3) anon 권한 회귀 검증 (#1)
 
 ## 2026-06-09
 
+### P1-B 3차: 워크스페이스에서 "내 경기" 명시 (개인 코트 확인 1단계)
+
+- 사용자 요구: "개인은 어떤 코트에서 경기를 하는지 알면 좋을 거 같다" — 코트번호 1~5 중 본인이 어느 코트로 가야 하는지 시각적으로 한눈에 보여야 한다.
+- 1단계로 이벤트 워크스페이스(`ClubRecordEventWorkspaceView`)의 슬롯 카드에서:
+  - 본인 `participantId`가 포함된 슬롯 카드 헤더에 `내 경기` Badge를 추가.
+  - 팀 1/팀 2 선수 이름 목록에서 본인 이름을 `font-semibold text-[var(--player-highlight)]`로 강조하고 `(나)` 접미. 히스토리 카드와 동일한 강조 토큰을 재사용해 시각 일관성 유지.
+- 데이터 흐름: `access.clubMemberId` → `workspace.participants`에서 `clubMemberId` 매칭 → `myParticipantId`. 게스트(anonymous) 진입 시 `clubMemberId`가 null이라 자연히 강조 안 됨(정상).
+- 다음 단계(예정): 클럽 홈 대시보드에 "내 다음 경기" 카드(코트 + 시간 + 팀 구성)를 추가하여 워크스페이스에 진입하지 않아도 코트를 파악할 수 있게 한다.
+- 검증: `npm run verify` 통과(test 64/64, lint 0 errors, build 성공). DB 변경 없음.
+
 ### P1-B 2차: 참가자 도착 시간 변경 UI (당일 교통 변수 대응)
 
 - 운영 현장에서 참가자가 19시/19:30/20시 등 다양한 시각에 도착하고 당일 교통 변수가 자주 발생한다는 사용자 요구를 반영. 한 번 도착시간을 입력한 뒤에도 운영진이 손쉽게 수정할 수 있게 했다.

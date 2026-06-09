@@ -95,6 +95,14 @@ export function ClubRecordEventWorkspaceView({
     return map;
   }, [workspace?.participants]);
 
+  const myParticipantId = useMemo(() => {
+    if (!access?.clubMemberId) return null;
+    const me = (workspace?.participants ?? []).find(
+      (participant) => participant.clubMemberId === access.clubMemberId,
+    );
+    return me?.id ?? null;
+  }, [access?.clubMemberId, workspace?.participants]);
+
   if (loading) {
     return <LoadingSpinner title="로딩 중" message="이벤트 워크스페이스를 불러오는 중..." />;
   }
@@ -344,7 +352,15 @@ export function ClubRecordEventWorkspaceView({
                           <div key={slot.id} className="rounded-xl border bg-muted/10 p-3">
                             <div className="flex items-center justify-between gap-3">
                               <div>
-                                <p className="font-medium">{slot.courtNumber}번 코트</p>
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium">{slot.courtNumber}번 코트</p>
+                                  {myParticipantId &&
+                                  slot.match?.players.some(
+                                    (player) => player.participantId === myParticipantId,
+                                  ) ? (
+                                    <Badge variant="brand">내 경기</Badge>
+                                  ) : null}
+                                </div>
                                 <p className="text-xs text-muted-foreground">
                                   슬롯 {slot.slotOrder} · {getSlotStatusLabel(slot.status)}
                                 </p>
@@ -373,15 +389,47 @@ export function ClubRecordEventWorkspaceView({
                                     팀 1:{" "}
                                     {slot.match.players
                                       .filter((player) => player.side === 1)
-                                      .map((player) => player.displayName)
-                                      .join(", ")}
+                                      .map((player, index, list) => (
+                                        <span key={player.participantId}>
+                                          {index > 0 ? ", " : ""}
+                                          <span
+                                            className={
+                                              player.participantId === myParticipantId
+                                                ? "font-semibold text-[var(--player-highlight)]"
+                                                : undefined
+                                            }
+                                          >
+                                            {player.displayName}
+                                            {player.participantId === myParticipantId
+                                              ? " (나)"
+                                              : ""}
+                                          </span>
+                                          {index === list.length - 1 ? "" : ""}
+                                        </span>
+                                      ))}
                                   </p>
                                   <p className="mt-1 font-medium">
                                     팀 2:{" "}
                                     {slot.match.players
                                       .filter((player) => player.side === 2)
-                                      .map((player) => player.displayName)
-                                      .join(", ")}
+                                      .map((player, index, list) => (
+                                        <span key={player.participantId}>
+                                          {index > 0 ? ", " : ""}
+                                          <span
+                                            className={
+                                              player.participantId === myParticipantId
+                                                ? "font-semibold text-[var(--player-highlight)]"
+                                                : undefined
+                                            }
+                                          >
+                                            {player.displayName}
+                                            {player.participantId === myParticipantId
+                                              ? " (나)"
+                                              : ""}
+                                          </span>
+                                          {index === list.length - 1 ? "" : ""}
+                                        </span>
+                                      ))}
                                   </p>
                                 </div>
                                 {slot.match.scoreText ? (
