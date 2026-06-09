@@ -49,6 +49,14 @@ npm run db:smoke:sql  # 3) anon 권한 회귀 검증 (#1)
 
 ## 2026-06-09
 
+### P1-B 2차: 참가자 도착 시간 변경 UI (당일 교통 변수 대응)
+
+- 운영 현장에서 참가자가 19시/19:30/20시 등 다양한 시각에 도착하고 당일 교통 변수가 자주 발생한다는 사용자 요구를 반영. 한 번 도착시간을 입력한 뒤에도 운영진이 손쉽게 수정할 수 있게 했다.
+- 신규 service 함수: `updateParticipantArrivalTime(participantId, arrivalTime: string | null)`. `club_record_event_participants.arrival_time`을 직접 update (정시 참가는 null). RLS에 의지해 admin/manager 권한 통제.
+- UI: `ClubRecordParticipantManager` 각 참가자 행에 `시간` 버튼 추가. 클릭 시 Modal에서 `정시` + 30분 단위 시간 그리드(기존 추가 다이얼로그와 동일 패턴)로 새 도착시간 선택 → 저장. description에 "변경 후 자동 편성을 다시 실행해주세요" 안내 포함.
+- 검증: `npm run verify` 통과(test 64/64, lint 0 errors, build 성공).
+- 운영 DB apply 후 확인할 부분: `handle_club_record_assignment_dirty_sync` trigger가 participant UPDATE에도 dirty=true를 설정하는지 (안 되어 있으면 후속 trigger migration 필요).
+
 ### P1-B 1차: 호스트 일정 취소 액션 (`cancel_match_schedule` RPC + UI)
 
 - 일정 상세(`/clubs/[clubId]/schedules/[scheduleId]`)에서 호스트가 자기 일정을 취소할 수 있게 했다. UX-tasks Backlog 6번의 "일정 취소"가 1차 완료.

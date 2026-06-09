@@ -1,7 +1,7 @@
 "use client";
 
 import { type FormEvent, useEffect, useMemo, useState } from "react";
-import { Check, UserPlus, UserRoundMinus, Users } from "lucide-react";
+import { Check, Clock, UserPlus, UserRoundMinus, Users } from "lucide-react";
 
 import { Modal } from "@/components/common/modal";
 import { LoadingSpinner } from "@/components/feedback/loading-spinner";
@@ -14,7 +14,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { listClubMembers } from "@/features/clubs/services/clubs";
 import type { ClubMember } from "@/features/clubs/types/club";
-import { addGuestParticipant, addMemberParticipant, removeParticipant } from "@/features/club-record/services/participants";
+import {
+  addGuestParticipant,
+  addMemberParticipant,
+  removeParticipant,
+  updateParticipantArrivalTime,
+} from "@/features/club-record/services/participants";
 import { createManualGuestProfile } from "@/features/club-record/services/guests";
 import type { ClubRecordGroupCode } from "@/features/club-record/types/member";
 import type { ClubRecordEventParticipant } from "@/features/club-record/types/participant";
@@ -63,6 +68,11 @@ export function ClubRecordParticipantManager({
   const [addTab, setAddTab] = useState<AddParticipantTab>("members");
   const [selectedClubMemberIds, setSelectedClubMemberIds] = useState<string[]>([]);
   const [memberArrivalTime, setMemberArrivalTime] = useState("");
+
+  const [arrivalEditTarget, setArrivalEditTarget] =
+    useState<ClubRecordEventParticipant | null>(null);
+  const [arrivalEditTime, setArrivalEditTime] = useState("");
+  const [arrivalEditBusy, setArrivalEditBusy] = useState(false);
 
   const [guestName, setGuestName] = useState("");
   const [guestGender, setGuestGender] = useState("");
@@ -257,6 +267,44 @@ export function ClubRecordParticipantManager({
     }
   };
 
+  const openArrivalEdit = (participant: ClubRecordEventParticipant) => {
+    setArrivalEditTarget(participant);
+    setArrivalEditTime(participant.arrivalTime ?? "");
+  };
+
+  const closeArrivalEdit = () => {
+    if (arrivalEditBusy) return;
+    setArrivalEditTarget(null);
+    setArrivalEditTime("");
+  };
+
+  const handleSaveArrivalEdit = async () => {
+    if (!arrivalEditTarget) return;
+    setArrivalEditBusy(true);
+    setStatus(null);
+    try {
+      const next = arrivalEditTime ? toArrivalTimestamp(arrivalEditTime) : null;
+      await updateParticipantArrivalTime(arrivalEditTarget.id, next);
+      setStatus({
+        type: "success",
+        message: arrivalEditTime
+          ? `${arrivalEditTarget.displayName} 님 도착 시간을 ${arrivalEditTime}(으)로 변경했습니다.`
+          : `${arrivalEditTarget.displayName} 님을 정시 참가로 변경했습니다.`,
+      });
+      setArrivalEditTarget(null);
+      setArrivalEditTime("");
+      await onChanged();
+    } catch (error) {
+      setStatus({
+        type: "error",
+        message:
+          error instanceof Error ? error.message : "도착 시간 변경에 실패했습니다.",
+      });
+    } finally {
+      setArrivalEditBusy(false);
+    }
+  };
+
   return (
     <section className="space-y-4">
       {status ? <StatusBox type={status.type} message={status.message} /> : null}
@@ -308,15 +356,26 @@ export function ClubRecordParticipantManager({
                   </p>
                 </div>
                 {!readOnly ? (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={removingParticipantId === participant.id}
-                    onClick={() => void handleRemoveParticipant(participant.id)}
-                  >
-                    <UserRoundMinus className="size-4" />
-                    {removingParticipantId === participant.id ? "삭제 중..." : "삭제"}
-                  </Button>
+                  <div className="flex shrink-0 gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={removingParticipantId === participant.id}
+                      onClick={() => openArrivalEdit(participant)}
+                    >
+                      <Clock className="size-4" />
+                      시간
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={removingParticipantId === participant.id}
+                      onClick={() => void handleRemoveParticipant(participant.id)}
+                    >
+                      <UserRoundMinus className="size-4" />
+                      {removingParticipantId === participant.id ? "삭제 중..." : "삭제"}
+                    </Button>
+                  </div>
                 ) : null}
               </div>
             ))
@@ -559,6 +618,63 @@ export function ClubRecordParticipantManager({
               </Button>
             </form>
           )}
+        </div>
+      </Modal>
+
+      <Modal
+        open={arrivalEditTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) closeArrivalEdit();
+        }}
+        title="도착 시간 변경"
+        description={
+          arrivalEditTarget
+            ? `${arrivalEditTarget.displayName} 님의 도착 시간을 변경합니다. 변경 후에는 자동 편성을 다시 실행해주세요.`
+            : ""
+        }
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-4 gap-2">
+            <Button
+              type="button"
+              variant={arrivalEditTime === "" ? "default" : "outline"}
+              disabled={arrivalEditBusy}
+              onClick={() => setArrivalEditTime("")}
+            >
+              정시
+            </Button>
+            {arrivalOptions.map((option) => (
+              <Button
+                key={option}
+                type="button"
+                variant={arrivalEditTime === option ? "default" : "outline"}
+                disabled={arrivalEditBusy}
+                onClick={() => setArrivalEditTime(option)}
+              >
+                {option}
+              </Button>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              disabled={arrivalEditBusy}
+              onClick={closeArrivalEdit}
+            >
+              취소
+            </Button>
+            <Button
+              type="button"
+              className="flex-1"
+              disabled={arrivalEditBusy}
+              onClick={() => void handleSaveArrivalEdit()}
+            >
+              <Check className="size-4" />
+              {arrivalEditBusy ? "저장 중..." : "저장"}
+            </Button>
+          </div>
         </div>
       </Modal>
     </section>

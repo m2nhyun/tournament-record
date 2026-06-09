@@ -108,3 +108,17 @@ export async function removeParticipant(
 
   if (error) throw mapClubRecordError(error);
 }
+
+export async function updateParticipantArrivalTime(
+  participantId: string,
+  arrivalTime: string | null,
+): Promise<void> {
+  await requireUser();
+
+  const { error } = await getSupabaseClient()
+    .from("club_record_event_participants")
+    .update({ arrival_time: arrivalTime })
+    .eq("id", participantId);
+
+  if (error) throw mapClubRecordError(error);
+}
