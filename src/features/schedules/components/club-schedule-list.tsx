@@ -78,7 +78,9 @@ export function ClubScheduleList({ clubId, myRole }: ClubScheduleListProps) {
         <EmptyState
           icon={CalendarClock}
           title="예정된 일정이 없습니다."
-          description="다음 정모나 복식 일정을 먼저 열어두면 참가 인원과 비용을 한 번에 모을 수 있습니다."
+          description={
+            "다음 정모나 복식 일정을 먼저 열어두면\n참가 인원과 비용을 한 번에 모을 수 있습니다."
+          }
         />
       ) : (
         <div className="space-y-3">

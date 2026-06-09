@@ -56,6 +56,29 @@ npm run db:smoke:sql  # 3) anon 권한 회귀 검증 (#1)
 
 ## 2026-06-09
 
+### UX/copy: club_record 오류 메시지 톤 정리 + EmptyState 가독성
+
+사용자 보고:
+- "club record 처리 중 오류가 발생했습니다." 라는 generic 메시지가 노출됨.
+- 클럽 탭 `예정된 일정이 없습니다` 다음 줄 텍스트에 좌우 padding 부족, 긴 문장은 자연 줄바꿈이 안 됨.
+
+대응:
+- `src/features/club-record/services/errors.ts`
+  - `mapCommonClubRecordMessage`에 케이스 추가:
+    - `Could not find the function` / `function ... does not exist` / `schema cache` / `PGRST202` → `최신 DB 업데이트가 아직 반영되지 않았습니다. 운영진에게 알려주세요.` (운영 DB에 새 RPC 미적용 시 가장 흔한 원인)
+    - `permission denied` / `권한이 없` → `이 작업을 수행할 권한이 없습니다.`
+  - catch-all 메시지를 "club record 처리 중 오류가 발생했습니다." → `데일리 매치 처리 중 알 수 없는 오류가 발생했습니다. 잠시 후 다시 시도해주세요.` 로 정리 (영어 도메인 표현 제거 + 다음 액션 안내).
+  - `toClubRecordErrorMessage`의 fallback도 동일 톤으로 정리.
+- `src/components/feedback/empty-state.tsx`
+  - outer container에 `px-6` 추가 (좌우 패딩 부재 문제 해결).
+  - description `p`에 `whitespace-pre-line max-w-sm mx-auto leading-relaxed` 적용. `\n`을 줄바꿈으로 렌더하고, 너무 좁은 폭에서도 가운데 정렬 + 자동 줄바꿈.
+- 명확하게 긴 description 3곳에 `\n`으로 자연스러운 분리 적용:
+  - `club-schedule-list.tsx` (사용자 명시 위치)
+  - `match-creation-form.tsx`(게스트 안내)
+  - `match-schedule-form.tsx`(게스트 안내)
+- 검증: `npm run verify` 통과(test 67/67, lint 0 errors, build 성공). DB 변경 없음.
+- 추적 노트: 사용자가 본 "club record 처리 중 오류" 메시지의 정확한 발생 화면은 미확인. 운영 DB에 대기 중인 migration 5개가 적용되기 전이라면 새 RPC 호출(예: `get_my_next_club_record_match`, `update_club_record_match_players`) 시 위 `Could not find the function` 매핑으로 잡혀 더 친절한 메시지가 노출된다.
+
 ### P1-B 6차: 자동 편성에 여복/혼복 성별 균형 룰 추가
 
 - 사용자 운영 규칙: 여자 4·5명 → 1경기 여복, 6·7명 → 2경기, 8·9명 → 3경기. 일반화: `target = max(0, floor((femaleCount - 2) / 2))`. 나머지 매치는 가능하면 sides 1여1남으로 균형.

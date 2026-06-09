@@ -193,7 +193,9 @@ export function MatchCreationForm({
           <EmptyState
             icon={Users}
             title="게스트는 경기 저장이 불가합니다."
-            description="경기 조회/참가는 가능하며, 기록 저장은 정회원(카카오/이메일)만 가능합니다."
+            description={
+              "경기 조회/참가는 가능하며,\n기록 저장은 정회원(카카오/이메일)만 가능합니다."
+            }
             actionLabel="클럽 홈으로 이동"
             onAction={() => {
               window.location.href = `/clubs/${clubId}`;
