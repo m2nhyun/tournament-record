@@ -95,7 +95,7 @@ function NameText({
           <span
             className={
               highlightFirst && index === 0
-                ? "font-semibold text-[var(--color-player-highlight)]"
+                ? "font-semibold text-[var(--player-highlight)]"
                 : "font-medium text-foreground"
             }
           >
