@@ -42,6 +42,15 @@ function formatTimeLabel(value: string) {
   });
 }
 
+function formatMatchTimeRange(startsAt: string, endsAt: string) {
+  const dayLabel = new Date(startsAt).toLocaleDateString("ko-KR", {
+    month: "numeric",
+    day: "numeric",
+    weekday: "short",
+  });
+  return `${dayLabel} · ${formatTimeLabel(startsAt)} ~ ${formatTimeLabel(endsAt)}`;
+}
+
 function EventStatusBadge({
   status,
   assignmentDirty,
@@ -137,7 +146,7 @@ export function ClubRecordDashboardView({
     );
   }
 
-  const { access, currentEvent, upcomingEvents, monthlyCard } = dashboard;
+  const { access, currentEvent, upcomingEvents, monthlyCard, nextMatch } = dashboard;
 
   return (
     <div className="space-y-6">
@@ -193,6 +202,49 @@ export function ClubRecordDashboardView({
             </div>
           </CardContent>
         </Card>
+
+        {nextMatch ? (
+          <Card className="border-[var(--player-highlight)]/40 bg-[var(--player-highlight)]/5">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between gap-3">
+                <CardTitle className="text-base">내 다음 경기</CardTitle>
+                <Badge variant="brand">{nextMatch.courtNumber}번 코트</Badge>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {formatMatchTimeRange(nextMatch.slotStartsAt, nextMatch.slotEndsAt)}
+                {nextMatch.eventTitle ? ` · ${nextMatch.eventTitle}` : ""}
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <p className="text-sm">
+                <span className="text-muted-foreground">내 팀: </span>
+                <span className="font-medium">
+                  {(nextMatch.mySide === 1
+                    ? nextMatch.teamOneNames
+                    : nextMatch.teamTwoNames
+                  ).join(", ") || "?"}
+                </span>
+              </p>
+              <p className="text-sm">
+                <span className="text-muted-foreground">상대: </span>
+                <span className="font-medium">
+                  {(nextMatch.mySide === 1
+                    ? nextMatch.teamTwoNames
+                    : nextMatch.teamOneNames
+                  ).join(", ") || "?"}
+                </span>
+              </p>
+              <Button size="sm" variant="outline" asChild className="mt-2">
+                <Link
+                  href={`/clubs/${clubId}/club-record/${nextMatch.eventId}`}
+                >
+                  이벤트 열기
+                  <ChevronRight className="size-4" />
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        ) : null}
 
         <section className="space-y-3">
           <div className="flex items-center justify-between gap-3">

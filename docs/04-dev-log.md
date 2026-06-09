@@ -6,12 +6,13 @@
 
 ### A. 운영 DB 미반영 migration 일괄 적용 (즉시 실행 가능)
 
-대기 중인 migration 3개:
+대기 중인 migration 4개:
 1. `supabase/migrations/20260608120000_restrict_anon_function_grants.sql` — anon EXECUTE 화이트리스트화 (P1-A)
 2. `supabase/migrations/20260609120000_add_match_schedule_cancel_by_host.sql` — 호스트 일정 취소 RPC (P1-B)
 3. `supabase/migrations/20260609130000_add_update_club_record_match_players.sql` — 매치 선수 교체 RPC (P1-B)
+4. `supabase/migrations/20260609140000_add_get_my_next_club_record_match.sql` — "내 다음 경기" RPC (P1-B)
 
-순서대로 적용해도 무방하다(서로 의존성 없음). #2/#3의 새 함수는 #1의 default-deny 정책을 자연스럽게 따른다(authenticated만 GRANT).
+순서대로 적용해도 무방하다(서로 의존성 없음). #2~#4의 새 함수는 #1의 default-deny 정책을 자연스럽게 따른다(authenticated만 GRANT).
 
 **추가 확인 항목**: 참가자 도착 시간 변경(2차)은 별도 migration 없이 `club_record_event_participants.arrival_time`을 직접 update한다. 적용 후:
   - 운영진/관리자 권한으로 update가 RLS를 통과하는지 (예상: existing admin policy로 통과)
@@ -53,6 +54,20 @@ npm run db:smoke:sql  # 3) anon 권한 회귀 검증 (#1)
 ---
 
 ## 2026-06-09
+
+### P1-B 5차: 클럽 홈 "내 다음 경기" 카드 (개인 코트 확인 2단계)
+
+- 워크스페이스 본인 강조(3차)에 이어, 회원이 클럽 홈(`/clubs/[clubId]`)에서 바로 "다음 경기는 몇 시, 몇 번 코트, 누구와"를 확인할 수 있게 했다.
+- 신규 RPC `get_my_next_club_record_match(p_club_id uuid)` (`supabase/migrations/20260609140000_add_get_my_next_club_record_match.sql`):
+  - `get_my_active_club_member_id` → `club_record_event_participants` → `club_record_match_players` 조인.
+  - 매치 status='pending_result', slot.ends_at > now(), 이벤트 deleted/cancelled 제외.
+  - 가장 가까운 slot.starts_at 1건만 반환.
+  - 반환 컬럼: `court_number`, `slot_starts_at/ends_at`, `my_side`, `team_one_names[]`, `team_two_names[]`. 회원은 `club_members.nickname`, 게스트는 `club_record_guest_profiles.display_name`로 이름 매핑.
+  - `authenticated`에만 EXECUTE.
+- service: `getClubRecordDashboardData`가 `access.clubMemberId`가 있을 때만 `fetchNextMatch` 호출(게스트 anonymous는 호출 안 함).
+- types: `ClubRecordDashboardNextMatch` 추가, dashboard data에 `nextMatch` 필드.
+- UI: club_record 대시보드의 상태 카드와 "현재 이벤트" 섹션 사이에 카드 삽입. 코트 번호는 brand Badge로 강조, 시간 범위 + 이벤트 제목 + 내 팀/상대 라인 + 이벤트 열기 링크.
+- 검증: `npm run verify` 통과(test 64/64, lint 0 errors, build 성공). 운영 DB apply는 사용자 명시 승인 대기.
 
 ### P1-B 4차: 운영진 매치 선수 교체 (`update_club_record_match_players` RPC + UI)
 
