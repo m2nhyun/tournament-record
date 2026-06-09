@@ -18,17 +18,6 @@
   - 위 3단계 모두 성공하면 본 dev-log 2026-06-08 P1-A 항목의 "미완료" 줄을 "운영 DB 적용 완료 (날짜)"로 갱신
   - smoke 실패 시 migration 또는 smoke의 함수 signature 매칭 확인
 
-### B. P1-A 다음 항목: profile_completed DB 강제 (정책 결정 + 작업)
-
-- 현황: 서비스 계층(`requireCompletedProfile`)만 가드. DB/RPC 우회 시 정책 누락 가능.
-- 결정 필요: DB 수준 강제 여부 (옵션)
-  - **옵션 1: DB에서도 강제** — 핵심 쓰기 RPC(예: club_record 이벤트 생성, 매치 결과 입력 등) 내부에서 `auth.uid()`로 `user_profiles.profile_completed`를 확인. 위반 시 raise exception.
-  - **옵션 2: 서비스 계층만 유지** — 현재대로 두고 `09-keep-rules.md`에 "서비스 계층 가드가 정책의 최종 경계"라고 명문화.
-- 옵션 1을 고른다면 작업 범위 (다시 정해야 함):
-  - 어느 RPC까지 강제할지 (전부 vs 핵심만)
-  - 위반 시 에러 메시지/i18n
-  - smoke 회귀 추가
-
 ### C. P1-A 다음 항목: core matches RPC 트랜잭션화 (사용자가 "건너뛰기"로 결정한 항목)
 
 - 현재 상태: 사용자가 P1-A scope 결정 단계에서 "core matches 건너뛰고 audit→profile 순"으로 결정했으므로 이번 사이클에서는 진행하지 않음.
@@ -48,6 +37,18 @@
 - 미확정 경기 후속 처리 강화
 
 ---
+
+## 2026-06-09
+
+### P1-A: profile_completed 가드 정책 — 서비스 계층 유지로 확정
+
+- 결정: `requireCompletedProfile()` 서비스 계층 가드가 최종 경계. DB/RPC 수준에서는 강제하지 않는다.
+- 결정 근거:
+  - 위협 모델이 좁다 (정회원 + 프로필 미완성 + 콘솔 직접 호출).
+  - JWT-less 우회는 2026-06-08 anon function grant 화이트리스트로 차단.
+  - 9개 서비스 함수 전체에 DB 가드 추가는 작업양 대비 ROI 낮음.
+- 반영: `docs/09-keep-rules.md` §1-1에 정책 명문화. 새 핵심 쓰기 서비스 추가 시 `requireCompletedProfile()` 호출 잊지 않는다는 운영 규칙 포함.
+- 재평가 시점: 정회원 우회 사고가 실제로 발견되면 옵션 2/3 재검토.
 
 ## 2026-06-08
 

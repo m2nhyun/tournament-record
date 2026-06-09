@@ -355,15 +355,15 @@ dependency audit 대응 결과는 다음과 같다.
 
 | 우선순위 | 리스크 | 영향 | 근거/위치 | 권장 대응 |
 | --- | --- | --- | --- | --- |
-| P1 | core match 쓰기 다중 DML | partial write, race condition | `src/features/matches/services/matches.ts` | RPC transaction화 검토 |
-| P1 | anon/default grant 넓음 | RLS 실수 시 노출 범위 확대 | `supabase/schema.sql` | least privilege audit |
-| P1 | `profile_completed` DB 미강제 | 서비스 계층 우회 시 정책 누락 가능 | `docs/11-auth-onboarding-design.md` | DB/RPC 강제 여부 결정 |
+| P1 | core match 쓰기 다중 DML | partial write, race condition | `src/features/matches/services/matches.ts` | RPC transaction화 검토 (2026-06-08 보류 결정) |
 | P2 | service test 부족 | Supabase 호출 회귀를 build가 못 잡음 | `src/features/*/services` | mock client 기반 테스트 추가 |
 
 ### 해소됨
 
 | 원래 우선순위 | 항목 | 해소 상태 |
 | --- | --- | --- |
+| P1 | `profile_completed` DB 미강제 | 서비스 계층(`requireCompletedProfile`) 가드를 최종 경계로 확정. 정책 명문화 (2026-06-09, `keep-rules` §1-1) |
+| P1 | anon/default grant 넓음 | 화이트리스트 4개 RPC만 anon EXECUTE, 나머지 REVOKE. migration 작성 (2026-06-08, 운영 DB 적용 대기) |
 | P0 | `/leaderboard` orphan 라우트 | 라우트 + `features/leaderboard/*` 삭제 (2026-06-08) |
 | P0 | `MatchConfirmationPromptCard` cross-track 진입 | club_record 대시보드에서 제거 + 컴포넌트 삭제 (2026-06-08) |
 | P0 | legacy 히스토리/리더보드와 club_record 공존 | leaderboard 제거 + `/history`,`/matches/*` 보조 트랙 정책 명문화 (2026-06-08) |
