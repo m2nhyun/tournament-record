@@ -396,3 +396,180 @@ describe("club-record/auto-assignment", () => {
     ]);
   });
 });
+
+describe("planClubRecordAutoAssignments — gender balance", () => {
+  function makeParticipant(
+    id: string,
+    gender: "female" | "male" | null,
+  ): ClubRecordEventParticipant {
+    return {
+      id,
+      eventId: "event-women",
+      participantType: "member",
+      clubMemberId: id,
+      guestProfileId: null,
+      displayName: id,
+      arrivalTime: null,
+      attendanceStatus: "registered",
+      groupCode: "A",
+      rankingPosition: Number(id.replace(/\D+/g, "")) || 99,
+      gender,
+    };
+  }
+
+  function makeSlot(
+    id: string,
+    courtNumber: number,
+    startsAt: string,
+    endsAt: string,
+  ): ClubRecordEventSlotOverview {
+    return {
+      id,
+      eventId: "event-women",
+      courtNumber,
+      slotOrder: courtNumber,
+      startsAt,
+      endsAt,
+      status: "scheduled",
+      isLocked: false,
+      match: null,
+    };
+  }
+
+  it("forms one all-female match when exactly 4 females are available", () => {
+    const participants = [
+      makeParticipant("f1", "female"),
+      makeParticipant("f2", "female"),
+      makeParticipant("f3", "female"),
+      makeParticipant("f4", "female"),
+      makeParticipant("m1", "male"),
+      makeParticipant("m2", "male"),
+      makeParticipant("m3", "male"),
+      makeParticipant("m4", "male"),
+    ];
+    const slotsList = [
+      makeSlot(
+        "ws-1",
+        1,
+        "2026-05-06T10:00:00.000Z",
+        "2026-05-06T10:30:00.000Z",
+      ),
+      makeSlot(
+        "ws-2",
+        1,
+        "2026-05-06T10:30:00.000Z",
+        "2026-05-06T11:00:00.000Z",
+      ),
+    ];
+
+    const plans = planClubRecordAutoAssignments(participants, slotsList, {
+      candidateWindowSize: 8,
+    });
+
+    const allFemaleMatches = plans.filter((plan) =>
+      plan.players.every((player) =>
+        participants
+          .find((participant) => participant.id === player.participantId)
+          ?.gender === "female",
+      ),
+    );
+
+    expect(allFemaleMatches.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("forms two all-female matches when 6 females are available", () => {
+    const participants = [
+      makeParticipant("f1", "female"),
+      makeParticipant("f2", "female"),
+      makeParticipant("f3", "female"),
+      makeParticipant("f4", "female"),
+      makeParticipant("f5", "female"),
+      makeParticipant("f6", "female"),
+      makeParticipant("m1", "male"),
+      makeParticipant("m2", "male"),
+      makeParticipant("m3", "male"),
+      makeParticipant("m4", "male"),
+    ];
+    const slotsList = [
+      makeSlot(
+        "ws6-1",
+        1,
+        "2026-05-06T10:00:00.000Z",
+        "2026-05-06T10:30:00.000Z",
+      ),
+      makeSlot(
+        "ws6-2",
+        1,
+        "2026-05-06T10:30:00.000Z",
+        "2026-05-06T11:00:00.000Z",
+      ),
+      makeSlot(
+        "ws6-3",
+        1,
+        "2026-05-06T11:00:00.000Z",
+        "2026-05-06T11:30:00.000Z",
+      ),
+      makeSlot(
+        "ws6-4",
+        1,
+        "2026-05-06T11:30:00.000Z",
+        "2026-05-06T12:00:00.000Z",
+      ),
+    ];
+
+    const plans = planClubRecordAutoAssignments(participants, slotsList, {
+      candidateWindowSize: 10,
+    });
+
+    const allFemaleMatches = plans.filter((plan) =>
+      plan.players.every((player) =>
+        participants
+          .find((participant) => participant.id === player.participantId)
+          ?.gender === "female",
+      ),
+    );
+
+    expect(allFemaleMatches.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("does not force all-female match when only 3 females present (< 4)", () => {
+    const participants = [
+      makeParticipant("f1", "female"),
+      makeParticipant("f2", "female"),
+      makeParticipant("f3", "female"),
+      makeParticipant("m1", "male"),
+      makeParticipant("m2", "male"),
+      makeParticipant("m3", "male"),
+      makeParticipant("m4", "male"),
+      makeParticipant("m5", "male"),
+    ];
+    const slotsList = [
+      makeSlot(
+        "ws3-1",
+        1,
+        "2026-05-06T10:00:00.000Z",
+        "2026-05-06T10:30:00.000Z",
+      ),
+      makeSlot(
+        "ws3-2",
+        1,
+        "2026-05-06T10:30:00.000Z",
+        "2026-05-06T11:00:00.000Z",
+      ),
+    ];
+
+    const plans = planClubRecordAutoAssignments(participants, slotsList, {
+      candidateWindowSize: 8,
+    });
+
+    const allFemaleMatches = plans.filter((plan) =>
+      plan.players.every((player) =>
+        participants
+          .find((participant) => participant.id === player.participantId)
+          ?.gender === "female",
+      ),
+    );
+
+    expect(allFemaleMatches.length).toBe(0);
+  });
+});

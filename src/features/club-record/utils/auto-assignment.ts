@@ -22,6 +22,49 @@ type CandidatePairing = {
   score: number;
 };
 
+type WomenMatchContext = {
+  current: number;
+  target: number;
+};
+
+function isAllFemaleQuartet(quartet: ClubRecordEventParticipant[]) {
+  return quartet.every((participant) => participant.gender === "female");
+}
+
+export function computeWomenMatchTarget(
+  participants: ClubRecordEventParticipant[],
+): number {
+  const femaleCount = participants.filter(
+    (participant) => participant.gender === "female",
+  ).length;
+  if (femaleCount < 4) return 0;
+  return Math.floor((femaleCount - 2) / 2);
+}
+
+function countExistingAllFemaleMatches(
+  participants: ClubRecordEventParticipant[],
+  slots: ClubRecordEventSlotOverview[],
+): number {
+  const genderById = new Map<
+    string,
+    ClubRecordEventParticipant["gender"]
+  >();
+  for (const participant of participants) {
+    genderById.set(participant.id, participant.gender);
+  }
+
+  let count = 0;
+  for (const slot of slots) {
+    if (!slot.match) continue;
+    if (slot.match.players.length !== 4) continue;
+    const allFemale = slot.match.players.every(
+      (player) => genderById.get(player.participantId) === "female",
+    );
+    if (allFemale) count += 1;
+  }
+  return count;
+}
+
 function getGroupWeight(groupCode: ClubRecordEventParticipant["groupCode"]) {
   if (groupCode === "A") return 0;
   if (groupCode === "B") return 1;
@@ -60,6 +103,7 @@ function sortParticipantsForAssignment(
 function getQuartetScore(
   quartet: ClubRecordEventParticipant[],
   snapshot: ClubRecordAssignmentSnapshot,
+  womenMatchContext: WomenMatchContext,
 ) {
   const matchCountScore = quartet.reduce(
     (sum, participant) =>
@@ -75,7 +119,17 @@ function getQuartetScore(
     Math.max(...quartet.map((participant) => getGroupWeight(participant.groupCode))) -
     Math.min(...quartet.map((participant) => getGroupWeight(participant.groupCode)));
 
-  return matchCountScore * 10_000 + groupSpread * 1_000 + spreadScore;
+  let genderBonus = 0;
+  if (
+    isAllFemaleQuartet(quartet) &&
+    womenMatchContext.current < womenMatchContext.target
+  ) {
+    genderBonus = -200_000;
+  }
+
+  return (
+    matchCountScore * 10_000 + groupSpread * 1_000 + spreadScore + genderBonus
+  );
 }
 
 function getPairingScore(
@@ -118,9 +172,28 @@ function getPairingScore(
     }
   }
 
+  const quartetGenders = [pairA[0].gender, pairA[1].gender, pairB[0].gender, pairB[1].gender];
+  const femaleCount = quartetGenders.filter((g) => g === "female").length;
+  const maleCount = quartetGenders.filter((g) => g === "male").length;
+  let sidesBalanceBonus = 0;
+  if (femaleCount === 2 && maleCount === 2) {
+    const pairAIsMixed =
+      pairA[0].gender !== pairA[1].gender &&
+      (pairA[0].gender === "female" || pairA[0].gender === "male") &&
+      (pairA[1].gender === "female" || pairA[1].gender === "male");
+    const pairBIsMixed =
+      pairB[0].gender !== pairB[1].gender &&
+      (pairB[0].gender === "female" || pairB[0].gender === "male") &&
+      (pairB[1].gender === "female" || pairB[1].gender === "male");
+    if (pairAIsMixed && pairBIsMixed) {
+      sidesBalanceBonus = -10_000;
+    }
+  }
+
   return (
     repeatedTeamPenalty +
     sharedMatchPenalty +
+    sidesBalanceBonus +
     Math.abs(pairAAverage - pairBAverage) * 10 +
     pairASpread +
     pairBSpread
@@ -192,6 +265,7 @@ function chooseBestQuartet(
   snapshot: ClubRecordAssignmentSnapshot,
   candidateWindowSize: number,
   maxSharedMatchesPerDay: number,
+  womenMatchContext: WomenMatchContext,
 ) {
   const sorted = sortParticipantsForAssignment(participants, snapshot).slice(
     0,
@@ -218,7 +292,9 @@ function chooseBestQuartet(
           );
           if (!pairing) continue;
 
-          const score = getQuartetScore(quartet, snapshot) * 100 + pairing.score;
+          const score =
+            getQuartetScore(quartet, snapshot, womenMatchContext) * 100 +
+            pairing.score;
           if (!best || score < best.score) {
             best = { quartet, pairing, score };
           }
@@ -249,6 +325,10 @@ export function planClubRecordAutoAssignments(
     });
 
   const snapshot = buildClubRecordAssignmentSnapshot(slots);
+  const womenMatchContext: WomenMatchContext = {
+    current: countExistingAllFemaleMatches(participants, slots),
+    target: computeWomenMatchTarget(participants),
+  };
 
   for (const slot of assignableSlots) {
     const eligibleParticipants = getEligibleParticipantsForSlot(
@@ -264,6 +344,7 @@ export function planClubRecordAutoAssignments(
       snapshot,
       candidateWindowSize,
       maxSharedMatchesPerDay,
+      womenMatchContext,
     );
 
     if (!bestQuartet) continue;
@@ -272,6 +353,10 @@ export function planClubRecordAutoAssignments(
       slotId: slot.id,
       players: bestQuartet.pairing.players,
     });
+
+    if (isAllFemaleQuartet(bestQuartet.quartet)) {
+      womenMatchContext.current += 1;
+    }
 
     for (const player of bestQuartet.pairing.players) {
       snapshot.matchCountByParticipantId.set(

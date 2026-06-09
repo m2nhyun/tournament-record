@@ -6,13 +6,14 @@
 
 ### A. 운영 DB 미반영 migration 일괄 적용 (즉시 실행 가능)
 
-대기 중인 migration 4개:
+대기 중인 migration 5개:
 1. `supabase/migrations/20260608120000_restrict_anon_function_grants.sql` — anon EXECUTE 화이트리스트화 (P1-A)
 2. `supabase/migrations/20260609120000_add_match_schedule_cancel_by_host.sql` — 호스트 일정 취소 RPC (P1-B)
 3. `supabase/migrations/20260609130000_add_update_club_record_match_players.sql` — 매치 선수 교체 RPC (P1-B)
 4. `supabase/migrations/20260609140000_add_get_my_next_club_record_match.sql` — "내 다음 경기" RPC (P1-B)
+5. `supabase/migrations/20260609150000_add_gender_to_participants_rpc.sql` — `get_club_record_event_participants`에 `gender` 컬럼 추가 (P1-B 자동 편성 여복/혼복)
 
-순서대로 적용해도 무방하다(서로 의존성 없음). #2~#4의 새 함수는 #1의 default-deny 정책을 자연스럽게 따른다(authenticated만 GRANT).
+순서대로 적용해도 무방하다(서로 의존성 없음). #2~#5의 새/갱신 함수는 #1의 default-deny 정책을 자연스럽게 따른다(authenticated만 GRANT). #5는 RPC signature가 바뀌므로 client는 새 컬럼이 반환되기 시작한 뒤에 gender-balanced 자동 편성이 동작한다(누락 시 fallback null이라 회귀 없이 점진 적용 가능).
 
 **추가 확인 항목**: 참가자 도착 시간 변경(2차)은 별도 migration 없이 `club_record_event_participants.arrival_time`을 직접 update한다. 적용 후:
   - 운영진/관리자 권한으로 update가 RLS를 통과하는지 (예상: existing admin policy로 통과)
@@ -54,6 +55,25 @@ npm run db:smoke:sql  # 3) anon 권한 회귀 검증 (#1)
 ---
 
 ## 2026-06-09
+
+### P1-B 6차: 자동 편성에 여복/혼복 성별 균형 룰 추가
+
+- 사용자 운영 규칙: 여자 4·5명 → 1경기 여복, 6·7명 → 2경기, 8·9명 → 3경기. 일반화: `target = max(0, floor((femaleCount - 2) / 2))`. 나머지 매치는 가능하면 sides 1여1남으로 균형.
+- 데이터 흐름 변경:
+  - migration `20260609150000_add_gender_to_participants_rpc.sql`: `get_club_record_event_participants` RPC가 `gender` 컬럼을 반환. 회원은 `user_profiles.gender`, 게스트는 `club_record_guest_profiles.gender`에서 가져옴(`male`/`female`/`unspecified`/null).
+  - `ClubRecordEventParticipant.gender` 필드 추가, service `participants.ts`에 `normalizeGender` + row→entity mapping 보강.
+- 알고리즘 변경(`auto-assignment.ts`):
+  - 신규 헬퍼: `computeWomenMatchTarget(participants)`, `countExistingAllFemaleMatches(participants, slots)`, `isAllFemaleQuartet(quartet)`.
+  - `planClubRecordAutoAssignments` 진입 시 `WomenMatchContext = { current, target }`를 계산. 슬롯 처리 후 quartet이 전원 여성이면 `current += 1`.
+  - `getQuartetScore`: 전원 여성 quartet이고 `current < target`이면 `-200_000` 보너스(강한 우선). 충족 후엔 보너스 없음(혼복으로 자연 회귀).
+  - `getPairingScore`: quartet이 여성 2 + 남성 2일 때 두 페어 모두 (남,여) 혼합이면 `-10_000` 보너스(혼복 sides 균형).
+  - 기존 룰(같은 페어 반복 +100k, 4인 조합 2회 초과 +50k, 시간대 동시 출전 하드 차단, 그룹 spread 등)은 변경 없음.
+- 테스트 추가(`auto-assignment.test.ts`, 신규 3개):
+  - 여자 4명+남자 4명/2슬롯: 여복 매치 ≥ 1
+  - 여자 6명+남자 4명/4슬롯: 여복 매치 ≥ 2
+  - 여자 3명만: 여복 매치 = 0(target 미달이면 강제 안 함)
+- 검증: `npm run verify` 통과(test 67/67, lint 0 errors, build 성공).
+- 운영 DB apply 후 회귀: `get_club_record_event_participants`의 신규 `gender` 컬럼이 반환되는지(클라이언트가 row mapping에 의지하므로 누락 시 fallback null).
 
 ### P1-B 5차: 클럽 홈 "내 다음 경기" 카드 (개인 코트 확인 2단계)
 

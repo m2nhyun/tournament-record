@@ -18,7 +18,17 @@ type ParticipantRow = {
   attendance_status: ClubRecordEventParticipant["attendanceStatus"];
   group_code: ClubRecordEventParticipant["groupCode"];
   ranking_position: number | null;
+  gender: string | null;
 };
+
+function normalizeGender(
+  value: string | null,
+): ClubRecordEventParticipant["gender"] {
+  if (value === "male" || value === "female" || value === "unspecified") {
+    return value;
+  }
+  return null;
+}
 
 function toClubRecordParticipant(
   row: ParticipantRow,
@@ -34,6 +44,7 @@ function toClubRecordParticipant(
     attendanceStatus: row.attendance_status,
     groupCode: row.group_code,
     rankingPosition: row.ranking_position,
+    gender: normalizeGender(row.gender),
   };
 }
 

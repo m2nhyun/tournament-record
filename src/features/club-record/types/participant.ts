@@ -2,6 +2,7 @@ import type { ClubRecordGroupCode } from "@/features/club-record/types/member";
 
 export type ClubRecordParticipantType = "member" | "guest";
 export type ClubRecordAttendanceStatus = "registered" | "checked_in";
+export type ClubRecordParticipantGender = "male" | "female" | "unspecified";
 
 export type ClubRecordEventParticipant = {
   id: string;
@@ -14,6 +15,7 @@ export type ClubRecordEventParticipant = {
   attendanceStatus: ClubRecordAttendanceStatus;
   groupCode: ClubRecordGroupCode | null;
   rankingPosition: number | null;
+  gender: ClubRecordParticipantGender | null;
 };
 
 export type ClubRecordAddMemberParticipantInput = {
