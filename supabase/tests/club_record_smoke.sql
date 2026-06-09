@@ -1033,4 +1033,64 @@ begin
   raise notice 'ok: member result submit and manager result update paths passed';
 end $$;
 
+-- ----------------------------------------------------------------------------
+-- P1-A regression: anon function grant whitelist
+-- ----------------------------------------------------------------------------
+-- Verifies that migration 20260608120000_restrict_anon_function_grants.sql is
+-- applied: anon EXECUTE is limited to the 4-RPC invite-join whitelist, and
+-- previously-broad RPCs (ranking move, member removal) are denied.
+do $$
+declare
+  v_anon_can_join_invite boolean;
+  v_anon_can_join_guest_invite boolean;
+  v_anon_can_verify_guest_code boolean;
+  v_anon_can_join_event_guest boolean;
+  v_anon_can_move_ranking boolean;
+  v_anon_can_remove_member boolean;
+begin
+  v_anon_can_join_invite := has_function_privilege(
+    'anon', 'public.join_club_by_invite(text, text)', 'EXECUTE'
+  );
+  v_anon_can_join_guest_invite := has_function_privilege(
+    'anon', 'public.join_club_by_invite_as_guest(text, text)', 'EXECUTE'
+  );
+  v_anon_can_verify_guest_code := has_function_privilege(
+    'anon', 'public.verify_club_record_guest_invite_code(text)', 'EXECUTE'
+  );
+  v_anon_can_join_event_guest := has_function_privilege(
+    'anon',
+    'public.join_club_record_event_guest_by_invite_code(text, text, text, text, public.club_record_group_code, timestamp with time zone)',
+    'EXECUTE'
+  );
+
+  if not v_anon_can_join_invite then
+    raise exception 'anon must EXECUTE join_club_by_invite (whitelist regression)';
+  end if;
+  if not v_anon_can_join_guest_invite then
+    raise exception 'anon must EXECUTE join_club_by_invite_as_guest (whitelist regression)';
+  end if;
+  if not v_anon_can_verify_guest_code then
+    raise exception 'anon must EXECUTE verify_club_record_guest_invite_code (whitelist regression)';
+  end if;
+  if not v_anon_can_join_event_guest then
+    raise exception 'anon must EXECUTE join_club_record_event_guest_by_invite_code (whitelist regression)';
+  end if;
+
+  v_anon_can_move_ranking := has_function_privilege(
+    'anon', 'public.move_club_record_ranking(uuid, uuid, integer)', 'EXECUTE'
+  );
+  v_anon_can_remove_member := has_function_privilege(
+    'anon', 'public.remove_club_member(uuid, uuid)', 'EXECUTE'
+  );
+
+  if v_anon_can_move_ranking then
+    raise exception 'anon must NOT EXECUTE move_club_record_ranking after restrict migration';
+  end if;
+  if v_anon_can_remove_member then
+    raise exception 'anon must NOT EXECUTE remove_club_member after restrict migration';
+  end if;
+
+  raise notice 'ok: anon function grant whitelist enforced (4 allowed, ranking/member-removal denied)';
+end $$;
+
 rollback;

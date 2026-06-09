@@ -19,6 +19,17 @@
 - Supabase SQL Editor 수동 실행은 Dashboard-only 변경이나 CLI 적용이 불가능한 예외 경로로만 사용한다.
 - 신규 SQL은 `supabase/migrations/*.sql`에 항상 남긴다.
 
+### 2-1) Function EXECUTE 권한 — anon 화이트리스트 (2026-06-08~)
+
+- `public` 스키마의 함수는 기본적으로 `anon`에 EXECUTE를 부여하지 않는다 (`ALTER DEFAULT PRIVILEGES` + `REVOKE ALL`).
+- `anon` 호출이 허용된 RPC 화이트리스트:
+  - `join_club_by_invite(text, text)`
+  - `join_club_by_invite_as_guest(text, text)`
+  - `verify_club_record_guest_invite_code(text)`
+  - `join_club_record_event_guest_by_invite_code(text, text, text, text, club_record_group_code, timestamptz)`
+- 새 RPC를 추가할 때 anon 호출이 필요하다고 판단되면 명시적으로 `GRANT EXECUTE ... TO anon`을 migration에 추가하고, smoke의 anon 권한 회귀 검증 섹션에도 추가한다.
+- `signInAnonymously()` 사용자의 JWT는 PostgreSQL role 기준 `authenticated`이다. `anon` role은 JWT-less 호출에만 해당하며, 게스트(`is_anonymous=true`)는 `authenticated` 권한에 서비스 계층 가드(`if (user.is_anonymous) throw`)로 통제한다.
+
 ## 3) 클럽 권한/설정
 
 - 클럽 이름 변경은 owner만 가능해야 한다.

@@ -1,5 +1,79 @@
 # Dev Log
 
+## Pending User Decisions / Actions (2026-06-08 기준)
+
+다음 세션 시작 시 이 섹션을 먼저 읽으면 현재 위치와 결정 대기 항목이 한눈에 보인다. 결정이 끝난 항목은 이 섹션에서 제거하고 본 dev-log 항목으로 이관한다.
+
+### A. anon function grant migration 운영 DB 적용 (즉시 실행 가능)
+
+- 작성된 migration: `supabase/migrations/20260608120000_restrict_anon_function_grants.sql`
+- 영향: `public` 스키마의 모든 함수에서 `anon` EXECUTE를 회수하고, 화이트리스트 4개 RPC만 다시 GRANT. 클라이언트 영향은 없을 것으로 분석됨.
+- 사용자가 실행할 명령(env에 `SUPABASE_DB_PUSH_URL` 설정 필요):
+  ```bash
+  npm run db:push:dry   # 1) 미리 확인
+  npm run db:push       # 2) 적용 (schema.sql 자동 sync)
+  npm run db:smoke:sql  # 3) anon 권한 회귀 검증 (smoke의 새 섹션 통과 확인)
+  ```
+- 실행 후 작업자가 처리해야 할 일:
+  - 위 3단계 모두 성공하면 본 dev-log 2026-06-08 P1-A 항목의 "미완료" 줄을 "운영 DB 적용 완료 (날짜)"로 갱신
+  - smoke 실패 시 migration 또는 smoke의 함수 signature 매칭 확인
+
+### B. P1-A 다음 항목: profile_completed DB 강제 (정책 결정 + 작업)
+
+- 현황: 서비스 계층(`requireCompletedProfile`)만 가드. DB/RPC 우회 시 정책 누락 가능.
+- 결정 필요: DB 수준 강제 여부 (옵션)
+  - **옵션 1: DB에서도 강제** — 핵심 쓰기 RPC(예: club_record 이벤트 생성, 매치 결과 입력 등) 내부에서 `auth.uid()`로 `user_profiles.profile_completed`를 확인. 위반 시 raise exception.
+  - **옵션 2: 서비스 계층만 유지** — 현재대로 두고 `09-keep-rules.md`에 "서비스 계층 가드가 정책의 최종 경계"라고 명문화.
+- 옵션 1을 고른다면 작업 범위 (다시 정해야 함):
+  - 어느 RPC까지 강제할지 (전부 vs 핵심만)
+  - 위반 시 에러 메시지/i18n
+  - smoke 회귀 추가
+
+### C. P1-A 다음 항목: core matches RPC 트랜잭션화 (사용자가 "건너뛰기"로 결정한 항목)
+
+- 현재 상태: 사용자가 P1-A scope 결정 단계에서 "core matches 건너뛰고 audit→profile 순"으로 결정했으므로 이번 사이클에서는 진행하지 않음.
+- 재평가 시점: `matches` 보조 트랙의 실제 사용량이 늘어나거나 partial-write/race 사고가 생기면 다시 우선순위 재평가.
+
+### D. P1-C: 테스트 보강 (P1-A 완료 후)
+
+- service mock 테스트 추가 (`src/features/*/services`의 Supabase 호출 회귀 방지)
+- core match/schedule/profile SQL smoke 추가
+
+### E. P1-B: UX 후속 액션 (P1-A, P1-C 완료 후)
+
+- 호스트 관리 액션 (일정 취소/마감/수정)
+- 일정 → 실제 경기 연결
+- 클럽 도입 퍼널 단순화
+- 정모 직후 기록 UX 압축
+- 미확정 경기 후속 처리 강화
+
+---
+
+## 2026-06-08
+
+### P1-A: anon function grant 화이트리스트화 (migration 작성, 운영 DB 적용 대기)
+
+- `supabase/migrations/20260608120000_restrict_anon_function_grants.sql` 추가. `public` 스키마의 모든 함수에서 `anon` EXECUTE를 일괄 REVOKE하고 `ALTER DEFAULT PRIVILEGES`로 향후 추가 함수의 자동 anon grant도 차단한다. 그 다음 게스트 초대 흐름에 필요한 4개 RPC만 화이트리스트로 다시 GRANT한다.
+  - `join_club_by_invite(text, text)`
+  - `join_club_by_invite_as_guest(text, text)`
+  - `verify_club_record_guest_invite_code(text)`
+  - `join_club_record_event_guest_by_invite_code(text, text, text, text, club_record_group_code, timestamptz)`
+- `supabase/tests/club_record_smoke.sql`에 anon 권한 회귀 검증 섹션 추가: `has_function_privilege`로 화이트리스트 4개는 통과하고 `move_club_record_ranking` / `remove_club_member`는 차단되는지 확인한다.
+- `docs/09-keep-rules.md`에 §2-1 "Function EXECUTE 권한 — anon 화이트리스트" 절을 추가해 향후 RPC 추가 시 anon grant 정책을 명문화했다.
+- 배경: 기존 schema dump는 60+ public function 전부에 `anon` EXECUTE를 부여하고 있었다. 함수 내부 권한 가드가 약한 RPC가 한 개라도 있으면 익명 우회 위험이 생기므로 default-deny + 명시 화이트리스트로 전환.
+- 클라이언트 영향: 없음. anonymous 사용자(`signInAnonymously`)는 JWT role 기준 `authenticated`로 들어오기 때문에 영향받지 않는다. `anon` role은 JWT-less 호출에만 적용되며, 게스트 초대 진입(`/join`, `/club-record/join`) 흐름만 anon 호출을 사용한다.
+- 검증: `npm run verify` 통과(코드 변경 없음). 운영 DB 적용은 사용자 명시 승인 대기.
+- 미완료: `npm run db:push` 실행 → `supabase/schema.sql` 동기화 → `npm run db:smoke:sql`로 회귀 통과 확인.
+
+### P0 IA 정리 — legacy 라우트 제거 + cross-track 진입점 단절
+
+- `/clubs/[clubId]/leaderboard` 라우트와 `src/features/leaderboard/*` 전체(components/hooks/services/types)를 삭제했다. 바텀 네비/링크 어디에서도 참조되지 않는 orphan 라우트였다.
+- `MatchConfirmationPromptCard`를 `club-record-dashboard.tsx`에서 제거하고 컴포넌트 파일 자체도 삭제했다. club_record 메인 대시보드에서 legacy `/history`로 점프하던 cross-track 진입점이 이로써 사라진다. 일반 경기 확인 요청은 `/history` 화면의 `MatchConfirmationInboxAction`(상단 inbox 액션)에서 자체적으로 처리한다.
+- `docs/01-product-canvas.md`에 **용어 정의(Glossary)** 섹션을 추가했다: `이벤트`(club_record), `일정`(schedules), `새 경기`(legacy `/matches/new`), `club_record 히스토리`, `일반 경기 히스토리`의 경계를 표로 고정. 보조 트랙 진입 경로 설명도 cross-track 카드 제거 사실에 맞춰 갱신.
+- legacy `/history`, `/matches/*`, `/schedules/*` 보조 트랙은 바텀 네비에 노출하지 않고 URL 직접 접근 + 일정 카드 내부 링크로만 진입하는 닫힌 시스템으로 유지하기로 명문화했다.
+- 검증: `npm run verify`(test 53/53, lint 0 errors, build 성공). 라우트 목록에서 `/leaderboard` 사라짐 확인.
+- 이번 변경에는 DB/RLS 수정이 없다.
+
 ## 2026-05-27
 
 ### docs 전수 검증 및 stale 항목 갱신 (2회차)
