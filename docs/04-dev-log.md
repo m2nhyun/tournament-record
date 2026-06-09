@@ -4,19 +4,13 @@
 
 다음 세션 시작 시 이 섹션을 먼저 읽으면 현재 위치와 결정 대기 항목이 한눈에 보인다. 결정이 끝난 항목은 이 섹션에서 제거하고 본 dev-log 항목으로 이관한다.
 
-### A. 운영 DB 미반영 migration 일괄 적용 — 완료 (2026-06-09)
+_(전부 처리되어 Pending 섹션 비움. 환경 의존 노트는 아래 운영 메모로 이동.)_
 
-운영 DB(`nomcsuizsztyhxkehila`)에 5개 migration 모두 적용 완료.
+### 운영 메모: schema.sql sync / smoke 회귀 검증 환경 요구
 
-1. ✅ `20260608120000_restrict_anon_function_grants.sql`
-2. ✅ `20260609120000_add_match_schedule_cancel_by_host.sql`
-3. ✅ `20260609130000_add_update_club_record_match_players.sql`
-4. ✅ `20260609140000_add_get_my_next_club_record_match.sql`
-5. ✅ `20260609150000_add_gender_to_participants_rpc.sql` (`drop function if exists` 추가하여 `RETURNS TABLE` 시그니처 변경 SQLSTATE 42P13 fix)
-
-남은 후속 작업(blocking 아님, 환경에 따라 사용자 처리):
-- **`supabase/schema.sql` sync**: `db-sync-schema.sh`가 Docker로 pg_dump 컨테이너를 띄움. 현재 Docker daemon이 미실행이라 sync 미완료. Docker 실행 후 `npm run db:push`(추가 migration 없어도 됨) 또는 `bash scripts/automation/db-sync-schema.sh` 단독 실행으로 사후 sync 가능. schema.sql과 운영 DB가 일시 불일치이지만 서비스 동작에는 영향 없음.
-- **`db:smoke:sql` 회귀 검증**: 시스템에 `psql`이 미설치되어 실행 불가. `psql` 또는 Postgres client 설치 후 재시도 가능. 운영 영향은 없음(앱 동작 검증은 사용자 브라우저로 가능).
+- `supabase/schema.sql` 자동 sync(`db-sync-schema.sh`)는 Docker 컨테이너로 pg_dump를 띄운다. 로컬에 Docker가 떠 있는 상태에서 `npm run db:push`가 실행되면 push 직후 schema.sql이 자동 동기화된다. Docker가 없으면 schema.sql만 갱신 안 되며, 운영 DB와 일시 불일치는 다음 push 사이클에서 흡수된다(서비스 영향 없음).
+- `npm run db:smoke:sql`은 시스템 `psql` 클라이언트가 필요(`scripts/automation/smoke-db-sql.sh`). 없으면 회귀 검증 단계는 스킵되지만 앱 동작 검증은 브라우저로 대체 가능.
+- 새 migration을 자주 만들 계획이면 Docker + psql 환경 설정을 권장. 그러나 본 항목은 운영 환경 영향 없음이라 Pending에서 일반 운영 메모로 정리했다.
 
 **추가 확인 항목**: 참가자 도착 시간 변경(2차)은 별도 migration 없이 `club_record_event_participants.arrival_time`을 직접 update한다. 적용 후:
   - 운영진/관리자 권한으로 update가 RLS를 통과하는지 (예상: existing admin policy로 통과)
@@ -58,6 +52,16 @@ npm run db:smoke:sql  # 3) anon 권한 회귀 검증 (#1)
 ---
 
 ## 2026-06-09
+
+### refactor(ia): 클럽 탭에서 legacy schedules 진입점 제거
+
+사용자 보고: 클럽 탭의 "일정 잡기" 버튼이 `/matches/new?mode=schedule` (legacy schedules) 로 가는데 사용자 운영은 카톡 투표 + club_record 이벤트 흐름이라 이 진입점은 잔재.
+
+- `ClubDetailView`에서 `<ClubScheduleList />` 사용 + import 제거.
+- `ClubScheduleList` 컴포넌트와 `useClubSchedules` hook이 orphan이 되어 함께 삭제 (`src/features/schedules/components/club-schedule-list.tsx`, `src/features/schedules/hooks/use-club-schedules.ts`).
+- 결과: schedules 도메인은 product canvas 정의대로 완전한 보조 트랙이 됨. 진입은 URL 직접 접근(`/clubs/[clubId]/schedules/[scheduleId]`)과 `/matches/new?mode=schedule`(legacy match new 안의 분기)만 남는다. 사용자가 카톡 투표로 운영하는 흐름과 충돌하던 클럽 탭 중복 진입점이 없어졌다.
+- club_record 이벤트 목록은 이미 이벤트 탭(`/clubs/[clubId]/club-record/events`)과 클럽 홈(`/clubs/[clubId]`)에서 보이고 있어 클럽 탭에서 추가로 보여줄 필요 없음.
+- 검증: `npm run verify` 통과(test 67/67, lint 0 errors, build 성공). DB 변경 없음.
 
 ### chore(db): 운영 DB에 P1-A/P1-B migration 5개 일괄 적용
 

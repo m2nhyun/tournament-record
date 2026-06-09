@@ -22,7 +22,6 @@ import { ClubSwitcherAction } from "@/components/layout/club-switcher-action";
 import { ClubMemberList } from "@/features/clubs/components/club-member-list";
 import { ClubNameEditModal } from "@/features/clubs/components/club-name-edit-modal";
 import { useClubDetail } from "@/features/clubs/hooks/use-club-detail";
-import { ClubScheduleList } from "@/features/schedules/components/club-schedule-list";
 
 type ClubDetailViewProps = {
   clubId: string;
@@ -219,8 +218,6 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
             </div>
           </CardContent>
         </Card>
-
-        <ClubScheduleList clubId={clubId} myRole={club.myRole} />
 
         <section className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
