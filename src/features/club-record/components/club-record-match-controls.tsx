@@ -28,7 +28,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { createManualMatch, deleteMatch } from "@/features/club-record/services/assignment";
+import {
+  createManualMatch,
+  deleteMatch,
+  updateMatchPlayers,
+} from "@/features/club-record/services/assignment";
 import { submitMatchResult, updateMatchResult } from "@/features/club-record/services/results";
 import type { ClubRecordAccessContext } from "@/features/club-record/types/access";
 import type { ClubRecordMatchPlayer } from "@/features/club-record/types/match";
@@ -40,6 +44,7 @@ type ClubRecordMatchControlsProps = {
   eventId: string;
   slot: ClubRecordAssignmentBoardSlot;
   participants: ClubRecordEventParticipant[];
+  swapEligibleParticipantIds: string[];
   access: ClubRecordAccessContext | null;
   onChanged: () => Promise<void>;
   readOnly?: boolean;
@@ -145,6 +150,7 @@ export function ClubRecordMatchControls({
   eventId,
   slot,
   participants,
+  swapEligibleParticipantIds,
   access,
   onChanged,
   readOnly = false,
@@ -170,9 +176,33 @@ export function ClubRecordMatchControls({
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<StatusState>(null);
 
+  const initialSwapPlayerIds = useMemo(() => {
+    if (!slot.match) return ["", "", "", ""] as string[];
+    return playerPositions.map(
+      (position) =>
+        slot.match?.players.find(
+          (player) =>
+            player.side === position.side && player.position === position.position,
+        )?.participantId ?? "",
+    );
+  }, [slot.match]);
+  const [swapDialogOpen, setSwapDialogOpen] = useState(false);
+  const [swapPlayerIds, setSwapPlayerIds] = useState<string[]>(initialSwapPlayerIds);
+  const [swapPopoverOpen, setSwapPopoverOpen] = useState([
+    false,
+    false,
+    false,
+    false,
+  ]);
+
   useEffect(() => {
     setManualPlayerIds(initialManualPlayerIds);
   }, [initialManualPlayerIds]);
+
+  useEffect(() => {
+    if (swapDialogOpen) return;
+    setSwapPlayerIds(initialSwapPlayerIds);
+  }, [initialSwapPlayerIds, swapDialogOpen]);
 
   useEffect(() => {
     setSide1Score(initialScore.side1);
@@ -295,6 +325,58 @@ export function ClubRecordMatchControls({
       setStatus({
         type: "error",
         message: error instanceof Error ? error.message : "경기 삭제 실패",
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleSwapPlayerChange = (index: number, participantId: string) => {
+    setSwapPlayerIds((current) => {
+      const next = [...current];
+      next[index] = participantId;
+      return next;
+    });
+  };
+
+  const handleSavePlayerSwap = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!slot.match) return;
+
+    if (swapPlayerIds.some((id) => !id)) {
+      setStatus({
+        type: "error",
+        message: "4명 모두 선택해주세요.",
+      });
+      return;
+    }
+
+    if (new Set(swapPlayerIds).size !== 4) {
+      setStatus({
+        type: "error",
+        message: "서로 다른 4명을 선택해주세요.",
+      });
+      return;
+    }
+
+    setBusy(true);
+    setStatus(null);
+    try {
+      const players: ClubRecordMatchPlayer[] = playerPositions.map(
+        (position, index) => ({
+          participantId: swapPlayerIds[index]!,
+          side: position.side,
+          position: position.position,
+        }),
+      );
+      await updateMatchPlayers(slot.match.id, players);
+      setStatus({ type: "success", message: "경기 선수를 변경했습니다." });
+      setSwapDialogOpen(false);
+      await onChanged();
+    } catch (error) {
+      setStatus({
+        type: "error",
+        message: error instanceof Error ? error.message : "선수 변경 실패",
       });
     } finally {
       setBusy(false);
@@ -471,6 +553,13 @@ export function ClubRecordMatchControls({
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem
+                      disabled={busy}
+                      onSelect={() => setSwapDialogOpen(true)}
+                    >
+                      <UsersRound className="size-4" />
+                      선수 변경
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
                       className="text-destructive focus:text-destructive"
                       disabled={busy}
                       onSelect={() => setDeleteConfirmOpen(true)}
@@ -607,6 +696,99 @@ export function ClubRecordMatchControls({
                   onClick={() => setResultDialogOpen(false)}
                 >
                   취소
+                </Button>
+              </div>
+            </form>
+          </Modal>
+
+          <Modal
+            open={swapDialogOpen}
+            onOpenChange={setSwapDialogOpen}
+            title="경기 선수 변경"
+            description="이 슬롯에 출전 가능한 참가자 중에서 새 4명을 선택합니다."
+          >
+            <form className="space-y-4" onSubmit={handleSavePlayerSwap}>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {playerPositions.map((position, index) => (
+                  <div key={position.key} className="grid gap-1.5">
+                    <Label className="text-xs">{position.label}</Label>
+                    <Popover
+                      open={swapPopoverOpen[index]}
+                      onOpenChange={(open) =>
+                        setSwapPopoverOpen((prev) => {
+                          const next = [...prev];
+                          next[index] = open;
+                          return next;
+                        })
+                      }
+                    >
+                      <PopoverTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-10 w-full justify-between rounded-xl px-3 font-normal"
+                        >
+                          <span className="truncate">
+                            {swapPlayerIds[index] ? (
+                              (participantNameMap.get(swapPlayerIds[index] ?? "") ??
+                                "알 수 없음")
+                            ) : (
+                              <span className="text-muted-foreground">선택</span>
+                            )}
+                          </span>
+                          <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent align="start" className="w-48 p-1">
+                        <div className="space-y-0.5">
+                          {swapEligibleParticipantIds.length > 0 ? (
+                            swapEligibleParticipantIds.map((participantId) => (
+                              <Button
+                                key={participantId}
+                                type="button"
+                                variant={
+                                  swapPlayerIds[index] === participantId
+                                    ? "secondary"
+                                    : "outline"
+                                }
+                                size="sm"
+                                className="w-full justify-start"
+                                onClick={() => {
+                                  handleSwapPlayerChange(index, participantId);
+                                  setSwapPopoverOpen((prev) => {
+                                    const next = [...prev];
+                                    next[index] = false;
+                                    return next;
+                                  });
+                                }}
+                              >
+                                {participantNameMap.get(participantId) ?? participantId}
+                              </Button>
+                            ))
+                          ) : (
+                            <p className="px-2 py-1 text-xs text-muted-foreground">
+                              이 시간대에 대체 가능한 참가자가 없습니다.
+                            </p>
+                          )}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  disabled={busy}
+                  onClick={() => setSwapDialogOpen(false)}
+                >
+                  취소
+                </Button>
+                <Button type="submit" className="flex-1" disabled={busy}>
+                  <UsersRound className="size-4" />
+                  {busy ? "저장 중..." : "변경 저장"}
                 </Button>
               </div>
             </form>

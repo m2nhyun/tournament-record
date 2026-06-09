@@ -6,11 +6,12 @@
 
 ### A. 운영 DB 미반영 migration 일괄 적용 (즉시 실행 가능)
 
-대기 중인 migration 2개:
+대기 중인 migration 3개:
 1. `supabase/migrations/20260608120000_restrict_anon_function_grants.sql` — anon EXECUTE 화이트리스트화 (P1-A)
 2. `supabase/migrations/20260609120000_add_match_schedule_cancel_by_host.sql` — 호스트 일정 취소 RPC (P1-B)
+3. `supabase/migrations/20260609130000_add_update_club_record_match_players.sql` — 매치 선수 교체 RPC (P1-B)
 
-순서대로 적용해도 무방하다(서로 의존성 없음). #2의 새 함수는 #1의 default-deny 정책을 자연스럽게 따른다(authenticated만 GRANT).
+순서대로 적용해도 무방하다(서로 의존성 없음). #2/#3의 새 함수는 #1의 default-deny 정책을 자연스럽게 따른다(authenticated만 GRANT).
 
 **추가 확인 항목**: 참가자 도착 시간 변경(2차)은 별도 migration 없이 `club_record_event_participants.arrival_time`을 직접 update한다. 적용 후:
   - 운영진/관리자 권한으로 update가 RLS를 통과하는지 (예상: existing admin policy로 통과)
@@ -52,6 +53,21 @@ npm run db:smoke:sql  # 3) anon 권한 회귀 검증 (#1)
 ---
 
 ## 2026-06-09
+
+### P1-B 4차: 운영진 매치 선수 교체 (`update_club_record_match_players` RPC + UI)
+
+- 사용자 운영 흐름 직결: 20시 화이트보드 매칭 중 도착/요청 변화로 매치 선수 swap이 자주 발생. 기존엔 매치 삭제 후 수동 재생성만 가능했음.
+- 신규 RPC `update_club_record_match_players(p_match_id uuid, p_players jsonb)` (`supabase/migrations/20260609130000_add_update_club_record_match_players.sql`):
+  - admin/manager만 호출.
+  - 매치 status가 `pending_result`여야 함(confirmed/cancelled는 거부).
+  - 새 4명 모두 같은 이벤트 active participant + 도착시간 ≤ slot.starts_at 검증.
+  - `delete from club_record_match_players where match_id` 후 `is_club_record_participant_occupied_at_slot_start`로 occupancy 검증. 자기 매치를 mid-state로 제외하는 효과.
+  - 매치를 `assignment_mode='manual'`, `is_manual=true`로 표시(운영진이 auto plan을 손댄 결과).
+  - `mark_club_record_event_assignment_dirty`로 dirty flag set → UI에서 재편성 권장 prompt.
+  - `authenticated`에만 EXECUTE grant.
+- service: `updateMatchPlayers(matchId, players)` 추가. 클라이언트에서 4명 distinct 사전 검증.
+- UI: `ClubRecordMatchControls`의 DropdownMenu에 `선수 변경` 메뉴 추가(미확정 매치에서만 노출). 클릭 시 Modal에서 4 popover로 새 4명 선택. 옵션 풀: `swapEligibleParticipantIds`(workspace에서 같은 시간대 available + 현재 매치 4명을 union해 props로 내려줌).
+- 검증: `npm run verify` 통과(test 64/64, lint 0 errors, build 성공). 운영 DB apply는 사용자 명시 승인 대기.
 
 ### P1-B 3차: 워크스페이스에서 "내 경기" 명시 (개인 코트 확인 1단계)
 

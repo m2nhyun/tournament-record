@@ -228,3 +228,29 @@ export async function deleteMatch(matchId: string): Promise<void> {
 
   if (error) throw mapClubRecordError(error);
 }
+
+export async function updateMatchPlayers(
+  matchId: string,
+  players: ClubRecordMatchPlayer[],
+): Promise<void> {
+  await requireUser();
+
+  if (players.length !== 4) {
+    throw new Error("경기는 정확히 4명의 선수가 필요합니다.");
+  }
+
+  const participantIds = new Set(players.map((player) => player.participantId));
+  if (participantIds.size !== 4) {
+    throw new Error("같은 선수를 두 번 이상 선택할 수 없습니다.");
+  }
+
+  const { error } = await getSupabaseClient().rpc(
+    "update_club_record_match_players",
+    {
+      p_match_id: matchId,
+      p_players: players,
+    },
+  );
+
+  if (error) throw mapClubRecordError(error);
+}

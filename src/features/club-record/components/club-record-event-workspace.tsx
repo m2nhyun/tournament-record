@@ -454,6 +454,22 @@ export function ClubRecordEventWorkspaceView({
                               eventId={eventId}
                               slot={slot}
                               participants={workspace.participants}
+                              swapEligibleParticipantIds={(() => {
+                                if (!slot.match) return [];
+                                const timeGroup = workspace.board.timeGroups.find(
+                                  (group) =>
+                                    group.startsAt === slot.startsAt &&
+                                    group.endsAt === slot.endsAt,
+                                );
+                                const ids = new Set<string>();
+                                for (const player of slot.match.players) {
+                                  ids.add(player.participantId);
+                                }
+                                for (const id of timeGroup?.availableParticipantIds ?? []) {
+                                  ids.add(id);
+                                }
+                                return Array.from(ids);
+                              })()}
                               access={access}
                               onChanged={refresh}
                               readOnly={isReadOnlyEvent}
