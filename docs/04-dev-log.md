@@ -4,16 +4,19 @@
 
 다음 세션 시작 시 이 섹션을 먼저 읽으면 현재 위치와 결정 대기 항목이 한눈에 보인다. 결정이 끝난 항목은 이 섹션에서 제거하고 본 dev-log 항목으로 이관한다.
 
-### A. 운영 DB 미반영 migration 일괄 적용 (즉시 실행 가능)
+### A. 운영 DB 미반영 migration 일괄 적용 — 완료 (2026-06-09)
 
-대기 중인 migration 5개:
-1. `supabase/migrations/20260608120000_restrict_anon_function_grants.sql` — anon EXECUTE 화이트리스트화 (P1-A)
-2. `supabase/migrations/20260609120000_add_match_schedule_cancel_by_host.sql` — 호스트 일정 취소 RPC (P1-B)
-3. `supabase/migrations/20260609130000_add_update_club_record_match_players.sql` — 매치 선수 교체 RPC (P1-B)
-4. `supabase/migrations/20260609140000_add_get_my_next_club_record_match.sql` — "내 다음 경기" RPC (P1-B)
-5. `supabase/migrations/20260609150000_add_gender_to_participants_rpc.sql` — `get_club_record_event_participants`에 `gender` 컬럼 추가 (P1-B 자동 편성 여복/혼복)
+운영 DB(`nomcsuizsztyhxkehila`)에 5개 migration 모두 적용 완료.
 
-순서대로 적용해도 무방하다(서로 의존성 없음). #2~#5의 새/갱신 함수는 #1의 default-deny 정책을 자연스럽게 따른다(authenticated만 GRANT). #5는 RPC signature가 바뀌므로 client는 새 컬럼이 반환되기 시작한 뒤에 gender-balanced 자동 편성이 동작한다(누락 시 fallback null이라 회귀 없이 점진 적용 가능).
+1. ✅ `20260608120000_restrict_anon_function_grants.sql`
+2. ✅ `20260609120000_add_match_schedule_cancel_by_host.sql`
+3. ✅ `20260609130000_add_update_club_record_match_players.sql`
+4. ✅ `20260609140000_add_get_my_next_club_record_match.sql`
+5. ✅ `20260609150000_add_gender_to_participants_rpc.sql` (`drop function if exists` 추가하여 `RETURNS TABLE` 시그니처 변경 SQLSTATE 42P13 fix)
+
+남은 후속 작업(blocking 아님, 환경에 따라 사용자 처리):
+- **`supabase/schema.sql` sync**: `db-sync-schema.sh`가 Docker로 pg_dump 컨테이너를 띄움. 현재 Docker daemon이 미실행이라 sync 미완료. Docker 실행 후 `npm run db:push`(추가 migration 없어도 됨) 또는 `bash scripts/automation/db-sync-schema.sh` 단독 실행으로 사후 sync 가능. schema.sql과 운영 DB가 일시 불일치이지만 서비스 동작에는 영향 없음.
+- **`db:smoke:sql` 회귀 검증**: 시스템에 `psql`이 미설치되어 실행 불가. `psql` 또는 Postgres client 설치 후 재시도 가능. 운영 영향은 없음(앱 동작 검증은 사용자 브라우저로 가능).
 
 **추가 확인 항목**: 참가자 도착 시간 변경(2차)은 별도 migration 없이 `club_record_event_participants.arrival_time`을 직접 update한다. 적용 후:
   - 운영진/관리자 권한으로 update가 RLS를 통과하는지 (예상: existing admin policy로 통과)
@@ -55,6 +58,16 @@ npm run db:smoke:sql  # 3) anon 권한 회귀 검증 (#1)
 ---
 
 ## 2026-06-09
+
+### chore(db): 운영 DB에 P1-A/P1-B migration 5개 일괄 적용
+
+- `npm run db:push:dry`로 5개 migration이 push 대기인 것 확인 후 `npm run db:push` 실행.
+- 처음 시도에서 #5 `add_gender_to_participants_rpc.sql`이 SQLSTATE 42P13 `cannot change return type of existing function`로 실패. PostgreSQL은 `CREATE OR REPLACE FUNCTION`으로 `RETURNS TABLE`의 컬럼 추가/변경을 허용하지 않음(`Hint: Use DROP FUNCTION first.`).
+- migration #5 본문에 `drop function if exists public.get_club_record_event_participants(uuid);` 한 줄을 `create function` 위에 추가. 다른 DB object에서 이 함수에 의존하지 않음을 grep으로 확인했기 때문에 drop이 안전.
+- 재시도 후 #5도 적용 완료. 어제부터 대기 중이던 5개 migration이 모두 운영 DB에 반영됨.
+- 후속 미완료 항목(서비스 영향 없음):
+  - `supabase/schema.sql` sync: Docker daemon 미실행으로 `db-sync-schema.sh`가 pg_dump 컨테이너를 못 띄움. Docker 실행 후 재시도 필요.
+  - `db:smoke:sql`: `psql` 미설치로 실행 불가. Postgres client 설치 후 재시도 가능.
 
 ### fix(club-record): "내 다음 경기" fetch 실패가 대시보드 전체를 깨뜨리던 버그 + 정회원 문구 단순화
 

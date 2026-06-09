@@ -7,8 +7,14 @@
 --
 -- Values: 'male' | 'female' | 'unspecified' | null (user_profiles_gender_check
 -- and the guest_profile column allow these).
+--
+-- DROP first because PostgreSQL's CREATE OR REPLACE cannot change a function's
+-- RETURNS TABLE shape (SQLSTATE 42P13). No other DB object depends on this
+-- function (only direct client RPC calls), so a drop is safe.
 
-create or replace function public.get_club_record_event_participants(
+drop function if exists public.get_club_record_event_participants(uuid);
+
+create function public.get_club_record_event_participants(
   p_event_id uuid
 )
 returns table (
