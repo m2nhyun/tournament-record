@@ -40,6 +40,17 @@
 
 ## 2026-06-09
 
+### P1-C 1차: profile service mock 테스트 추가
+
+- `src/features/auth/services/profile.test.ts` 신규: `requireCompletedProfile`, `getMyProfile`, `isProfileComplete`의 가드 경로를 vitest mock으로 검증.
+- 검증 케이스 11개:
+  - `requireCompletedProfile`: 로그아웃 / anonymous / row 없음 / profile_completed=false / true / PGRST116 외 error 전파
+  - `getMyProfile`: 로그아웃 + anonymous는 DB 호출 없이 null / PGRST116 → null
+  - `isProfileComplete`: 누락 → false / true → true
+- 패턴: 기존 `auth.test.ts`의 `vi.hoisted` + mock chain 패턴을 재사용. 다른 service의 mock test도 같은 패턴으로 확장 가능.
+- 검증: `npx vitest run profile.test.ts` 11/11 통과.
+- 나머지 club-record/clubs/schedules service mock test는 supabase chain mock의 ROI가 낮다고 판단되어 보류. 비즈니스 분기는 utils 추출 → utility test 패턴이 더 깔끔.
+
 ### P1-A: profile_completed 가드 정책 — 서비스 계층 유지로 확정
 
 - 결정: `requireCompletedProfile()` 서비스 계층 가드가 최종 경계. DB/RPC 수준에서는 강제하지 않는다.
