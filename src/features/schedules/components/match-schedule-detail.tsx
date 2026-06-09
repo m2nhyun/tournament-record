@@ -7,12 +7,23 @@ import { useState } from "react";
 import { LoadingSpinner } from "@/components/feedback/loading-spinner";
 import { StatusBox } from "@/components/feedback/status-box";
 import { AppBar } from "@/components/layout/app-bar";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useMatchScheduleDetail } from "@/features/schedules/hooks/use-match-schedule-detail";
 import {
   acceptMatchScheduleRequest,
+  cancelMatchSchedule,
   cancelMatchScheduleRequest,
   joinMatchSchedule,
   leaveMatchSchedule,
@@ -51,8 +62,16 @@ export function MatchScheduleDetailView({
     message: string;
   } | null>(null);
   const [submitting, setSubmitting] = useState<
-    "join" | "leave" | "request" | "cancel-request" | "accept" | "reject" | null
+    | "join"
+    | "leave"
+    | "request"
+    | "cancel-request"
+    | "accept"
+    | "reject"
+    | "cancel-schedule"
+    | null
   >(null);
+  const [cancelScheduleOpen, setCancelScheduleOpen] = useState(false);
 
   async function handleAction(
     action: "join" | "leave" | "request" | "cancel-request",
@@ -79,6 +98,22 @@ export function MatchScheduleDetailView({
       setStatus({ type: "error", message: toMessage(actionError) });
     } finally {
       setSubmitting(null);
+    }
+  }
+
+  async function handleCancelSchedule() {
+    setSubmitting("cancel-schedule");
+    setStatus(null);
+
+    try {
+      await cancelMatchSchedule(scheduleId);
+      setStatus({ type: "success", message: "일정을 취소했습니다." });
+      await refresh();
+    } catch (actionError) {
+      setStatus({ type: "error", message: toMessage(actionError) });
+    } finally {
+      setSubmitting(null);
+      setCancelScheduleOpen(false);
     }
   }
 
@@ -356,12 +391,24 @@ export function MatchScheduleDetailView({
             </div>
 
             {schedule.isHost ? (
-              <div className="rounded-lg border bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
-                {schedule.hostParticipates
-                  ? "개설자는 현재 참가 상태입니다."
-                  : "개설자는 현재 참가 인원에서 제외된 운영자 상태입니다."}{" "}
-                다음 단계에서는 이 화면에 일정 취소, 마감, 실제 경기 연결 같은
-                운영 액션을 붙일 수 있습니다.
+              <div className="space-y-2 rounded-lg border bg-muted/20 px-3 py-3">
+                <p className="text-sm text-muted-foreground">
+                  {schedule.hostParticipates
+                    ? "개설자는 현재 참가 상태입니다."
+                    : "개설자는 현재 참가 인원에서 제외된 운영자 상태입니다."}
+                </p>
+                {schedule.status !== "cancelled" ? (
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={submitting !== null}
+                      onClick={() => setCancelScheduleOpen(true)}
+                    >
+                      일정 취소
+                    </Button>
+                  </div>
+                ) : null}
               </div>
             ) : null}
             {!canJoin && !canRequest && !canCancelRequest && !canLeave && !schedule.isHost ? (
@@ -378,6 +425,29 @@ export function MatchScheduleDetailView({
           </CardContent>
         </Card>
       </div>
+
+      <AlertDialog open={cancelScheduleOpen} onOpenChange={setCancelScheduleOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>일정을 취소할까요?</AlertDialogTitle>
+            <AlertDialogDescription>
+              취소하면 다른 참가자에게 이 일정이 취소된 것으로 표시됩니다. 이미
+              모은 참가자와 신청 내역은 기록을 위해 그대로 남습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={submitting === "cancel-schedule"}>
+              유지
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={submitting === "cancel-schedule"}
+              onClick={() => void handleCancelSchedule()}
+            >
+              일정 취소
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

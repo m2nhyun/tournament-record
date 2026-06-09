@@ -313,6 +313,16 @@ export async function rejectMatchScheduleRequest(
   if (error) throw mapScheduleError(error);
 }
 
+export async function cancelMatchSchedule(scheduleId: string) {
+  await requireCompletedProfile();
+
+  const { error } = await getSupabaseClient().rpc("cancel_match_schedule", {
+    p_schedule_id: scheduleId,
+  });
+
+  if (error) throw mapScheduleError(error);
+}
+
 export async function listUpcomingMatchSchedules(
   clubId: string,
 ): Promise<MatchScheduleSummary[]> {

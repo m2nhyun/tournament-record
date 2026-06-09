@@ -4,19 +4,28 @@
 
 다음 세션 시작 시 이 섹션을 먼저 읽으면 현재 위치와 결정 대기 항목이 한눈에 보인다. 결정이 끝난 항목은 이 섹션에서 제거하고 본 dev-log 항목으로 이관한다.
 
-### A. anon function grant migration 운영 DB 적용 (즉시 실행 가능)
+### A. 운영 DB 미반영 migration 일괄 적용 (즉시 실행 가능)
 
-- 작성된 migration: `supabase/migrations/20260608120000_restrict_anon_function_grants.sql`
-- 영향: `public` 스키마의 모든 함수에서 `anon` EXECUTE를 회수하고, 화이트리스트 4개 RPC만 다시 GRANT. 클라이언트 영향은 없을 것으로 분석됨.
-- 사용자가 실행할 명령(env에 `SUPABASE_DB_PUSH_URL` 설정 필요):
-  ```bash
-  npm run db:push:dry   # 1) 미리 확인
-  npm run db:push       # 2) 적용 (schema.sql 자동 sync)
-  npm run db:smoke:sql  # 3) anon 권한 회귀 검증 (smoke의 새 섹션 통과 확인)
-  ```
-- 실행 후 작업자가 처리해야 할 일:
-  - 위 3단계 모두 성공하면 본 dev-log 2026-06-08 P1-A 항목의 "미완료" 줄을 "운영 DB 적용 완료 (날짜)"로 갱신
-  - smoke 실패 시 migration 또는 smoke의 함수 signature 매칭 확인
+대기 중인 migration 2개:
+1. `supabase/migrations/20260608120000_restrict_anon_function_grants.sql` — anon EXECUTE 화이트리스트화 (P1-A)
+2. `supabase/migrations/20260609120000_add_match_schedule_cancel_by_host.sql` — 호스트 일정 취소 RPC (P1-B)
+
+순서대로 적용해도 무방하다(서로 의존성 없음). #2의 새 함수는 #1의 default-deny 정책을 자연스럽게 따른다(authenticated만 GRANT).
+
+사용자가 실행할 명령(env에 `SUPABASE_DB_PUSH_URL` 설정 필요):
+```bash
+npm run db:push:dry   # 1) 미리 확인 — 2개 migration이 보여야 함
+npm run db:push       # 2) 적용 (schema.sql 자동 sync)
+npm run db:smoke:sql  # 3) anon 권한 회귀 검증 (#1)
+# #2의 회귀 검증(cancel_match_schedule)은 smoke에 아직 없음. 수동 검증:
+#   - 호스트로 일정 취소 → 성공
+#   - 비호스트로 호출 → '일정 개설자만 취소할 수 있습니다.'
+#   - cancelled 상태에서 재호출 → idempotent (에러 없음)
+```
+
+실행 후 작업자가 처리해야 할 일:
+- 위 단계 모두 성공하면 본 dev-log 2026-06-08 P1-A와 2026-06-09 P1-B 항목의 "운영 DB 적용 대기"를 "운영 DB 적용 완료 (날짜)"로 갱신.
+- 다음 호스트 액션(모집 마감/일정 수정)이 추가될 때 그 migration도 같은 사이클에 묶어 적용.
 
 ### C. P1-A 다음 항목: core matches RPC 트랜잭션화 (사용자가 "건너뛰기"로 결정한 항목)
 
@@ -39,6 +48,18 @@
 ---
 
 ## 2026-06-09
+
+### P1-B 1차: 호스트 일정 취소 액션 (`cancel_match_schedule` RPC + UI)
+
+- 일정 상세(`/clubs/[clubId]/schedules/[scheduleId]`)에서 호스트가 자기 일정을 취소할 수 있게 했다. UX-tasks Backlog 6번의 "일정 취소"가 1차 완료.
+- 신규 RPC `cancel_match_schedule(p_schedule_id uuid)` (`supabase/migrations/20260609120000_add_match_schedule_cancel_by_host.sql`):
+  - 호출자가 active `club_member`이고 그 `id`가 `match_schedules.host_member_id`와 일치해야 한다.
+  - 이미 cancelled면 idempotent. `ends_at`이 지난 일정은 취소 거부.
+  - `authenticated`에만 EXECUTE grant. anon 화이트리스트(§2-1)에 따라 anon은 부여하지 않음.
+- 서비스: `cancelMatchSchedule(scheduleId)` 추가. `requireCompletedProfile` 가드 → RPC 호출 → `mapScheduleError`로 에러 매핑.
+- UI: `MatchScheduleDetailView`의 호스트 안내 placeholder를 실제 액션 영역으로 교체. `cancelled` 상태가 아닐 때만 `일정 취소` 버튼 노출, 클릭 시 `AlertDialog`로 한 번 더 확인. 참가자/신청 내역은 기록을 위해 보존됨을 description에 명시.
+- 검증: `npm run verify` 통과(test 64/64, lint 0 errors, build 성공). 운영 DB 적용은 사용자 명시 승인 대기.
+- 남은 호스트 액션: 모집 마감, 일정 수정, 일정→실제 경기 연결.
 
 ### P1-C 1차: profile service mock 테스트 추가
 
