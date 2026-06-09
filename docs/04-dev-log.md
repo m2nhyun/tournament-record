@@ -12,6 +12,10 @@
 
 순서대로 적용해도 무방하다(서로 의존성 없음). #2의 새 함수는 #1의 default-deny 정책을 자연스럽게 따른다(authenticated만 GRANT).
 
+**추가 확인 항목**: 참가자 도착 시간 변경(2차)은 별도 migration 없이 `club_record_event_participants.arrival_time`을 직접 update한다. 적용 후:
+  - 운영진/관리자 권한으로 update가 RLS를 통과하는지 (예상: existing admin policy로 통과)
+  - update 시 `handle_club_record_assignment_dirty_sync` trigger가 `assignment_dirty=true`를 설정하는지 (안 되면 후속 trigger migration 필요)
+
 사용자가 실행할 명령(env에 `SUPABASE_DB_PUSH_URL` 설정 필요):
 ```bash
 npm run db:push:dry   # 1) 미리 확인 — 2개 migration이 보여야 함
