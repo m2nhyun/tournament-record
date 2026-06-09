@@ -59,7 +59,17 @@ export async function getClubRecordDashboardData(
   const monthlyCard = await getMonthlyPublicCard(clubId, monthStart);
   const { currentEvent, upcomingEvents } = selectDashboardEvents(events, now);
 
-  const nextMatch = access.clubMemberId ? await fetchNextMatch(clubId) : null;
+  let nextMatch: ClubRecordDashboardNextMatch | null = null;
+  if (access.clubMemberId) {
+    try {
+      nextMatch = await fetchNextMatch(clubId);
+    } catch (error) {
+      // 새 RPC가 아직 운영 DB에 반영되지 않은 경우 등, "내 다음 경기" 카드만
+      // 조용히 숨기고 나머지 대시보드 데이터는 정상 로드되게 한다.
+      console.warn("[club-record] fetchNextMatch failed; hiding card.", error);
+      nextMatch = null;
+    }
+  }
 
   return {
     access,

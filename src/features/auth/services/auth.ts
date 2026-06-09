@@ -178,7 +178,7 @@ export async function requireUser() {
 export async function requireRegisteredUser() {
   const user = await requireUser();
   if (user.is_anonymous) {
-    throw new Error("게스트 계정은 사용할 수 없습니다. 카카오/이메일로 로그인해주세요.");
+    throw new Error("게스트 계정은 사용할 수 없습니다. 정회원으로 로그인해주세요.");
   }
   return user;
 }

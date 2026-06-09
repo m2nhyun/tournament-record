@@ -46,7 +46,7 @@ function toMessage(error: unknown) {
         return "로그인이 필요합니다.";
       }
       if (message.includes("게스트 계정은 사용할 수 없습니다")) {
-        return "정회원(카카오/이메일) 로그인 후 참가할 수 있습니다.";
+        return "정회원 로그인 후 참가할 수 있습니다.";
       }
       if (
         message.includes("club_members_nickname_check") ||
@@ -133,7 +133,7 @@ export function useClubDashboard() {
     if (user?.is_anonymous) {
       setStatus({
         type: "error",
-        message: "게스트 계정은 클럽 생성이 불가합니다. 카카오/이메일 로그인 후 이용해주세요.",
+        message: "게스트 계정은 클럽 생성이 불가합니다. 정회원 로그인 후 이용해주세요.",
       });
       return;
     }

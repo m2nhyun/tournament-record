@@ -151,7 +151,7 @@ export async function createMatch(
   const user = await requireUser();
   if (user.is_anonymous) {
     throw new Error(
-      "게스트는 경기 기록을 저장할 수 없습니다. 카카오/이메일 로그인 후 이용해주세요.",
+      "게스트는 경기 기록을 저장할 수 없습니다. 정회원 로그인 후 이용해주세요.",
     );
   }
   await requireCompletedProfile();
@@ -219,7 +219,7 @@ export async function updateMatch(
   const user = await requireUser();
   if (user.is_anonymous) {
     throw new Error(
-      "게스트는 경기 기록을 수정할 수 없습니다. 카카오/이메일 로그인 후 이용해주세요.",
+      "게스트는 경기 기록을 수정할 수 없습니다. 정회원 로그인 후 이용해주세요.",
     );
   }
   await requireCompletedProfile();
@@ -434,7 +434,7 @@ export async function deleteMatch(matchId: string): Promise<void> {
   const user = await requireUser();
   if (user.is_anonymous) {
     throw new Error(
-      "게스트는 경기 기록을 삭제할 수 없습니다. 카카오/이메일 로그인 후 이용해주세요.",
+      "게스트는 경기 기록을 삭제할 수 없습니다. 정회원 로그인 후 이용해주세요.",
     );
   }
 

@@ -209,7 +209,7 @@ export async function createMatchSchedule(
   const user = await requireUser();
   if (user.is_anonymous) {
     throw new Error(
-      "게스트는 일정을 만들 수 없습니다. 카카오/이메일 로그인 후 이용해주세요.",
+      "게스트는 일정을 만들 수 없습니다. 정회원 로그인 후 이용해주세요.",
     );
   }
   await requireCompletedProfile();

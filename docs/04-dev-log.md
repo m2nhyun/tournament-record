@@ -56,6 +56,23 @@ npm run db:smoke:sql  # 3) anon 권한 회귀 검증 (#1)
 
 ## 2026-06-09
 
+### fix(club-record): "내 다음 경기" fetch 실패가 대시보드 전체를 깨뜨리던 버그 + 정회원 문구 단순화
+
+사용자 보고: "club record 처리 중 오류가 발생했습니다." 가 떠서 대시보드 자체가 열리지 않음.
+
+root cause:
+- `getClubRecordDashboardData`가 새로 추가된 `get_my_next_club_record_match` RPC를 무조건 호출하고, 실패 시 throw → 대시보드 fetch 전체가 실패해 catch-all 오류 메시지로 떨어짐.
+- 운영 DB에는 어제 push한 5개 migration이 아직 적용되지 않은 상태라, `get_my_next_club_record_match`가 존재하지 않아 PGRST `Could not find the function ...` 에러 발생.
+
+진짜 fix:
+- `src/features/club-record/services/dashboard.ts`: `fetchNextMatch` 호출을 `try/catch`로 감싸 실패 시 `nextMatch = null`로 graceful degrade. 카드만 안 보이고 나머지(access/events/monthly card)는 정상 로드. 에러는 `console.warn`로 남겨 추적 가능.
+- 즉 운영 DB에 migration이 적용되기 전에도 대시보드가 멀쩡하게 열린다. 적용 후엔 자동으로 "내 다음 경기" 카드가 노출된다.
+
+문구 정리(사용자 요청: "정회원 (카카오/이메일 로그인)" 같은 영문/괄호 부연은 제거):
+- 7곳 일괄 정리: `match-creation-form.tsx`, `match-schedule-form.tsx` description, `clubs/hooks/use-club-dashboard.ts`(2곳: 게스트 안내/생성 거부), `schedules/services/schedules.ts`, `matches/services/matches.ts`(3곳: 생성/수정/삭제), `auth/services/auth.ts`(`requireRegisteredUser`). 모두 "카카오/이메일" 부연을 빼고 "정회원"으로 통일.
+
+검증: `npm run verify` 통과(test 67/67, lint 0 errors, build 성공). DB 변경 없음.
+
 ### UX/copy: club_record 오류 메시지 톤 정리 + EmptyState 가독성
 
 사용자 보고:

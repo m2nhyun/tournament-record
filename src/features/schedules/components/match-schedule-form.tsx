@@ -186,7 +186,7 @@ export function MatchScheduleForm({ clubId }: MatchScheduleFormProps) {
         icon={CalendarClock}
         title="게스트는 일정을 만들 수 없습니다."
         description={
-          "정회원(카카오/이메일 로그인)만 일정 생성이 가능하며,\n게스트는 생성된 일정에 참가만 할 수 있습니다."
+          "정회원만 일정 생성이 가능하며,\n게스트는 생성된 일정에 참가만 할 수 있습니다."
         }
       />
     );
