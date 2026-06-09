@@ -178,6 +178,13 @@
 
 ## Recent Updates
 
+### 2026-06-08 P0 IA 정리 — legacy 라우트 + cross-track 진입점 제거
+- `/clubs/[clubId]/leaderboard` 라우트와 `src/features/leaderboard/*` 전체 삭제 (어떤 Link에서도 참조되지 않는 orphan)
+- `MatchConfirmationPromptCard`를 club_record 대시보드에서 제거하고 컴포넌트 파일도 삭제 → club_record → legacy `/history` cross-track 점프 없어짐
+- 일반 경기 확인 요청은 `/history` 화면 자체의 `MatchConfirmationInboxAction`으로만 처리하는 닫힌 시스템으로 정리
+- `docs/01-product-canvas.md`에 용어 정의(이벤트/일정/새 경기/club_record 히스토리/일반 경기 히스토리) 추가
+- `verify` 통과 (test 53/53, lint 0 errors, build 성공)
+
 ### 2026-05-27 문서-코드 정합성 갱신
 - `12-project-review.md`(2026-05-14) 진단 중 다음 항목이 이미 해소되었음을 코드/CI 검증으로 확인하고 문서에 반영
   - CI에 `npm run test` 단계 존재 (`.github/workflows/ci.yml`)

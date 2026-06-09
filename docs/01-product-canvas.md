@@ -4,6 +4,22 @@
 
 아마추어 테니스 클럽 운영진이 정모/번개 경기 기록을 현장에서 남기고, 멤버가 내 전적과 클럽 활동을 확인하는 클럽 레코드 플랫폼.
 
+## 용어 정의 (Glossary)
+
+이 제품에서 같은 단어가 두 트랙에 걸쳐 쓰일 수 있어, 다음 정의로 고정한다.
+
+| 용어 | 의미 | 위치 |
+|------|------|------|
+| **이벤트 (Event)** | club_record의 데일리 매치 운영 단위. 정모/번개 1회 = 이벤트 1건. | `club_record_events`, `/clubs/[clubId]/club-record/events` |
+| **일정 (Schedule)** | 사전 모집/참가를 위한 schedules 도메인. 정원/비용/장소를 두고 멤버가 신청한다. | `schedules` feature, `/clubs/[clubId]/schedules/[scheduleId]` |
+| **새 경기** | legacy `matches` 도메인의 일회성 경기 기록 진입점. club_record와 상태 머신이 다르다. | `/clubs/[clubId]/matches/new` |
+| **club_record 히스토리** | 내 확정 club_record 경기 이력. 무한 스크롤. | `/clubs/[clubId]/club-record/history` |
+| **일반 경기 히스토리** | legacy matches 도메인 일반 경기 이력 + 확인 인박스. | `/clubs/[clubId]/history` |
+
+바텀 네비게이션의 "이벤트"는 항상 **club_record 이벤트**, "히스토리"는 항상 **club_record 히스토리**를 가리킨다. 일반 경기/히스토리는 URL 직접 접근으로만 닫혀 있는 보조 트랙이다.
+
+---
+
 ## 핵심 도메인: 클럽 레코드
 
 이 제품의 실질적인 핵심은 **클럽 레코드(Club Record)** 기능이다. 클럽 레코드는 다음 흐름으로 동작한다.
@@ -122,9 +138,9 @@
 - 일회성 경기 기록 (`/matches/new`)
 - 일정 잡기 진입 (`/matches/new?mode=schedule` → 일정 모집)
 - 경기 상세 보기 / 확인 처리 (`/matches/[matchId]`)
-- 일반 경기 히스토리 뷰 (`/history`)
+- 일반 경기 히스토리 뷰 + 확인 인박스 (`/history`)
 
-바텀 네비게이션에서는 노출되지 않고, club_record 대시보드의 confirmation 카드와 일정 카드의 내부 링크에서 진입한다. `/leaderboard`는 현재 어떤 Link에서도 참조되지 않는 orphan 라우트이며 정책 결정 대기 상태다.
+바텀 네비게이션에서는 노출되지 않고, 클럽 상세의 일정 카드(`schedules`)에서 일정 모집/일정 상세 진입 외에는 URL 직접 접근으로만 들어가는 닫힌 시스템이다. 일반 경기 확인 요청은 `/history` 화면 자체의 inbox 액션으로 처리한다(club_record 대시보드에는 cross-track confirmation 카드를 두지 않는다).
 
 ---
 

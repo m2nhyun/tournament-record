@@ -21,7 +21,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useClubRecordDashboard } from "@/features/club-record/hooks/use-club-record-dashboard";
 import type { ClubRecordDashboardEventSummary } from "@/features/club-record/types/dashboard";
-import { MatchConfirmationPromptCard } from "@/features/matches/components/match-confirmation-prompt-card";
 
 type ClubRecordDashboardViewProps = {
   clubId: string;
@@ -194,8 +193,6 @@ export function ClubRecordDashboardView({
             </div>
           </CardContent>
         </Card>
-
-        <MatchConfirmationPromptCard clubId={clubId} />
 
         <section className="space-y-3">
           <div className="flex items-center justify-between gap-3">

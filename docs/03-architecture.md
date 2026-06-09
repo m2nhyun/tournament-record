@@ -18,7 +18,7 @@
   - `/clubs/[clubId]`: club_record 메인 홈
   - `/clubs/[clubId]/club`: 클럽 정보/초대/일정/멤버 관리
   - `/clubs/[clubId]/club-record/events`: 안전한 이벤트 목록/진입
-  - `/clubs/[clubId]/*`: 기존 클럽 상세/히스토리/리더보드/경기 라우트(직접 접근용으로 유지)
+  - `/clubs/[clubId]/*`: 기존 클럽 상세/히스토리/경기 라우트(직접 접근용으로 유지). `/leaderboard`는 2026-06-08 제거됨.
   - `/clubs/[clubId]/schedules/[scheduleId]`: 일정 상세/참가 현황
   - `/clubs/[clubId]/club-record/*`: 클럽 운영용 데일리 매치/랭킹/이벤트 워크스페이스
 - `src/features/*`: 기능 단위 모듈 (components/hooks/services/types)
@@ -26,7 +26,6 @@
   - `clubs`: 클럽/멤버/초대 흐름
   - `matches`: 경기 생성/상세/히스토리
   - `schedules`: 일정 생성/모집/참가
-  - `leaderboard`: 전적 집계
   - `club-record`: 데일리 매치 이벤트, 참가자, 게스트, 초대 참가, 편성, 랭킹, 결과, 히스토리
 - `src/components/layout`: `AppShell`, `AppBar`, `BottomNav`
 - `src/components/feedback`: 로딩/상태/빈 상태 컴포넌트
