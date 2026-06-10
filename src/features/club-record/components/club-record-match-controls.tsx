@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type FormEvent, memo, useEffect, useMemo, useState } from "react";
 import { ChevronDown, Minus, MoreVertical, Pencil, Plus, Save, Trash2, UsersRound } from "lucide-react";
 
 import { Modal } from "@/components/common/modal";
@@ -146,7 +146,7 @@ function clampScore(value: number) {
   return Math.max(0, Math.min(9, value));
 }
 
-export function ClubRecordMatchControls({
+function ClubRecordMatchControlsImpl({
   eventId,
   slot,
   participants,
@@ -795,3 +795,9 @@ export function ClubRecordMatchControls({
     </div>
   );
 }
+
+// 워크스페이스가 한 슬롯의 변경(예: 결과 입력) 후 refresh 하면 16~24개 슬롯의
+// MatchControls 가 모두 re-render 되던 비용을 줄인다. props 가 동일하면 skip.
+// 부모(workspace)는 swapEligibleMapBySlot, handleWorkspaceChanged 를 useMemo /
+// useCallback 으로 안정화해 두었으므로 같은 reference 가 들어온다.
+export const ClubRecordMatchControls = memo(ClubRecordMatchControlsImpl);

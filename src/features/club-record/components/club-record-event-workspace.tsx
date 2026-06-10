@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CalendarDays, Pencil, PlusCircle, RefreshCw, Trash2 } from "lucide-react";
@@ -102,6 +102,35 @@ export function ClubRecordEventWorkspaceView({
     );
     return me?.id ?? null;
   }, [access?.clubMemberId, workspace?.participants]);
+
+  // slot.id → 같은 시간대에 swap 후보가 될 수 있는 participantId 배열.
+  // 슬롯 카드를 그릴 때마다 inline IIFE 로 매번 계산하면 매치 컨트롤 prop 이
+  // 매번 새 배열이 되어 자식 memo 가 깨진다. 한 번 계산해서 lookup.
+  const swapEligibleMapBySlot = useMemo(() => {
+    const map = new Map<string, string[]>();
+    if (!workspace) return map;
+    for (const slot of workspace.board.slots) {
+      if (!slot.match) {
+        map.set(slot.id, []);
+        continue;
+      }
+      const timeGroup = workspace.board.timeGroups.find(
+        (group) =>
+          group.startsAt === slot.startsAt && group.endsAt === slot.endsAt,
+      );
+      const ids = new Set<string>();
+      for (const player of slot.match.players) {
+        ids.add(player.participantId);
+      }
+      for (const id of timeGroup?.availableParticipantIds ?? []) {
+        ids.add(id);
+      }
+      map.set(slot.id, Array.from(ids));
+    }
+    return map;
+  }, [workspace]);
+
+  const handleWorkspaceChanged = useCallback(() => refresh(), [refresh]);
 
   if (loading) {
     return <LoadingSpinner title="로딩 중" message="이벤트 워크스페이스를 불러오는 중..." />;
@@ -209,7 +238,7 @@ export function ClubRecordEventWorkspaceView({
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              {access?.capabilities.canManageParticipants && !isReadOnlyEvent ? (
+              {access?.capabilities.canCreateEvent && !isReadOnlyEvent ? (
                 <Button size="sm" variant="outline" asChild>
                   <Link href={`/clubs/${clubId}/club-record/new`}>
                     <PlusCircle className="size-4" />
@@ -430,24 +459,11 @@ export function ClubRecordEventWorkspaceView({
                               eventId={eventId}
                               slot={slot}
                               participants={workspace.participants}
-                              swapEligibleParticipantIds={(() => {
-                                if (!slot.match) return [];
-                                const timeGroup = workspace.board.timeGroups.find(
-                                  (group) =>
-                                    group.startsAt === slot.startsAt &&
-                                    group.endsAt === slot.endsAt,
-                                );
-                                const ids = new Set<string>();
-                                for (const player of slot.match.players) {
-                                  ids.add(player.participantId);
-                                }
-                                for (const id of timeGroup?.availableParticipantIds ?? []) {
-                                  ids.add(id);
-                                }
-                                return Array.from(ids);
-                              })()}
+                              swapEligibleParticipantIds={
+                                swapEligibleMapBySlot.get(slot.id) ?? []
+                              }
                               access={access}
-                              onChanged={refresh}
+                              onChanged={handleWorkspaceChanged}
                               readOnly={isReadOnlyEvent}
                             />
                           </div>

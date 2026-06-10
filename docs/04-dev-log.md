@@ -85,6 +85,27 @@ npm scripts: `qa:full-club:seed` · `:scenario` · `:cleanup` · `qa:full-club` 
 - `smoke-prod.mjs`는 read-only(select head + RPC ping). URL이 로컬일 경우 즉시 종료.
 - 시드 잔존 0건 확인 (`npm run qa:full-club` 종료 시 운영/로컬 모두 0).
 
+### perf+guard: 새 이벤트 권한 가드 정확화 + 워크스페이스 리렌더링 최적화
+
+사용자 요청 3건:
+1. 새 이벤트 생성은 운영진만 — 의미 정확한 권한 가드 적용
+2. LoadingSpinner 에 AppBar 는 그대로 제외 (변경 없음, 의도 확인만)
+3. 변경/추가 시 불필요한 리렌더링 hotspot 찾아 fix
+
+대응:
+
+A. **권한 가드 정확화**: `ClubRecordEventWorkspaceView` 의 `새 이벤트` 버튼이 `canManageParticipants` 로 가드되어 있었다. 현 access matrix 상 `canCreateEvent` 와 동일 권한이라 실제 노출 차이는 없었지만, 의미상 `canCreateEvent` 가 정확하고 향후 권한 매트릭스가 바뀔 때 회귀를 막는다. `dashboard` / `event-list` 의 다른 진입점은 이미 `canCreateEvent` 가드라 확인만.
+
+B. **`swapEligibleParticipantIds` 매 슬롯 inline IIFE 계산을 useMemo map 으로 통합**: 워크스페이스가 한 번 render 될 때 16~24개 슬롯 각각이 `(() => { ... })()` 를 새로 실행해 새 배열을 만들어 `ClubRecordMatchControls` 의 prop 으로 넘기던 패턴이었다. 매번 새 배열 reference 라 자식 memo 가 깨질 수밖에 없었다. `swapEligibleMapBySlot: Map<slotId, string[]>` 을 useMemo 로 한 번 계산하고 슬롯 렌더링은 `.get(slot.id)` 로 lookup.
+
+C. **`onChanged` 콜백 useCallback 안정화**: 워크스페이스가 자식 (`ClubRecordMatchControls`, `ClubRecordParticipantManager`) 에 inline 으로 `refresh` 를 넘기면 매번 새 reference. `handleWorkspaceChanged = useCallback(() => refresh(), [refresh])` 로 묶어 자식 memo 가 정상 작동하게.
+
+D. **`ClubRecordMatchControls` 를 `React.memo` 로 감쌈**: 위 두 안정화 덕분에 props 가 stable 해진다. 워크스페이스에서 한 슬롯의 변경(예: 결과 입력) 후 refresh 가 호출되어도 데이터가 실제로 바뀐 슬롯의 controls 만 re-render. 다른 슬롯들은 같은 prop reference 라 skip.
+
+검증: `npm run verify` 통과(test 67/67, lint 0 errors, build 성공). DB 변경 없음.
+
+남은 리렌더링 후보(별도 작업): 도착 시간 변경 / 참가자 추가 등에서 `onChanged()` → 전체 fetch → 전체 트리 재구성. 행 단위 optimistic update 로 부분 갱신하면 더 좋아진다(랭킹 화면에서 같은 패턴 적용했던 것 처럼). 이건 hook 구조 변경이 들어가 별도 사이클로.
+
 ### ux: UI 전체 점검 6건 정리 (워크스페이스 노이즈 / CTA 중복 / 로딩 화면 / 멤버 액션 라벨)
 
 사용자 요청으로 cmux_browser 로 핵심 화면들을 도는 동안 발견된 작은 마찰들을 일괄 정리.
