@@ -7,6 +7,7 @@ import {
   Pencil,
   RefreshCw,
   Share2,
+  ShieldCheck,
   Users,
 } from "lucide-react";
 import { useCallback, useState } from "react";
@@ -225,14 +226,24 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
               <Users className="size-5" />
               멤버 ({members.length})
             </h2>
-            {club.myRole === "owner" || club.myRole === "manager" ? (
-              <Button size="sm" variant="outline" asChild>
-                <Link href={`/clubs/${clubId}/club-record/ranking`}>
-                  <ListOrdered className="size-4" />
-                  랭킹 관리
-                </Link>
-              </Button>
-            ) : null}
+            <div className="flex flex-wrap items-center gap-2">
+              {club.myRole === "owner" ? (
+                <Button size="sm" variant="outline" asChild>
+                  <Link href={`/clubs/${clubId}/club/managers`}>
+                    <ShieldCheck className="size-4" />
+                    운영진 관리
+                  </Link>
+                </Button>
+              ) : null}
+              {club.myRole === "owner" || club.myRole === "manager" ? (
+                <Button size="sm" variant="outline" asChild>
+                  <Link href={`/clubs/${clubId}/club-record/ranking`}>
+                    <ListOrdered className="size-4" />
+                    랭킹 관리
+                  </Link>
+                </Button>
+              ) : null}
+            </div>
           </div>
           {members.length > 0 ? (
             <ClubMemberList

@@ -53,6 +53,28 @@ npm run db:smoke:sql  # 3) anon 권한 회귀 검증 (#1)
 
 ## 2026-06-10
 
+### feat(clubs): owner 가 운영진(manager)을 임명/해제할 수 있는 화면 추가
+
+사용자 보고: 운영진을 어디서 설정하는지 확인했을 때 임명 UI/RPC가 존재하지 않아 SQL 직편집 외 경로가 없었다.
+
+대응:
+- 신규 RPC `set_club_member_role(p_club_id, p_member_id, p_role text)` (`migrations/20260610120000_add_set_club_member_role.sql`):
+  - 호출자가 해당 클럽의 active owner 여야 함
+  - 본인 자신, owner, guest 는 대상에서 제외
+  - 허용 역할은 `manager` | `member` 만
+  - 같은 역할로 set 하면 no-op
+  - `authenticated` 만 EXECUTE
+- 운영 DB 적용 완료 + `supabase/schema.sql` 자동 sync.
+- service: `setClubMemberRole(clubId, memberId, role)`.
+- 새 라우트 `/clubs/[clubId]/club/managers` + `ClubManagerView`:
+  - owner 만 진입 가능 (RPC 가드 + 컴포넌트에서 `myRole === 'owner'` 체크)
+  - manager 먼저 정렬, 그다음 member. 본인/owner/guest 는 액션 대상에서 제외
+  - 각 행에 `운영진 임명` / `운영진 해제` 토글 버튼 + `AlertDialog` 확인
+  - optimistic update: 클릭 즉시 클라이언트 role 변경, RPC 실패 시 rollback
+- 클럽 탭 (`ClubDetailView`) 멤버 카드 헤더에 `랭킹 관리` **왼쪽**으로 `운영진 관리` 링크 추가 (owner 만 노출, 사용자 명시 위치).
+
+검증: `npm run verify` 통과(test 67/67, lint 0 errors, build 성공). 운영 DB 적용 완료.
+
 ### ux(layout): Badge 줄바꿈 + 워크스페이스 참가자 행에 새는 알고리즘 정보 제거
 
 사용자 보고:

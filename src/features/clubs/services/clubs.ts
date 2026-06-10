@@ -274,3 +274,19 @@ export async function removeClubMember(clubId: string, memberId: string) {
 
   if (error) throw mapClubSettingsError(error);
 }
+
+export async function setClubMemberRole(
+  clubId: string,
+  memberId: string,
+  role: "manager" | "member",
+) {
+  await requireUser();
+
+  const { error } = await getSupabaseClient().rpc("set_club_member_role", {
+    p_club_id: clubId,
+    p_member_id: memberId,
+    p_role: role,
+  });
+
+  if (error) throw mapClubSettingsError(error);
+}

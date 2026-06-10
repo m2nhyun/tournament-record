@@ -526,6 +526,66 @@ $$;
 ALTER FUNCTION "public"."cancel_expired_club_record_matches"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."cancel_match_schedule"("p_schedule_id" "uuid") RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_user_id uuid;
+  v_schedule record;
+  v_my_member_id uuid;
+begin
+  v_user_id := auth.uid();
+  if v_user_id is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  select ms.id,
+         ms.club_id,
+         ms.host_member_id,
+         ms.status,
+         ms.ends_at
+    into v_schedule
+  from public.match_schedules ms
+  where ms.id = p_schedule_id;
+
+  if not found then
+    raise exception '취소할 일정을 찾을 수 없습니다.';
+  end if;
+
+  select cm.id
+    into v_my_member_id
+  from public.club_members cm
+  where cm.club_id = v_schedule.club_id
+    and cm.user_id = v_user_id
+    and cm.is_active = true
+  limit 1;
+
+  if v_my_member_id is null or v_my_member_id <> v_schedule.host_member_id then
+    raise exception '일정 개설자만 취소할 수 있습니다.';
+  end if;
+
+  if v_schedule.status = 'cancelled' then
+    return v_schedule.id;
+  end if;
+
+  if v_schedule.ends_at <= now() then
+    raise exception '종료된 일정은 취소할 수 없습니다.';
+  end if;
+
+  update public.match_schedules
+  set status = 'cancelled',
+      updated_at = now()
+  where id = p_schedule_id;
+
+  return p_schedule_id;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."cancel_match_schedule"("p_schedule_id" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."cancel_match_schedule_request"("p_schedule_id" "uuid") RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -855,7 +915,7 @@ $$;
 ALTER FUNCTION "public"."generate_invite_code_unique"() OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_club_record_event_participants"("p_event_id" "uuid") RETURNS TABLE("id" "uuid", "event_id" "uuid", "participant_type" "public"."club_record_participant_type", "club_member_id" "uuid", "guest_profile_id" "uuid", "display_name" "text", "arrival_time" timestamp with time zone, "attendance_status" "public"."club_record_attendance_status", "group_code" "public"."club_record_group_code", "ranking_position" integer)
+CREATE OR REPLACE FUNCTION "public"."get_club_record_event_participants"("p_event_id" "uuid") RETURNS TABLE("id" "uuid", "event_id" "uuid", "participant_type" "public"."club_record_participant_type", "club_member_id" "uuid", "guest_profile_id" "uuid", "display_name" "text", "arrival_time" timestamp with time zone, "attendance_status" "public"."club_record_attendance_status", "group_code" "public"."club_record_group_code", "ranking_position" integer, "gender" "text")
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -881,7 +941,11 @@ CREATE OR REPLACE FUNCTION "public"."get_club_record_event_participants"("p_even
     case
       when ep.participant_type = 'member' and public.is_club_admin(e.club_id) then crm.ranking_position
       else null
-    end as ranking_position
+    end as ranking_position,
+    case
+      when ep.participant_type = 'member' then up.gender
+      else gp.gender
+    end as gender
   from public.club_record_event_participants ep
   join public.club_record_events e
     on e.id = ep.event_id
@@ -891,6 +955,8 @@ CREATE OR REPLACE FUNCTION "public"."get_club_record_event_participants"("p_even
     on crm.club_member_id = ep.club_member_id
   left join public.club_record_guest_profiles gp
     on gp.id = ep.guest_profile_id
+  left join public.user_profiles up
+    on up.user_id = cm.user_id
   where ep.event_id = p_event_id
     and e.is_deleted = false
     and (
@@ -1243,6 +1309,93 @@ $$;
 
 
 ALTER FUNCTION "public"."get_my_club_record_history"("p_club_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_my_next_club_record_match"("p_club_id" "uuid") RETURNS TABLE("match_id" "uuid", "event_id" "uuid", "event_title" "text", "slot_starts_at" timestamp with time zone, "slot_ends_at" timestamp with time zone, "court_number" integer, "my_side" integer, "team_one_names" "text"[], "team_two_names" "text"[])
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  with my_member as (
+    select public.get_my_active_club_member_id(p_club_id) as club_member_id
+  ),
+  my_next_match as (
+    select
+      m.id as match_id,
+      m.event_id,
+      m.slot_id,
+      mp.side as my_side,
+      s.starts_at,
+      s.ends_at,
+      s.court_number,
+      e.title as event_title
+    from my_member me
+    join public.club_record_event_participants ep
+      on ep.club_member_id = me.club_member_id
+    join public.club_record_match_players mp
+      on mp.participant_id = ep.id
+    join public.club_record_matches m
+      on m.id = mp.match_id
+    join public.club_record_event_slots s
+      on s.id = m.slot_id
+    join public.club_record_events e
+      on e.id = m.event_id
+    where e.club_id = p_club_id
+      and e.is_deleted = false
+      and e.status <> 'cancelled'
+      and m.status = 'pending_result'
+      and s.ends_at > now()
+    order by s.starts_at asc
+    limit 1
+  )
+  select
+    nm.match_id,
+    nm.event_id,
+    nm.event_title,
+    nm.starts_at as slot_starts_at,
+    nm.ends_at as slot_ends_at,
+    nm.court_number,
+    nm.my_side,
+    (
+      select coalesce(
+        array_agg(
+          coalesce(cm.nickname, gp.display_name, '?')
+          order by mp_team.position
+        ),
+        array[]::text[]
+      )
+      from public.club_record_match_players mp_team
+      join public.club_record_event_participants ep_team
+        on ep_team.id = mp_team.participant_id
+      left join public.club_members cm
+        on cm.id = ep_team.club_member_id
+      left join public.club_record_guest_profiles gp
+        on gp.id = ep_team.guest_profile_id
+      where mp_team.match_id = nm.match_id
+        and mp_team.side = 1
+    ) as team_one_names,
+    (
+      select coalesce(
+        array_agg(
+          coalesce(cm.nickname, gp.display_name, '?')
+          order by mp_team.position
+        ),
+        array[]::text[]
+      )
+      from public.club_record_match_players mp_team
+      join public.club_record_event_participants ep_team
+        on ep_team.id = mp_team.participant_id
+      left join public.club_members cm
+        on cm.id = ep_team.club_member_id
+      left join public.club_record_guest_profiles gp
+        on gp.id = ep_team.guest_profile_id
+      where mp_team.match_id = nm.match_id
+        and mp_team.side = 2
+    ) as team_two_names
+  from my_next_match nm;
+$$;
+
+
+ALTER FUNCTION "public"."get_my_next_club_record_match"("p_club_id" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."handle_club_record_assignment_dirty_sync"() RETURNS "trigger"
@@ -2578,6 +2731,75 @@ $$;
 ALTER FUNCTION "public"."request_match_schedule"("p_schedule_id" "uuid", "p_message" "text") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."set_club_member_role"("p_club_id" "uuid", "p_member_id" "uuid", "p_role" "text") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_user_id uuid;
+  v_caller_member_id uuid;
+  v_target record;
+  v_new_role public.club_member_role;
+begin
+  v_user_id := auth.uid();
+  if v_user_id is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  if p_role not in ('manager', 'member') then
+    raise exception '허용되지 않은 역할입니다.';
+  end if;
+  v_new_role := p_role::public.club_member_role;
+
+  select cm.id
+    into v_caller_member_id
+  from public.club_members cm
+  where cm.club_id = p_club_id
+    and cm.user_id = v_user_id
+    and cm.role = 'owner'
+    and cm.is_active = true;
+
+  if v_caller_member_id is null then
+    raise exception '클럽 방장만 운영진을 지정할 수 있습니다.';
+  end if;
+
+  select cm.id, cm.user_id, cm.role
+    into v_target
+  from public.club_members cm
+  where cm.id = p_member_id
+    and cm.club_id = p_club_id
+    and cm.is_active = true;
+
+  if v_target.id is null then
+    raise exception '대상 멤버를 찾을 수 없습니다.';
+  end if;
+
+  if v_target.user_id = v_user_id then
+    raise exception '본인 역할은 변경할 수 없습니다.';
+  end if;
+
+  if v_target.role = 'owner' then
+    raise exception '클럽 방장의 역할은 변경할 수 없습니다.';
+  end if;
+
+  if v_target.role = 'guest' then
+    raise exception '게스트는 이 화면에서 역할을 변경할 수 없습니다.';
+  end if;
+
+  if v_target.role = v_new_role then
+    return;
+  end if;
+
+  update public.club_members
+  set role = v_new_role
+  where id = p_member_id;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."set_club_member_role"("p_club_id" "uuid", "p_member_id" "uuid", "p_role" "text") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."set_updated_at"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     AS $$
@@ -2772,6 +2994,130 @@ CREATE OR REPLACE FUNCTION "public"."update_club_name"("p_club_id" "uuid", "p_na
 
 
 ALTER FUNCTION "public"."update_club_name"("p_club_id" "uuid", "p_name" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."update_club_record_match_players"("p_match_id" "uuid", "p_players" "jsonb") RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_event_id uuid;
+  v_slot_id uuid;
+  v_slot_starts_at timestamptz;
+  v_club_id uuid;
+  v_match_status text;
+  v_participant_count integer;
+  v_participant_id uuid;
+begin
+  if auth.uid() is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  if p_players is null or jsonb_typeof(p_players) <> 'array' then
+    raise exception '선수 목록 형식이 올바르지 않습니다.';
+  end if;
+
+  if jsonb_array_length(p_players) <> 4 then
+    raise exception '경기는 정확히 4명의 선수가 필요합니다.';
+  end if;
+
+  select m.event_id, m.slot_id, m.status
+    into v_event_id, v_slot_id, v_match_status
+  from public.club_record_matches m
+  where m.id = p_match_id;
+
+  if v_event_id is null then
+    raise exception '경기를 찾을 수 없습니다.';
+  end if;
+
+  if v_match_status = 'confirmed' then
+    raise exception '확정된 경기는 선수를 변경할 수 없습니다.';
+  end if;
+
+  if v_match_status = 'cancelled' then
+    raise exception '취소된 경기는 선수를 변경할 수 없습니다.';
+  end if;
+
+  select e.club_id
+    into v_club_id
+  from public.club_record_events e
+  where e.id = v_event_id
+    and e.is_deleted = false;
+
+  if v_club_id is null then
+    raise exception '이벤트를 찾을 수 없습니다.';
+  end if;
+
+  if not public.is_club_admin(v_club_id) then
+    raise exception '경기 선수를 변경할 권한이 없습니다.';
+  end if;
+
+  select s.starts_at into v_slot_starts_at
+  from public.club_record_event_slots s
+  where s.id = v_slot_id;
+
+  if v_slot_starts_at is null then
+    raise exception '슬롯을 찾을 수 없습니다.';
+  end if;
+
+  select count(*)::integer
+    into v_participant_count
+  from public.club_record_event_participants ep
+  where ep.event_id = v_event_id
+    and (ep.arrival_time is null or ep.arrival_time <= v_slot_starts_at)
+    and ep.id in (
+      select distinct (player ->> 'participantId')::uuid
+      from jsonb_array_elements(p_players) as player
+    );
+
+  if v_participant_count <> 4 then
+    raise exception
+      '선택한 선수 중 일부가 현재 이벤트 참가자가 아니거나 아직 도착하지 않았습니다.';
+  end if;
+
+  delete from public.club_record_match_players where match_id = p_match_id;
+
+  for v_participant_id in
+    select (player ->> 'participantId')::uuid
+    from jsonb_array_elements(p_players) as player
+  loop
+    if public.is_club_record_participant_occupied_at_slot_start(
+      v_event_id,
+      v_slot_starts_at,
+      v_participant_id
+    ) then
+      raise exception
+        '같은 시간대에 이미 다른 경기에 배정된 선수가 포함되어 있습니다.';
+    end if;
+  end loop;
+
+  insert into public.club_record_match_players (
+    match_id,
+    participant_id,
+    side,
+    position
+  )
+  select
+    p_match_id,
+    (player ->> 'participantId')::uuid,
+    (player ->> 'side')::integer,
+    (player ->> 'position')::integer
+  from jsonb_array_elements(p_players) as player;
+
+  update public.club_record_matches
+  set assignment_mode = 'manual',
+      is_manual = true,
+      updated_by = auth.uid()
+  where id = p_match_id;
+
+  perform public.mark_club_record_event_assignment_dirty(v_event_id);
+
+  return p_match_id;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."update_club_record_match_players"("p_match_id" "uuid", "p_players" "jsonb") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."update_club_record_match_result"("p_match_id" "uuid", "p_score_text" "text", "p_is_draw" boolean, "p_winning_side" integer, "p_losing_side" integer) RETURNS TABLE("match_id" "uuid", "score_text" "text", "is_draw" boolean, "winning_side" integer, "losing_side" integer, "created_at" timestamp with time zone)
@@ -4412,313 +4758,279 @@ GRANT USAGE ON SCHEMA "public" TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."accept_match_schedule_request"("p_schedule_id" "uuid", "p_club_member_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."accept_match_schedule_request"("p_schedule_id" "uuid", "p_club_member_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."accept_match_schedule_request"("p_schedule_id" "uuid", "p_club_member_id" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."apply_club_record_auto_assignments"("p_event_id" "uuid", "p_plans" "jsonb") TO "anon";
 GRANT ALL ON FUNCTION "public"."apply_club_record_auto_assignments"("p_event_id" "uuid", "p_plans" "jsonb") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."apply_club_record_auto_assignments"("p_event_id" "uuid", "p_plans" "jsonb") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."can_create_match_schedule"("p_club_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."can_create_match_schedule"("p_club_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."can_create_match_schedule"("p_club_id" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."can_manage_match"("p_club_id" "uuid", "p_created_by" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."can_manage_match"("p_club_id" "uuid", "p_created_by" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."can_manage_match"("p_club_id" "uuid", "p_created_by" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."can_submit_club_record_result"("p_match_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."can_submit_club_record_result"("p_match_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."can_submit_club_record_result"("p_match_id" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."cancel_expired_club_record_matches"() TO "anon";
 GRANT ALL ON FUNCTION "public"."cancel_expired_club_record_matches"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."cancel_expired_club_record_matches"() TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."cancel_match_schedule_request"("p_schedule_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."cancel_match_schedule"("p_schedule_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."cancel_match_schedule"("p_schedule_id" "uuid") TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."cancel_match_schedule_request"("p_schedule_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."cancel_match_schedule_request"("p_schedule_id" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."create_club_record_manual_match"("p_event_id" "uuid", "p_slot_id" "uuid", "p_players" "jsonb") TO "anon";
 GRANT ALL ON FUNCTION "public"."create_club_record_manual_match"("p_event_id" "uuid", "p_slot_id" "uuid", "p_players" "jsonb") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."create_club_record_manual_match"("p_event_id" "uuid", "p_slot_id" "uuid", "p_players" "jsonb") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."create_match_schedule"("p_club_id" "uuid", "p_format" "public"."match_schedule_format", "p_scheduled_at" timestamp with time zone, "p_ends_at" timestamp with time zone, "p_location" "text", "p_court_fee" integer, "p_ball_fee" integer, "p_capacity" integer, "p_notes" "text", "p_include_host" boolean, "p_join_policy" "public"."match_schedule_join_policy") TO "anon";
 GRANT ALL ON FUNCTION "public"."create_match_schedule"("p_club_id" "uuid", "p_format" "public"."match_schedule_format", "p_scheduled_at" timestamp with time zone, "p_ends_at" timestamp with time zone, "p_location" "text", "p_court_fee" integer, "p_ball_fee" integer, "p_capacity" integer, "p_notes" "text", "p_include_host" boolean, "p_join_policy" "public"."match_schedule_join_policy") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."create_match_schedule"("p_club_id" "uuid", "p_format" "public"."match_schedule_format", "p_scheduled_at" timestamp with time zone, "p_ends_at" timestamp with time zone, "p_location" "text", "p_court_fee" integer, "p_ball_fee" integer, "p_capacity" integer, "p_notes" "text", "p_include_host" boolean, "p_join_policy" "public"."match_schedule_join_policy") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."delete_club_record_match"("p_match_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."delete_club_record_match"("p_match_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."delete_club_record_match"("p_match_id" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."generate_invite_code_unique"() TO "anon";
 GRANT ALL ON FUNCTION "public"."generate_invite_code_unique"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."generate_invite_code_unique"() TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."get_club_record_event_participants"("p_event_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."get_club_record_event_participants"("p_event_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_club_record_event_participants"("p_event_id" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."get_club_record_event_slots_overview"("p_event_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."get_club_record_event_slots_overview"("p_event_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_club_record_event_slots_overview"("p_event_id" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."get_club_record_member_history"("p_club_id" "uuid", "p_target_club_member_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."get_club_record_member_history"("p_club_id" "uuid", "p_target_club_member_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_club_record_member_history"("p_club_id" "uuid", "p_target_club_member_id" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."get_club_record_monthly_public_card"("p_club_id" "uuid", "p_month_start" "date") TO "anon";
 GRANT ALL ON FUNCTION "public"."get_club_record_monthly_public_card"("p_club_id" "uuid", "p_month_start" "date") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_club_record_monthly_public_card"("p_club_id" "uuid", "p_month_start" "date") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."get_my_active_club_member_id"("p_club_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."get_my_active_club_member_id"("p_club_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_my_active_club_member_id"("p_club_id" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."get_my_club_record_history"("p_club_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."get_my_club_record_history"("p_club_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_my_club_record_history"("p_club_id" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."handle_club_record_assignment_dirty_sync"() TO "anon";
+GRANT ALL ON FUNCTION "public"."get_my_next_club_record_match"("p_club_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_my_next_club_record_match"("p_club_id" "uuid") TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."handle_club_record_assignment_dirty_sync"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."handle_club_record_assignment_dirty_sync"() TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."handle_club_record_event_participant_stats_sync"() TO "anon";
 GRANT ALL ON FUNCTION "public"."handle_club_record_event_participant_stats_sync"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."handle_club_record_event_participant_stats_sync"() TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."handle_club_record_event_soft_delete_stats_sync"() TO "anon";
 GRANT ALL ON FUNCTION "public"."handle_club_record_event_soft_delete_stats_sync"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."handle_club_record_event_soft_delete_stats_sync"() TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."handle_club_record_match_stats_sync"() TO "anon";
 GRANT ALL ON FUNCTION "public"."handle_club_record_match_stats_sync"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."handle_club_record_match_stats_sync"() TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."handle_club_record_progress_sync"() TO "anon";
 GRANT ALL ON FUNCTION "public"."handle_club_record_progress_sync"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."handle_club_record_progress_sync"() TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."is_club_admin"("target_club_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."is_club_admin"("target_club_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."is_club_admin"("target_club_id" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."is_club_member"("target_club_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."is_club_member"("target_club_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."is_club_member"("target_club_id" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."is_club_record_event_participant"("p_event_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."is_club_record_event_participant"("p_event_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."is_club_record_event_participant"("p_event_id" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."is_club_record_match_participant"("p_match_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."is_club_record_match_participant"("p_match_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."is_club_record_match_participant"("p_match_id" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."is_club_record_match_player_participant"("p_match_id" "uuid", "p_participant_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."is_club_record_match_player_participant"("p_match_id" "uuid", "p_participant_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."is_club_record_match_player_participant"("p_match_id" "uuid", "p_participant_id" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."is_club_record_participant_occupied_at_slot_start"("p_event_id" "uuid", "p_slot_starts_at" timestamp with time zone, "p_participant_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."is_club_record_participant_occupied_at_slot_start"("p_event_id" "uuid", "p_slot_starts_at" timestamp with time zone, "p_participant_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."is_club_record_participant_occupied_at_slot_start"("p_event_id" "uuid", "p_slot_starts_at" timestamp with time zone, "p_participant_id" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."join_club_by_invite"("p_invite_code" "text", "p_nickname" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."join_club_by_invite"("p_invite_code" "text", "p_nickname" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."join_club_by_invite"("p_invite_code" "text", "p_nickname" "text") TO "service_role";
+GRANT ALL ON FUNCTION "public"."join_club_by_invite"("p_invite_code" "text", "p_nickname" "text") TO "anon";
 
 
 
-GRANT ALL ON FUNCTION "public"."join_club_by_invite_as_guest"("p_invite_code" "text", "p_nickname" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."join_club_by_invite_as_guest"("p_invite_code" "text", "p_nickname" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."join_club_by_invite_as_guest"("p_invite_code" "text", "p_nickname" "text") TO "service_role";
+GRANT ALL ON FUNCTION "public"."join_club_by_invite_as_guest"("p_invite_code" "text", "p_nickname" "text") TO "anon";
 
 
 
-GRANT ALL ON FUNCTION "public"."join_club_record_event_guest_by_invite_code"("p_code" "text", "p_display_name" "text", "p_gender" "text", "p_career_text" "text", "p_group_code" "public"."club_record_group_code", "p_arrival_time" timestamp with time zone) TO "anon";
 GRANT ALL ON FUNCTION "public"."join_club_record_event_guest_by_invite_code"("p_code" "text", "p_display_name" "text", "p_gender" "text", "p_career_text" "text", "p_group_code" "public"."club_record_group_code", "p_arrival_time" timestamp with time zone) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."join_club_record_event_guest_by_invite_code"("p_code" "text", "p_display_name" "text", "p_gender" "text", "p_career_text" "text", "p_group_code" "public"."club_record_group_code", "p_arrival_time" timestamp with time zone) TO "service_role";
+GRANT ALL ON FUNCTION "public"."join_club_record_event_guest_by_invite_code"("p_code" "text", "p_display_name" "text", "p_gender" "text", "p_career_text" "text", "p_group_code" "public"."club_record_group_code", "p_arrival_time" timestamp with time zone) TO "anon";
 
 
 
-GRANT ALL ON FUNCTION "public"."join_match_schedule"("p_schedule_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."join_match_schedule"("p_schedule_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."join_match_schedule"("p_schedule_id" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."leave_match_schedule"("p_schedule_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."leave_match_schedule"("p_schedule_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."leave_match_schedule"("p_schedule_id" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."mark_club_record_event_assignment_dirty"("p_event_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."mark_club_record_event_assignment_dirty"("p_event_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."mark_club_record_event_assignment_dirty"("p_event_id" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."move_club_record_ranking"("p_club_id" "uuid", "p_club_member_id" "uuid", "p_target_position" integer) TO "anon";
 GRANT ALL ON FUNCTION "public"."move_club_record_ranking"("p_club_id" "uuid", "p_club_member_id" "uuid", "p_target_position" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."move_club_record_ranking"("p_club_id" "uuid", "p_club_member_id" "uuid", "p_target_position" integer) TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."prevent_club_record_confirmed_event_cancel"() TO "anon";
 GRANT ALL ON FUNCTION "public"."prevent_club_record_confirmed_event_cancel"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."prevent_club_record_confirmed_event_cancel"() TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."prevent_club_record_confirmed_match_delete"() TO "anon";
 GRANT ALL ON FUNCTION "public"."prevent_club_record_confirmed_match_delete"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."prevent_club_record_confirmed_match_delete"() TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."prevent_club_record_linked_participant_delete"() TO "anon";
 GRANT ALL ON FUNCTION "public"."prevent_club_record_linked_participant_delete"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."prevent_club_record_linked_participant_delete"() TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."recalculate_club_record_groups"("p_club_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."recalculate_club_record_groups"("p_club_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."recalculate_club_record_groups"("p_club_id" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."refresh_club_record_event_status"("p_event_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."refresh_club_record_event_status"("p_event_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."refresh_club_record_event_status"("p_event_id" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."refresh_club_record_member_stats_for_club"("p_club_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."refresh_club_record_member_stats_for_club"("p_club_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."refresh_club_record_member_stats_for_club"("p_club_id" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."refresh_club_record_member_stats_for_event"("p_event_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."refresh_club_record_member_stats_for_event"("p_event_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."refresh_club_record_member_stats_for_event"("p_event_id" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."refresh_club_record_progress_for_event"("p_event_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."refresh_club_record_progress_for_event"("p_event_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."refresh_club_record_progress_for_event"("p_event_id" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."refresh_club_record_slot_statuses_for_event"("p_event_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."refresh_club_record_slot_statuses_for_event"("p_event_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."refresh_club_record_slot_statuses_for_event"("p_event_id" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."refresh_match_schedule_status"("p_schedule_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."refresh_match_schedule_status"("p_schedule_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."refresh_match_schedule_status"("p_schedule_id" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."regenerate_club_invite_code"("p_club_id" "uuid", "p_days_valid" integer) TO "anon";
 GRANT ALL ON FUNCTION "public"."regenerate_club_invite_code"("p_club_id" "uuid", "p_days_valid" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."regenerate_club_invite_code"("p_club_id" "uuid", "p_days_valid" integer) TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."reject_match_schedule_request"("p_schedule_id" "uuid", "p_club_member_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."reject_match_schedule_request"("p_schedule_id" "uuid", "p_club_member_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."reject_match_schedule_request"("p_schedule_id" "uuid", "p_club_member_id" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."remove_club_member"("p_club_id" "uuid", "p_member_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."remove_club_member"("p_club_id" "uuid", "p_member_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."remove_club_member"("p_club_id" "uuid", "p_member_id" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."remove_club_record_event_participant"("p_event_id" "uuid", "p_participant_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."remove_club_record_event_participant"("p_event_id" "uuid", "p_participant_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."remove_club_record_event_participant"("p_event_id" "uuid", "p_participant_id" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."request_match_schedule"("p_schedule_id" "uuid", "p_message" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."request_match_schedule"("p_schedule_id" "uuid", "p_message" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."request_match_schedule"("p_schedule_id" "uuid", "p_message" "text") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."set_updated_at"() TO "anon";
+GRANT ALL ON FUNCTION "public"."set_club_member_role"("p_club_id" "uuid", "p_member_id" "uuid", "p_role" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."set_club_member_role"("p_club_id" "uuid", "p_member_id" "uuid", "p_role" "text") TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."set_updated_at"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."set_updated_at"() TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."submit_club_record_match_result"("p_match_id" "uuid", "p_score_text" "text", "p_is_draw" boolean, "p_winning_side" integer, "p_losing_side" integer) TO "anon";
 GRANT ALL ON FUNCTION "public"."submit_club_record_match_result"("p_match_id" "uuid", "p_score_text" "text", "p_is_draw" boolean, "p_winning_side" integer, "p_losing_side" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."submit_club_record_match_result"("p_match_id" "uuid", "p_score_text" "text", "p_is_draw" boolean, "p_winning_side" integer, "p_losing_side" integer) TO "service_role";
 
@@ -4730,39 +5042,39 @@ GRANT ALL ON FUNCTION "public"."sync_club_record_members"("p_club_id" "uuid") TO
 
 
 
-GRANT ALL ON FUNCTION "public"."update_club_name"("p_club_id" "uuid", "p_name" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."update_club_name"("p_club_id" "uuid", "p_name" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."update_club_name"("p_club_id" "uuid", "p_name" "text") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."update_club_record_match_result"("p_match_id" "uuid", "p_score_text" "text", "p_is_draw" boolean, "p_winning_side" integer, "p_losing_side" integer) TO "anon";
+GRANT ALL ON FUNCTION "public"."update_club_record_match_players"("p_match_id" "uuid", "p_players" "jsonb") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."update_club_record_match_players"("p_match_id" "uuid", "p_players" "jsonb") TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."update_club_record_match_result"("p_match_id" "uuid", "p_score_text" "text", "p_is_draw" boolean, "p_winning_side" integer, "p_losing_side" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."update_club_record_match_result"("p_match_id" "uuid", "p_score_text" "text", "p_is_draw" boolean, "p_winning_side" integer, "p_losing_side" integer) TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."update_my_club_member_settings"("p_club_id" "uuid", "p_nickname" "text", "p_open_kakao_profile" boolean, "p_allow_record_search" boolean, "p_share_history" boolean) TO "anon";
 GRANT ALL ON FUNCTION "public"."update_my_club_member_settings"("p_club_id" "uuid", "p_nickname" "text", "p_open_kakao_profile" boolean, "p_allow_record_search" boolean, "p_share_history" boolean) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."update_my_club_member_settings"("p_club_id" "uuid", "p_nickname" "text", "p_open_kakao_profile" boolean, "p_allow_record_search" boolean, "p_share_history" boolean) TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."update_my_club_nickname"("p_club_id" "uuid", "p_nickname" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."update_my_club_nickname"("p_club_id" "uuid", "p_nickname" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."update_my_club_nickname"("p_club_id" "uuid", "p_nickname" "text") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."validate_club_record_event_participant"() TO "anon";
 GRANT ALL ON FUNCTION "public"."validate_club_record_event_participant"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."validate_club_record_event_participant"() TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."verify_club_record_guest_invite_code"("p_code" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."verify_club_record_guest_invite_code"("p_code" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."verify_club_record_guest_invite_code"("p_code" "text") TO "service_role";
+GRANT ALL ON FUNCTION "public"."verify_club_record_guest_invite_code"("p_code" "text") TO "anon";
 
 
 
@@ -4909,7 +5221,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQ
 
 
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "postgres";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "anon";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "authenticated";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "service_role";
 
