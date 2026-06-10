@@ -316,17 +316,9 @@ export function ClubRecordEventWorkspaceView({
               {workspace.board.timeGroups.map((group) => (
                 <Card key={`${group.startsAt}-${group.endsAt}`}>
                   <CardHeader>
-                    <div className="flex items-center justify-between gap-3">
-                      <CardTitle>
-                        {formatTime(group.startsAt)} - {formatTime(group.endsAt)}
-                      </CardTitle>
-                      <div className="flex gap-2">
-                        <Badge variant="default">열린 슬롯 {group.openSlotIds.length}</Badge>
-                        <Badge variant="brand">
-                          가능 인원 {group.availableParticipantIds.length}
-                        </Badge>
-                      </div>
-                    </div>
+                    <CardTitle>
+                      {formatTime(group.startsAt)} - {formatTime(group.endsAt)}
+                    </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="grid gap-3 md:grid-cols-2">
@@ -346,7 +338,7 @@ export function ClubRecordEventWorkspaceView({
                                   ) : null}
                                 </div>
                                 <p className="text-xs text-muted-foreground">
-                                  슬롯 {slot.slotOrder} · {getSlotStatusLabel(slot.status)}
+                                  {getSlotStatusLabel(slot.status)}
                                 </p>
                               </div>
                               {slot.match ? (

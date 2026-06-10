@@ -416,11 +416,8 @@ export function ClubRecordMatchControls({
     <div className="mt-3 space-y-3 border-t pt-3">
       {status ? <StatusBox type={status.type} message={status.message} /> : null}
 
-      {!slot.match && canManageManualMatches && readOnly ? (
-        <div className="rounded-lg border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
-          지난 이벤트에서는 새 경기를 만들 수 없습니다.
-        </div>
-      ) : null}
+      {/* 종료된 이벤트(readOnly) 안내는 워크스페이스 상단 InfoBox 에 한 번만 표시되며,
+          슬롯마다 같은 메시지를 반복하지 않는다. */}
 
       {!slot.match &&
       canManageManualMatches &&

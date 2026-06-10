@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { CalendarDays, ChevronRight, PlusCircle, RefreshCw } from "lucide-react";
 
 import { EmptyState } from "@/components/feedback/empty-state";
@@ -103,7 +102,6 @@ function EventListCard({
 export function ClubRecordEventListView({
   clubId,
 }: ClubRecordEventListViewProps) {
-  const router = useRouter();
   const { dashboard, loading, error, refresh } = useClubRecordDashboard(clubId);
 
   if (loading) {
@@ -163,14 +161,6 @@ export function ClubRecordEventListView({
             icon={CalendarDays}
             title="진행 중인 이벤트가 없습니다."
             description="이벤트가 생성되면 여기에서 바로 열 수 있습니다."
-            actionLabel={
-              access.capabilities.canCreateEvent ? "새 이벤트 만들기" : undefined
-            }
-            onAction={
-              access.capabilities.canCreateEvent
-                ? () => router.push(`/clubs/${clubId}/club-record/new`)
-                : undefined
-            }
           />
         ) : null}
 

@@ -73,8 +73,10 @@ export function ClubMemberList({
                   variant="outline"
                   size="sm"
                   onClick={() => setOpen(true)}
+                  aria-label="내 정보 수정"
                 >
                   <Pencil className="size-3.5" />
+                  설정
                 </Button>
               ) : null}
               {myRole === "owner" && !member.isMe && member.role !== "owner" ? (
@@ -84,8 +86,10 @@ export function ClubMemberList({
                   size="sm"
                   disabled={saving}
                   onClick={() => setMemberToRemove(member)}
+                  aria-label={`${member.nickname} 클럽에서 제외`}
                 >
                   <UserX className="size-3.5" />
+                  제외
                 </Button>
               ) : null}
             </div>
