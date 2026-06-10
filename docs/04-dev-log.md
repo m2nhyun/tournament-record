@@ -53,6 +53,25 @@ npm run db:smoke:sql  # 3) anon 권한 회귀 검증 (#1)
 
 ## 2026-06-10
 
+### fix(invite): cannot coerce 에러 메시지 친화 매핑 + QA 스크립트 lint/typecheck/test 격리
+
+사용자 보고: 초대 링크 진입 시 "cannot coerce the result to a single json object" 가 원시 PostgREST 메시지 그대로 노출됨.
+
+원인:
+- `InviteJoinView` 의 `toMessage` 가 `error.message` 를 그대로 반환해 매핑된 한국어 메시지를 우회.
+- `mapCommonClubMessage` 도 PGRST116 만 매핑하고 "cannot coerce..." 시그니처는 누락.
+
+대응:
+- `club-error.ts` 의 매핑에 `cannot coerce the result to a single json object` 추가. 메시지도 "초대 코드와 로그인 상태를 다시 확인해주세요" 로 다음 액션 안내 포함.
+- `invite-join-view.tsx` 의 `toMessage` 를 `toClubErrorMessage(error)` 로 위임. 동일 패턴이 다른 서비스에서도 작동하도록.
+
+부수: 사용자가 working tree에 추가한 `scripts/qa/full-club/*` E2E 시드/시나리오와 `vitest.e2e.config.ts` 가 일반 `npm run verify` 의 lint / typecheck / vitest 픽업에 잡혀 build 가 깨지던 문제 fix:
+- `eslint.config.mjs`: `scripts/qa/**` globalIgnore 추가.
+- `tsconfig.json`: `scripts/qa/**`, `vitest.e2e.config.ts` exclude.
+- `vitest.config.ts`: `include: ['src/**/*.{test,spec}.{ts,tsx}']` 로 좁히고 `node_modules/.next/.npm-cache/scripts/qa` 명시 exclude. 기본 include 가 너무 넓어 `.npm-cache` 내부 다른 패키지의 test 파일까지 픽업하던 회귀를 같이 잡음.
+
+검증: `npm run verify` 통과(test 67/67, lint 0 errors, build 성공).
+
 ### feat(clubs): owner 가 운영진(manager)을 임명/해제할 수 있는 화면 추가
 
 사용자 보고: 운영진을 어디서 설정하는지 확인했을 때 임명 UI/RPC가 존재하지 않아 SQL 직편집 외 경로가 없었다.

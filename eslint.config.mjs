@@ -21,6 +21,8 @@ const eslintConfig = defineConfig([
     "build/**",
     "coverage/**",
     "next-env.d.ts",
+    // QA seed/fixture scripts that live outside the app build:
+    "scripts/qa/**",
   ]),
 ]);
 

@@ -20,6 +20,7 @@ import {
   joinClub,
   joinClubAsGuest,
 } from "@/features/clubs/services/clubs";
+import { toClubErrorMessage } from "@/features/clubs/services/club-error";
 import { AppBar } from "@/components/layout/app-bar";
 
 type InviteJoinViewProps = {
@@ -27,8 +28,7 @@ type InviteJoinViewProps = {
 };
 
 function toMessage(error: unknown) {
-  if (error instanceof Error) return error.message;
-  return "요청 처리 중 오류가 발생했습니다.";
+  return toClubErrorMessage(error);
 }
 
 export function InviteJoinView({ inviteCode }: InviteJoinViewProps) {

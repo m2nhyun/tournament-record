@@ -17,9 +17,10 @@ function mapCommonClubMessage(message: string) {
 
   if (
     message.includes("JSON object requested, multiple (or no) rows returned") ||
+    message.includes("cannot coerce the result to a single json object") ||
     message.includes("PGRST116")
   ) {
-    return "클럽을 찾을 수 없거나 접근 권한이 없습니다.";
+    return "클럽을 찾을 수 없거나 접근 권한이 없습니다. 초대 코드와 로그인 상태를 다시 확인해주세요.";
   }
 
   return null;
