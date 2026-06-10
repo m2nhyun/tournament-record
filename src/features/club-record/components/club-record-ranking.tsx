@@ -134,14 +134,11 @@ export function ClubRecordRankingView({ clubId }: ClubRecordRankingViewProps) {
               <div className="min-w-0">
                 <h1 className="text-base font-semibold">클럽 회원 랭킹</h1>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  데일리 매치 편성과 그룹 배정에 사용하는 회원 순서입니다.
+                  자동 편성 시 우선순위로 사용하는 회원 순서입니다.
                 </p>
               </div>
               <Badge variant={canEdit ? "brand" : "default"}>{access.roleLabel}</Badge>
             </div>
-            <p className="text-xs text-muted-foreground">
-              회원 순서 변경은 저장 즉시 데일리 매치 편성 기준에 반영됩니다.
-            </p>
             {canEdit ? (
               <Button
                 size="sm"
@@ -197,15 +194,9 @@ export function ClubRecordRankingView({ clubId }: ClubRecordRankingViewProps) {
                       <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold">
                         {member.rankingPosition}
                       </div>
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="break-words font-medium">{member.nickname}</p>
-                          <Badge variant="default">그룹 {member.groupCode}</Badge>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          출석 {member.attendanceCount} · 확정 경기 {member.matchCount}
-                        </p>
-                      </div>
+                      <p className="min-w-0 break-words font-medium">
+                        {member.nickname}
+                      </p>
                     </div>
 
                     {canEdit ? (
