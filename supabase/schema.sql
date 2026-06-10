@@ -3475,7 +3475,8 @@ CREATE TABLE IF NOT EXISTS "public"."club_record_guest_profiles" (
     "operator_note" "text",
     "linked_club_member_id" "uuid",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "club_record_guest_profiles_gender_check" CHECK ((("gender" IS NULL) OR ("gender" = ANY (ARRAY['male'::"text", 'female'::"text", 'unspecified'::"text"]))))
 );
 
 

@@ -562,13 +562,34 @@ export function ClubRecordParticipantManager({
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="grid gap-2">
-                  <Label htmlFor="club-record-guest-gender">성별</Label>
-                  <Input
-                    id="club-record-guest-gender"
-                    value={guestGender}
-                    onChange={(event) => setGuestGender(event.target.value)}
-                    placeholder="예: 남성"
-                  />
+                  <Label>성별</Label>
+                  {/*
+                    자동 편성의 여복/혼복 룰은 DB 의 `gender` 컬럼이 정확히
+                    'male' | 'female' | 'unspecified' enum 값일 때만 동작한다.
+                    예전엔 자유 텍스트 입력이라 운영진이 "남성"/"여성" 같은
+                    한국어를 넣어 알고리즘이 매치하지 못했다(여복 룰 미발동).
+                    토글 버튼으로 enum 을 직접 선택하게 했다.
+                  */}
+                  <div className="flex gap-1.5">
+                    {(
+                      [
+                        { value: "", label: "미지정" },
+                        { value: "male", label: "남성" },
+                        { value: "female", label: "여성" },
+                      ] as const
+                    ).map((option) => (
+                      <Button
+                        key={option.value || "none"}
+                        type="button"
+                        size="sm"
+                        variant={guestGender === option.value ? "default" : "outline"}
+                        className="flex-1"
+                        onClick={() => setGuestGender(option.value)}
+                      >
+                        {option.label}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
                 <div className="grid gap-2">
                   <Label>그룹</Label>

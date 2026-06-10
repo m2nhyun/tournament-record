@@ -85,6 +85,26 @@ npm scripts: `qa:full-club:seed` · `:scenario` · `:cleanup` · `qa:full-club` 
 - `smoke-prod.mjs`는 read-only(select head + RPC ping). URL이 로컬일 경우 즉시 종료.
 - 시드 잔존 0건 확인 (`npm run qa:full-club` 종료 시 운영/로컬 모두 0).
 
+### fix(matching): 자동 편성의 여복 룰이 게스트에 대해 침묵하던 진짜 버그
+
+사용자 보고(지인 테스트): "게스트만 넣어서 돌렸는데 성별 / 구력 상관없이 순서대로 매칭됨".
+
+진단:
+- `auto-assignment` 알고리즘은 `participant.gender === "female"` 식으로 영어 enum 으로 비교한다. 회원은 `user_profiles.gender` 가 CHECK 로 `male | female | unspecified` 강제라 OK 였다.
+- 그런데 게스트 추가 폼(`ClubRecordParticipantManager`) 의 성별 입력이 자유 텍스트 `<Input placeholder="예: 남성" />` 였다. 운영자가 그대로 한국어로 "남성"/"여성" 입력 → DB 에 한국어 그대로 저장 → `"여성" === "female"` 은 영원히 false → **여복 룰 자체가 발동 안 됨**. 게스트만 있는 시나리오에서는 모든 게스트가 사실상 gender 정보 없는 상태로 매칭되어 "순서대로" 처럼 보였다.
+
+대응:
+1. **게스트 추가 폼 gender 입력을 enum 토글로 교체** (`미지정 / 남성 / 여성`). 운영자가 enum 값을 직접 선택하니 DB 에 `null | 'male' | 'female'` 만 들어간다.
+2. **기존 데이터 정규화 + CHECK constraint** (`migrations/20260610130000_normalize_guest_gender.sql`):
+   - 한국어로 저장된 값을 `case when ... 남/남성/남자/M/m → 'male', 여/여성/여자/F/f → 'female', else null` 로 정리.
+   - `club_record_guest_profiles.gender` 에 `check (gender is null or gender in ('male','female','unspecified'))` 추가해서 비enum 값이 다시 들어오는 것을 DB 가 차단.
+   - 운영 DB 적용 + `supabase/schema.sql` 자동 sync 완료.
+
+추가 노트(구력 부분):
+- 사용자 보고 중 "구력 상관없이" 는 자동 편성에 들어가는 입력이 `group_code` (A/B/C) 라서 그렇다. 구력 자유 텍스트는 표시 정보일 뿐 알고리즘 입력 아님. 게스트 추가 시 운영자가 `그룹` 토글에서 A/B/C 를 명시해야 그룹 spread 룰이 의미를 가진다. 이건 알고리즘 변경이 아니라 운영진이 알아둘 사실.
+
+검증: `npm run verify` 통과(test 67/67, lint 0 errors, build 성공). 운영 DB 적용 완료.
+
 ### perf+guard: 새 이벤트 권한 가드 정확화 + 워크스페이스 리렌더링 최적화
 
 사용자 요청 3건:
