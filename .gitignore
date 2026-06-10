@@ -48,3 +48,6 @@ next-env.d.ts
 # editor
 .vscode/
 .idea/
+
+# qa state
+scripts/qa/**/.qa-state.json

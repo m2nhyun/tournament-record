@@ -18,7 +18,12 @@
     "db:push:dry": "bash scripts/automation/db-push.sh --dry-run",
     "db:push": "bash scripts/automation/db-push.sh",
     "db:schema:sync": "bash scripts/automation/db-sync-schema.sh",
-    "automation:check": "npm run env:check && npm run db:smoke && npm run verify"
+    "automation:check": "npm run env:check && npm run db:smoke && npm run verify",
+    "qa:full-club:seed": "bash -c 'source scripts/qa/full-club/use-local-supabase.sh && node scripts/qa/full-club/seed.mjs'",
+    "qa:full-club:scenario": "bash -c 'source scripts/qa/full-club/use-local-supabase.sh && vitest run --config vitest.e2e.config.ts'",
+    "qa:full-club:cleanup": "bash -c 'source scripts/qa/full-club/use-local-supabase.sh && node scripts/qa/full-club/cleanup.mjs'",
+    "qa:full-club": "npm run qa:full-club:seed && npm run qa:full-club:scenario && npm run qa:full-club:cleanup",
+    "qa:full-club:smoke-prod": "bash -c 'source scripts/automation/source-env.sh && node scripts/qa/full-club/smoke-prod.mjs'"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

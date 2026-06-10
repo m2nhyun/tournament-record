@@ -107,6 +107,24 @@ npm run verify           # test + lint + build 전체 검증
 npm run automation:check # env + smoke + verify 일괄 실행
 ```
 
+### QA Full-Club Scenario
+
+`scripts/qa/full-club/` 하위에 24명 풀 클럽 e2e 자동화가 있다. 자세한 항목과 검증 매트릭스는 `docs/qa/full-club-scenario-2026-06-10.md` 참고.
+
+```bash
+# 사전: Docker 실행 + npx supabase start (로컬 인스턴스 가동)
+npm run qa:full-club            # seed → scenario → cleanup 3단계 묶음
+npm run qa:full-club:seed       # 24명 + 클럽 + 이벤트 시드 (로컬만)
+npm run qa:full-club:scenario   # vitest e2e (vitest.e2e.config.ts)
+npm run qa:full-club:cleanup    # 시드 데이터 + auth 사용자 제거 (로컬만)
+npm run qa:full-club:smoke-prod # 운영 read-only (select head + RPC ping)
+```
+
+운영 안전:
+- 시드/시나리오/cleanup은 `scripts/qa/full-club/use-local-supabase.sh`가 `npx supabase status` 기반으로 URL/키를 로컬로 강제 override한다. 운영 DB로 실수 진입 불가.
+- `smoke-prod.mjs`는 read-only만 수행하고, URL이 로컬이면 즉시 종료한다.
+- `npm run test` / `npm run verify`는 `scripts/qa/**`를 무시하도록 vitest/eslint/tsconfig가 격리되어 있다.
+
 ## Vercel CLI Operations
 
 이 repo의 Vercel 운영 확인은 `npx vercel` 기준으로 한다.
