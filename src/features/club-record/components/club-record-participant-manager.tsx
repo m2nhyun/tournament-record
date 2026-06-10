@@ -607,6 +607,10 @@ export function ClubRecordParticipantManager({
                       </Button>
                     ))}
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    자동 편성의 실력 균형에 사용됩니다. 미지정이면 그룹 균형이
+                    적용되지 않습니다.
+                  </p>
                 </div>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
