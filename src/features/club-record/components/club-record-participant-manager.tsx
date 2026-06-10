@@ -344,15 +344,11 @@ export function ClubRecordParticipantManager({
                     <Badge variant={participant.participantType === "guest" ? "warning" : "brand"}>
                       {participant.participantType === "guest" ? "게스트" : "회원"}
                     </Badge>
-                    {participant.groupCode ? (
-                      <Badge variant="default">그룹 {participant.groupCode}</Badge>
-                    ) : null}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {participant.arrivalTime ? `${participant.arrivalTime} 도착` : "정시 참가"}
-                    {typeof participant.rankingPosition === "number"
-                      ? ` · 랭킹 ${participant.rankingPosition}`
-                      : ""}
+                    {participant.arrivalTime
+                      ? `${participant.arrivalTime} 도착`
+                      : "정시 참가"}
                   </p>
                 </div>
                 {!readOnly ? (

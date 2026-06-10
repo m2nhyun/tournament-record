@@ -53,6 +53,19 @@ npm run db:smoke:sql  # 3) anon 권한 회귀 검증 (#1)
 
 ## 2026-06-10
 
+### ux(layout): Badge 줄바꿈 + 워크스페이스 참가자 행에 새는 알고리즘 정보 제거
+
+사용자 보고:
+1. 클럽 회원 랭킹 화면의 `관리자` Badge 가 좁은 컨테이너에서 "관리 / 자" 로 줄바꿈됨.
+2. 전체 UI 점검 시 같은 무의미 정보(그룹 X / 랭킹 N)가 워크스페이스의 참가자 행에도 그대로 노출.
+
+대응:
+- `Badge` 컴포넌트 기본 클래스에 `whitespace-nowrap shrink-0` 추가. 한국어는 글자 단위로 줄바꿈 가능하기 때문에 좁은 폭에서 "관리/자" 같은 깨짐이 흔하고, flex 자식이 압축될 때도 텍스트가 잘리는 문제가 함께 발생. 모든 Badge 일괄 적용으로 회귀 방지.
+- `ClubRecordParticipantManager` 의 행에서 `그룹 {member.groupCode}` Badge 와 `· 랭킹 {member.rankingPosition}` 텍스트를 제거. 랭킹 화면(2026-06-10 1차)에서 이미 제거한 것을 워크스페이스에서도 같은 기준으로 정리.
+- cmux_browser 로 클럽 홈 / 클럽 탭 / 이벤트 워크스페이스 / 슬롯 보드 / 새 이벤트 폼 / 랭킹 / EmptyState 화면 캡처하고 시각 점검. 그 외 화면에서 추가로 노출되는 무의미 정보나 시각 깨짐은 발견되지 않음.
+
+검증: `npm run verify` 통과(test 67/67, lint 0 errors, build 성공). DB 변경 없음.
+
 ### perf+ux(ranking): 드래그앤드롭 + optimistic 순서 변경
 
 사용자 보고: "위 아래 한 칸씩 옮길 때 전체 화면이 리렌더링되는데 최적화해서 리렌더링 없애고 드래그앤드롭으로 순서 재배치하라."
