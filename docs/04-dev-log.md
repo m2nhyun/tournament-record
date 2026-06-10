@@ -53,6 +53,31 @@ npm run db:smoke:sql  # 3) anon 권한 회귀 검증 (#1)
 
 ## 2026-06-10
 
+### perf+ux(ranking): 드래그앤드롭 + optimistic 순서 변경
+
+사용자 보고: "위 아래 한 칸씩 옮길 때 전체 화면이 리렌더링되는데 최적화해서 리렌더링 없애고 드래그앤드롭으로 순서 재배치하라."
+
+원인:
+- 기존 `useClubRanking.move`는 RPC 호출 후 `refresh()` 로 전체 멤버 목록을 다시 fetch했다. 한 칸 옮길 때마다 SQL 왕복 + 전체 list 재렌더링.
+- 위/아래 화살표만 제공되어 대규모 재배치가 비효율.
+
+대응:
+- `@dnd-kit/core` + `@dnd-kit/sortable` 추가.
+- `useClubRanking` 에 `reorder(fromIndex, toIndex)` 신규 함수: **클라이언트 상태부터 먼저 옮기고** `moveRankingPosition` RPC 를 백그라운드로 호출. 성공 시 그대로 유지, 실패 시 직전 snapshot 으로 rollback + 에러 throw. `refresh()` 호출 없음 → 다른 행은 리렌더링 발생하지 않는다.
+- 기존 `move(input)` 도 내부에서 같은 `reorder` 를 호출하도록 변경 (호환).
+- `ClubRecordRankingView`:
+  - `DndContext` + `SortableContext` (verticalListSortingStrategy) + `useSortable` 행 단위 hook.
+  - `SortableRankingRow` 를 `React.memo` 로 감싸 안 바뀐 행은 리렌더링 회피.
+  - Pointer/Touch/Keyboard 센서 (모바일 활성화 delay 150ms + tolerance 6px).
+  - 드래그 핸들(`GripVertical` 아이콘) + **위/아래 화살표 동시 유지** (사용자 요구).
+  - 사용자 요청에 따라 `클럽 홈` 의 랭킹 진입은 이전 turn 에 제거되었고, `클럽 탭 > 멤버 > 랭킹 관리` 가 유일한 진입점.
+
+리렌더링 동선:
+- 드래그 release → `handleDragEnd` → `reorder(from, to)` → `setMembers` 한 번만 호출 → memoized `SortableRankingRow` 들 중 **위치가 바뀐 행만 re-render**.
+- 위/아래 버튼도 같은 `handleMove(index, index ± 1)` 로 묶어 동일한 흐름.
+
+검증: `npm run verify` 통과(test 67/67, lint 0 errors, build 성공). dnd-kit 추가로 production bundle 증가 있음(허용 가능 수준).
+
 ### ux(ranking): 클럽 회원 랭킹 행에서 무의미한 정보 제거
 
 사용자 보고: 랭킹 행에 노출되던 "그룹 X / 출석 N / 확정 경기 M" 정보가 사용자에게 무의미하고 노출 이유를 못 알아본다는 강한 피드백.
