@@ -2,14 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  CalendarDays,
-  ChevronRight,
-  History,
-  PlusCircle,
-  Shield,
-  Trophy,
-} from "lucide-react";
+import { CalendarDays, ChevronRight, Trophy } from "lucide-react";
 
 import { AppBar } from "@/components/layout/app-bar";
 import { ClubSwitcherAction } from "@/components/layout/club-switcher-action";
@@ -152,56 +145,26 @@ export function ClubRecordDashboardView({
     <div className="space-y-6">
       <AppBar title="클럽 레코드" showBack={false} actions={<ClubSwitcherAction />} />
       <div className="space-y-6 px-4">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between gap-3">
-              <CardTitle>운영 상태</CardTitle>
-              <Badge variant={access.capabilities.canManageClubData ? "brand" : "default"}>
-                {access.roleLabel}
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              테니스 클럽 데일리 매치 운영 화면입니다. 오늘 이벤트, 참가자 현황,
-              월간 카드 중심으로 확인합니다.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {access.capabilities.canCreateEvent ? (
-                <Button size="sm" asChild>
-                  <Link href={`/clubs/${clubId}/club-record/new`}>
-                    <PlusCircle className="size-4" />
-                    새 이벤트
-                  </Link>
-                </Button>
-              ) : null}
-              {access.capabilities.canViewRanking ? (
-                <Button size="sm" variant="outline" asChild>
-                  <Link href={`/clubs/${clubId}/club-record/ranking`}>
-                    <Shield className="size-4" />
-                    클럽 회원 랭킹
-                  </Link>
-                </Button>
-              ) : null}
-              {access.capabilities.canViewOwnHistory ? (
-                <Button size="sm" variant="outline" asChild>
-                  <Link href={`/clubs/${clubId}/club-record/history`}>
-                    <History className="size-4" />
-                    내 기록
-                  </Link>
-                </Button>
-              ) : null}
-              {currentEvent ? (
+        {currentEvent ? (
+          <Card>
+            <CardContent className="space-y-3 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-medium">진행 중인 이벤트가 있습니다.</p>
+                <Badge variant={access.capabilities.canManageClubData ? "brand" : "default"}>
+                  {access.roleLabel}
+                </Badge>
+              </div>
+              <div className="flex flex-wrap gap-2">
                 <Button size="sm" asChild>
                   <Link href={`/clubs/${clubId}/club-record/${currentEvent.id}`}>
                     <CalendarDays className="size-4" />
                     현재 이벤트 열기
                   </Link>
                 </Button>
-              ) : null}
-            </div>
-          </CardContent>
-        </Card>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
 
         {nextMatch ? (
           <Card className="border-[var(--player-highlight)]/40 bg-[var(--player-highlight)]/5">
