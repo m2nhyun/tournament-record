@@ -53,6 +53,55 @@ npm run db:smoke:sql  # 3) anon 권한 회귀 검증 (#1)
 
 ## 2026-06-10
 
+### qa(full-club): 24명(여6, 게스트 4) 풀 클럽 e2e 시나리오 자동화
+
+목표: club_record 도메인 전체(시드 → 자동 편성 → 결과 입력 → 랭킹 갱신)를 한 묶음 자동 검증.
+
+신규 자산:
+- `scripts/qa/full-club/seed.mjs` · `cleanup.mjs` · `smoke-prod.mjs` · `fixture.mjs` · `lib.mjs`
+- `scripts/qa/full-club/scenario.e2e.test.ts` (Supabase RPC + `planClubRecordAutoAssignments` 묶음 검증)
+- `scripts/qa/full-club/use-local-supabase.sh` (운영 .env.local의 URL/키를 `npx supabase status` 기반 로컬 값으로 강제 override)
+- `vitest.e2e.config.ts` (단일 fork, 순차 실행)
+- `src/features/club-record/utils/full-club-fixture.ts` · `full-club-scenario.test.ts` (DB 없이 24명 분포로 알고리즘 단위 검증)
+- `docs/qa/full-club-scenario-2026-06-10.md` (시나리오 정의 / 검증 항목 / 운영 메모)
+
+npm scripts: `qa:full-club:seed` · `:scenario` · `:cleanup` · `qa:full-club` (3단계 묶음) · `qa:full-club:smoke-prod` (운영 read-only)
+
+핵심 검증:
+- `get_club_record_event_participants` RPC가 24명을 반환, 여 6 / 게스트 4 / 여 게스트 2 분포 일치
+- `apply_club_record_auto_assignments` RPC가 `planClubRecordAutoAssignments` 결과를 그대로 반영
+- all-female quartet이 목표(`computeWomenMatchTarget`=2)만큼 등장
+- `submit_club_record_match_result`(매치 참가 회원) + `update_club_record_match_result`(owner) 양쪽으로 confirmed 진입
+- confirmed 매치 존재 시 자동 편성 재호출 차단
+- 비참가 회원·비회원 인증 사용자의 결과 입력/참가자 insert 거절 (RLS / RPC 권한)
+- `club_record_members.match_count` 결과 입력 후 갱신, event status 자동 전환
+
+운영 정책 확인:
+- club_record의 매치 상태 enum은 `pending_result | confirmed | cancelled`. 일반 `matches` 도메인의 `submitted/confirmed/disputed`와 분리.
+- `prevent_club_record_confirmed_match_delete` trigger 때문에 confirmed 매치는 직접 delete 불가 → cleanup은 status를 `cancelled`로 update한 뒤 delete.
+
+운영 안전:
+- 시드/시나리오는 `use-local-supabase.sh`가 로컬 URL/키로 강제 override. 운영 DB 시드는 일절 하지 않음.
+- `smoke-prod.mjs`는 read-only(select head + RPC ping). URL이 로컬일 경우 즉시 종료.
+- 시드 잔존 0건 확인 (`npm run qa:full-club` 종료 시 운영/로컬 모두 0).
+
+### ux: 도착 시간 표시 정상화 + 카드 잡음 제거 + iOS 줌 fix 강화
+
+사용자 보고 4건 일괄:
+
+1. **iOS input focus 시 화면 확대 여전**: 어제 `globals.css` 에 `@media (max-width: 767px) { input { font-size: 16px } }` 룰을 넣었지만, shadcn `Input` / `Textarea` 가 className 으로 `text-sm` 을 직접 갖고 있어 CSS specificity (`.text-sm` 0,0,1,0 > `input` 0,0,0,1) 에서 패배해 적용 안 됨. 컴포넌트 자체 className 을 `text-base ... sm:text-sm` 로 바꿔 cascade 충돌을 끊었다. 모바일에서 16px → 자동 줌 차단. 데스크탑(`>= sm`)은 기존 디자인 그대로 14px.
+
+2. **참가자 도착 시간 표시가 "2026-06-11T11:30:00+00:00 도착" 같은 ISO 그대로 노출**: `get_club_record_event_participants` RPC가 `arrival_time` 을 timestamptz 그대로 반환하는데 컴포넌트가 그 값을 텍스트로 직접 보간하고 있었다. `formatArrivalLabel(value)` helper 추가 (ISO → `HH:MM 도착`, null → `정시 참가`). `openArrivalEdit` 도 `isoToHHmm` 로 prefill 해서 모달이 ISO 가 아닌 HH:MM 으로 열린다.
+
+3. **"정시" 옵션과 "20:00" 옵션 중복**: 이벤트 시작이 20:00 일 때 "정시 = 20:00" 인데 시간 그리드에 둘 다 등장. `arrivalOptions` 계산 시 `cursor` 를 시작 시각의 다음 30분 슬롯부터 시작하도록 변경. 이제 20:00~22:00 이벤트는 `정시 / 20:30 / 21:00` 로 노출.
+
+4. **클럽 홈 "다음 이벤트" 카드의 "최근 편성 시간" + 워크스페이스 "편성 가능 슬롯 / 미배정" + 워크스페이스 "최근 편성" Badge**: 무의미 정보 3곳 제거.
+   - `ClubRecordDashboardView` EventCard 의 `최근 편성 ...` 텍스트 제거
+   - `ClubRecordEventListView` 의 동일 텍스트 제거
+   - `ClubRecordEventWorkspaceView` 이벤트 요약 카드의 `참가자 / 편성 가능 슬롯 / 미배정` 통계 박스 제거(시간 박스만 남김), 액션 라인의 `최근 편성 {datetime}` Badge 제거. `확정된 자동 경기 존재` Badge 는 운영진 위험 안내라 유지.
+
+검증: `npm run verify` 통과(test 67/67, lint 0 errors, build 성공). DB 변경 없음.
+
 ### fix(invite): cannot coerce 에러 메시지 친화 매핑 + QA 스크립트 lint/typecheck/test 격리
 
 사용자 보고: 초대 링크 진입 시 "cannot coerce the result to a single json object" 가 원시 PostgREST 메시지 그대로 노출됨.

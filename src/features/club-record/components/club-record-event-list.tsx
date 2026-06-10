@@ -87,12 +87,7 @@ function EventListCard({
           </div>
           <EventStatusBadge status={event.status} assignmentDirty={event.assignmentDirty} />
         </div>
-        <div className="mt-4 flex items-center justify-between gap-3">
-          <p className="text-xs text-muted-foreground">
-            {event.lastAssignmentRunAt
-              ? `최근 편성 ${new Date(event.lastAssignmentRunAt).toLocaleString("ko-KR")}`
-              : "아직 자동 편성 기록 없음"}
-          </p>
+        <div className="mt-4 flex items-center justify-end gap-3">
           <Button size="sm" variant="outline" asChild>
             <Link href={`/clubs/${clubId}/club-record/${event.id}`}>
               열기

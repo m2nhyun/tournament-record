@@ -202,22 +202,11 @@ export function ClubRecordEventWorkspaceView({
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-xl border bg-muted/20 p-3">
-                <p className="text-xs text-muted-foreground">시간</p>
-                <p className="mt-1 font-medium">
-                  {formatTime(workspace.event.startsAt)} - {formatTime(workspace.event.endsAt)}
-                </p>
-              </div>
-              <div className="rounded-xl border bg-muted/20 p-3">
-                <p className="text-xs text-muted-foreground">
-                  참가자 / 편성 가능 슬롯 / 미배정
-                </p>
-                <p className="mt-1 font-medium">
-                  {workspace.summary.participantCount}명 / {workspace.summary.openSlotCount}개 /{" "}
-                  {workspace.summary.unslottedParticipantCount}명
-                </p>
-              </div>
+            <div className="rounded-xl border bg-muted/20 p-3">
+              <p className="text-xs text-muted-foreground">시간</p>
+              <p className="mt-1 font-medium">
+                {formatTime(workspace.event.startsAt)} - {formatTime(workspace.event.endsAt)}
+              </p>
             </div>
             <div className="flex flex-wrap gap-2">
               {access?.capabilities.canManageParticipants && !isReadOnlyEvent ? (
@@ -252,11 +241,6 @@ export function ClubRecordEventWorkspaceView({
               ) : null}
               {workspace.summary.hasConfirmedAutoMatch ? (
                 <Badge variant="destructive">확정된 자동 경기 존재</Badge>
-              ) : null}
-              {workspace.summary.lastAssignmentRunAt ? (
-                <Badge variant="default">
-                  최근 편성 {new Date(workspace.summary.lastAssignmentRunAt).toLocaleString("ko-KR")}
-                </Badge>
               ) : null}
             </div>
             {isReadOnlyEvent ? (

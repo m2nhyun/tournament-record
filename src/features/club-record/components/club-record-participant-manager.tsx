@@ -81,12 +81,15 @@ export function ClubRecordParticipantManager({
   const [guestOperatorNote, setGuestOperatorNote] = useState("");
   const [guestArrivalTime, setGuestArrivalTime] = useState("");
 
+  // 시작 시간(첫 슬롯)은 "정시" 옵션과 같은 의미라 옵션에서 제외한다.
+  // 늦참 입력이 의미 있는 30분 단위 후속 슬롯만 노출.
   const arrivalOptions = useMemo(() => {
     const start = new Date(startsAt);
     const end = new Date(endsAt);
     const values: string[] = [];
 
     const cursor = new Date(start);
+    cursor.setMinutes(cursor.getMinutes() + 30);
     while (cursor.getTime() < end.getTime() - 30 * 60 * 1000) {
       const hours = String(cursor.getHours()).padStart(2, "0");
       const minutes = String(cursor.getMinutes()).padStart(2, "0");
@@ -96,6 +99,29 @@ export function ClubRecordParticipantManager({
 
     return values;
   }, [endsAt, startsAt]);
+
+  // 참가자 행에서 도착 시간을 사람이 읽을 수 있는 HH:MM 으로 표시한다.
+  // arrival_time 컬럼은 ISO 타임스탬프라 그대로 노출하면 깨진 글자가 보인다.
+  const formatArrivalLabel = (value: string | null) => {
+    if (!value) return "정시 참가";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return `${value} 도착`;
+    }
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    return `${hours}:${minutes} 도착`;
+  };
+
+  // 도착 시간 변경 모달이 열릴 때 ISO → HH:MM 으로 prefill.
+  const isoToHHmm = (value: string | null) => {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    return `${hours}:${minutes}`;
+  };
 
   const toArrivalTimestamp = (value: string) => {
     if (!value) return null;
@@ -269,7 +295,7 @@ export function ClubRecordParticipantManager({
 
   const openArrivalEdit = (participant: ClubRecordEventParticipant) => {
     setArrivalEditTarget(participant);
-    setArrivalEditTime(participant.arrivalTime ?? "");
+    setArrivalEditTime(isoToHHmm(participant.arrivalTime));
   };
 
   const closeArrivalEdit = () => {
@@ -346,9 +372,7 @@ export function ClubRecordParticipantManager({
                     </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {participant.arrivalTime
-                      ? `${participant.arrivalTime} 도착`
-                      : "정시 참가"}
+                    {formatArrivalLabel(participant.arrivalTime)}
                   </p>
                 </div>
                 {!readOnly ? (
