@@ -51,6 +51,22 @@ npm run db:smoke:sql  # 3) anon 권한 회귀 검증 (#1)
 
 ---
 
+## 2026-06-10
+
+### fix(mobile): iOS Safari/Chrome 의 input focus 자동 줌 차단
+
+사용자 보고: iOS Chrome 에서 input 을 누르면 포커스되면서 화면이 확대됨.
+
+원인: iOS Safari/Chrome 은 form control 의 computed `font-size` 가 16px 미만이면 focus 시 viewport 를 자동으로 줌인한다. shadcn 기본 `Input` 이 `text-sm`(14px) 이라 모든 입력창이 트리거됨.
+
+대응: `globals.css` 의 `@layer base` 에 모바일 폭(`max-width: 767px`) 한정으로 `input`/`select`/`textarea` 의 `font-size: 16px` 를 강제. checkbox/radio/range/color 처럼 크기 관련이 무의미한 타입은 제외해 시각이 어긋나지 않게 했다.
+
+대안 비교:
+- viewport meta 의 `maximum-scale=1`/`user-scalable=no` 도 줌은 차단하지만, 사용자가 화면 확대 자체를 못 하게 만들어 접근성을 해치기 때문에 채택하지 않았다.
+- 데스크탑(>= 768px) 폭에서는 Tailwind 가 지정한 시각 크기를 그대로 유지해 디자인 회귀가 없다.
+
+검증: `npm run verify` 통과(test 67/67, lint 0 errors, build 성공). 실제 iOS 단말에서 input focus 시 줌이 안 되는지는 운영진이 직접 확인 권장(데스크탑 Chrome 은 같은 동작이 없어 자동 검증 불가).
+
 ## 2026-06-09
 
 ### refactor(ia): 클럽 탭에서 legacy schedules 진입점 제거

@@ -146,4 +146,19 @@
     );
     min-width: 320px;
   }
+
+  /*
+   * iOS Safari / iOS Chrome 은 form control 의 computed font-size 가 16px 미만이면
+   * focus 시 자동으로 viewport 를 줌인한다. shadcn 기본 input 이 text-sm(14px) 이라
+   * 입력창마다 화면이 확대되는 마찰이 있어서, 모바일 폭에서 form control 의 최소
+   * font-size 를 16px 로 강제한다. 데스크탑(>=768px) 에서는 Tailwind 가 지정한 시각
+   * 크기를 그대로 유지한다.
+   */
+  @media (max-width: 767px) {
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+    select,
+    textarea {
+      font-size: 16px;
+    }
+  }
 }
