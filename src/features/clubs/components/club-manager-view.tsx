@@ -117,13 +117,16 @@ export function ClubManagerView({ clubId }: ClubManagerViewProps) {
     );
   }
 
-  // owner / 본인 / 게스트는 액션 대상에서 제외. owner 는 DB 룰상 본인이지만
+  // owner / 본인 / 게스트 / 미연결 멤버는 액션 대상에서 제외. owner 는 DB 룰상 본인이지만
   // 예외 상태(직접 SQL 편집 등)에 대비해 role === "owner" 도 명시적으로 빼둔다.
   // RPC set_club_member_role 도 owner 대상 변경을 raise 로 차단한다.
   const candidates = localMembers
     .filter(
       (member) =>
-        !member.isMe && member.role !== "owner" && member.role !== "guest",
+        member.userId &&
+        !member.isMe &&
+        member.role !== "owner" &&
+        member.role !== "guest",
     )
     .sort((a, b) => {
       if (a.role === b.role) return a.nickname.localeCompare(b.nickname);

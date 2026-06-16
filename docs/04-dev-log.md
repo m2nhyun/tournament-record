@@ -51,6 +51,35 @@ npm run db:smoke:sql  # 3) anon 권한 회귀 검증 (#1)
 
 ---
 
+## 2026-06-16
+
+### feat(clubs): 이름으로 미연결 멤버 추가 + 초대 링크 계정 연결 흐름
+
+목표: 카카오 가입을 먼저 요구하지 않고도 클럽 운영진이 실제 클럽 인원을 빠르게 명단에 넣고, 나중에 본인이 초대 링크로 들어오면 기존 기록용 멤버 row와 계정을 연결할 수 있게 한다.
+
+제품/UX:
+- 클럽 관리 화면에 운영진(owner/manager)용 `멤버 추가` 모달 추가. 이름만 입력하면 `club_members.user_id = null`인 정식 `member` row를 만든다.
+- 멤버 목록에는 계정이 아직 붙지 않은 row를 `미연결` 배지로 표시한다.
+- 초대 링크(`/join/[inviteCode]`)에서 정회원 로그인 후 카카오/계정 이름과 같은 미연결 멤버가 있으면 `기존 멤버로 연결` 확인 영역을 보여준다.
+- 이름이 다르거나 사용자가 원하지 않으면 기존처럼 활동 닉네임을 입력해 별도 멤버로 참가할 수 있다.
+- 미연결 멤버는 운영진 임명 후보에서 제외된다.
+
+DB/RPC:
+- migration `20260616120000_add_unclaimed_club_members.sql` 추가.
+- `club_members.user_id`를 nullable로 변경.
+- `add_unclaimed_club_member(club_id, nickname)` 추가: active owner/manager만 호출 가능.
+- `find_claimable_club_member_by_invite(code, display_name)` 추가: 정회원 초대 참가자가 같은 이름의 미연결 멤버 후보를 조회.
+- `claim_club_member_by_invite(code, member_id)` 추가: 초대 코드가 유효하고 대상이 미연결 일반 멤버일 때 현재 auth user와 연결.
+- `remove_club_member`는 `user_id = null` 멤버도 소프트 삭제 가능하도록 보정.
+- `set_club_member_role`은 `user_id = null` 멤버의 운영진 임명을 DB에서도 차단.
+- 신규 RPC는 `authenticated`에만 grant. JWT-less `anon` 화이트리스트에는 추가하지 않는다.
+
+운영 상태:
+- 운영 DB 적용 완료. `npm run db:push`에서 migration 적용은 성공했고, 후속 Docker 기반 schema dump는 Docker daemon 미실행으로 실패했다.
+- 적용 직후 `npm run db:push:dry` 결과는 `Remote database is up to date.`로 확인했다.
+- `supabase/schema.sql`은 migration 내용에 맞춰 수동 동기화 반영했다.
+- 스키마 변경 있음.
+
 ## 2026-06-10
 
 ### qa(full-club): 24명(여6, 게스트 4) 풀 클럽 e2e 시나리오 자동화

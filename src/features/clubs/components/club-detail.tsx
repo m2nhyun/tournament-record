@@ -8,6 +8,7 @@ import {
   RefreshCw,
   Share2,
   ShieldCheck,
+  UserPlus,
   Users,
 } from "lucide-react";
 import { useCallback, useState } from "react";
@@ -20,6 +21,7 @@ import { LoadingSpinner } from "@/components/feedback/loading-spinner";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { AppBar } from "@/components/layout/app-bar";
 import { ClubSwitcherAction } from "@/components/layout/club-switcher-action";
+import { AddClubMemberModal } from "@/features/clubs/components/add-club-member-modal";
 import { ClubMemberList } from "@/features/clubs/components/club-member-list";
 import { ClubNameEditModal } from "@/features/clubs/components/club-name-edit-modal";
 import { useClubDetail } from "@/features/clubs/hooks/use-club-detail";
@@ -44,11 +46,13 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
     saving,
     saveClubName,
     saveMySettings,
+    addMemberByName,
     regenerateInviteCode,
     removeMember,
   } = useClubDetail(clubId);
   const [copied, setCopied] = useState<"code" | "link" | null>(null);
   const [openNameDialog, setOpenNameDialog] = useState(false);
+  const [openAddMemberDialog, setOpenAddMemberDialog] = useState(false);
   const [currentTime] = useState(() => Date.now());
 
   const copyInviteCode = useCallback(async () => {
@@ -236,6 +240,16 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
                 </Button>
               ) : null}
               {club.myRole === "owner" || club.myRole === "manager" ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setOpenAddMemberDialog(true)}
+                >
+                  <UserPlus className="size-4" />
+                  멤버 추가
+                </Button>
+              ) : null}
+              {club.myRole === "owner" || club.myRole === "manager" ? (
                 <Button size="sm" variant="outline" asChild>
                   <Link href={`/clubs/${clubId}/club-record/ranking`}>
                     <ListOrdered className="size-4" />
@@ -266,6 +280,14 @@ export function ClubDetailView({ clubId }: ClubDetailViewProps) {
           saving={saving}
           currentName={club.name}
           onSave={saveClubName}
+        />
+      ) : null}
+      {club.myRole === "owner" || club.myRole === "manager" ? (
+        <AddClubMemberModal
+          open={openAddMemberDialog}
+          onOpenChange={setOpenAddMemberDialog}
+          saving={saving}
+          onAdd={addMemberByName}
         />
       ) : null}
     </div>

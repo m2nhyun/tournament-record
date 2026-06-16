@@ -28,7 +28,7 @@
 - Supabase CLI auth: `npx supabase projects list`로 접근 가능한 프로젝트 목록 확인됨
 - Supabase local link: 설정되어 있지 않음. `npx supabase projects list`는 `Cannot find project ref. Have you run supabase link?` 안내를 함께 출력한다.
 - Supabase DB automation: 이 repo는 `supabase link` 대신 `SUPABASE_DB_PUSH_URL`/`SUPABASE_DB_URL`을 `--db-url`로 넘기는 방식이 표준이다.
-- Supabase migration state: remote에는 `club_record` 본 migration 4개, 후속 보정/동기화 migration, 히스토리 게스트 이름 RPC 보정 migration, 히스토리 `team_names` migration이 반영되어 있으며, `npm run db:push:dry` 기대값은 `Remote database is up to date.`다.
+- Supabase migration state: remote에는 `club_record` 본 migration 4개, 후속 보정/동기화 migration, 히스토리 게스트 이름 RPC 보정 migration, 히스토리 `team_names` migration, 미연결 클럽 멤버/계정 연결 migration이 반영되어 있으면 `npm run db:push:dry` 기대값은 `Remote database is up to date.`다.
 - GitHub CLI: `gh`는 현재 설치되어 있지 않음
 - GitHub access: GitHub MCP 인증과 `git` 원격 조회를 사용한다. 원격 저장소는 `m2nhyun/tournament-record`다.
 
@@ -52,6 +52,8 @@
 - 운영 권장: Kakao OAuth + Email/Password 로그인
 - 게스트 참가: 초대 링크(`/join/[inviteCode]`)에서 게스트 참가 허용
   - 게스트 권한: 조회/참가만 허용, 경기 생성/수정 불가
+- 미연결 멤버: 운영진이 이름만으로 먼저 추가할 수 있으며, 정회원이 초대 링크로 들어와 같은 이름 후보를 확인한 경우 `claim_club_member_by_invite`로 기존 멤버 row와 연결한다.
+  - `add_unclaimed_club_member`, `find_claimable_club_member_by_invite`, `claim_club_member_by_invite`는 `authenticated` 전용 RPC다. JWT-less `anon` 권한은 부여하지 않는다.
 - 개발 편의 옵션: `NEXT_PUBLIC_ALLOW_GUEST_MODE=true`
   - 홈에서 자동 게스트 세션 생성
   - 운영 배포에서는 기본 `false` 권장

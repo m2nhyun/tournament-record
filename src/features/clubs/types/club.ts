@@ -24,7 +24,7 @@ export type ClubDetail = {
 
 export type ClubMember = {
   id: string;
-  userId: string;
+  userId: string | null;
   nickname: string;
   role: ClubRole;
   isActive: boolean;
@@ -33,4 +33,11 @@ export type ClubMember = {
   openKakaoProfile: boolean;
   allowRecordSearch: boolean;
   shareHistory: boolean;
+};
+
+export type ClaimableClubMember = {
+  id: string;
+  clubId: string;
+  clubName: string;
+  nickname: string;
 };

@@ -17,11 +17,14 @@ import {
   signUpWithEmail,
 } from "@/features/auth/services/auth";
 import {
+  claimClubMemberByInvite,
+  findClaimableClubMemberByInvite,
   joinClub,
   joinClubAsGuest,
 } from "@/features/clubs/services/clubs";
 import { toClubErrorMessage } from "@/features/clubs/services/club-error";
 import { AppBar } from "@/components/layout/app-bar";
+import type { ClaimableClubMember } from "@/features/clubs/types/club";
 
 type InviteJoinViewProps = {
   inviteCode: string;
@@ -29,6 +32,26 @@ type InviteJoinViewProps = {
 
 function toMessage(error: unknown) {
   return toClubErrorMessage(error);
+}
+
+function getUserDisplayNameSeed(user: User | null) {
+  if (!user) return "";
+
+  const candidates = [
+    user.user_metadata?.name,
+    user.user_metadata?.full_name,
+    user.user_metadata?.nickname,
+    user.user_metadata?.preferred_username,
+    user.email?.split("@")[0],
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.trim()) {
+      return candidate.trim().replace(/\s+/g, " ");
+    }
+  }
+
+  return "";
 }
 
 export function InviteJoinView({ inviteCode }: InviteJoinViewProps) {
@@ -39,6 +62,9 @@ export function InviteJoinView({ inviteCode }: InviteJoinViewProps) {
     null,
   );
   const [nickname, setNickname] = useState("");
+  const [claimCandidate, setClaimCandidate] =
+    useState<ClaimableClubMember | null>(null);
+  const [claimLookupDone, setClaimLookupDone] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<{
@@ -55,8 +81,9 @@ export function InviteJoinView({ inviteCode }: InviteJoinViewProps) {
       .then((currentUser) => {
         if (!mounted) return;
         setUser(currentUser);
-        if (!nickname && currentUser?.user_metadata?.name) {
-          setNickname(String(currentUser.user_metadata.name));
+        const displayName = getUserDisplayNameSeed(currentUser);
+        if (!nickname && displayName) {
+          setNickname(displayName);
         }
       })
       .finally(() => {
@@ -72,6 +99,41 @@ export function InviteJoinView({ inviteCode }: InviteJoinViewProps) {
     [inviteCode],
   );
   const isGuest = !!user?.is_anonymous;
+
+  useEffect(() => {
+    let mounted = true;
+    const displayName = getUserDisplayNameSeed(user);
+
+    setClaimCandidate(null);
+    setClaimLookupDone(false);
+
+    if (!user || user.is_anonymous || !displayName) {
+      setClaimLookupDone(true);
+      return () => {
+        mounted = false;
+      };
+    }
+
+    void findClaimableClubMemberByInvite({
+      inviteCode: normalizedCode,
+      displayName,
+    })
+      .then((candidate) => {
+        if (!mounted) return;
+        setClaimCandidate(candidate);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setClaimCandidate(null);
+      })
+      .finally(() => {
+        if (mounted) setClaimLookupDone(true);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [normalizedCode, user]);
 
   async function handleGuestContinue() {
     setBusy("guest");
@@ -157,6 +219,22 @@ export function InviteJoinView({ inviteCode }: InviteJoinViewProps) {
       const clubId = isGuest
         ? await joinClubAsGuest({ inviteCode: normalizedCode, nickname })
         : await joinClub({ inviteCode: normalizedCode, nickname });
+      router.replace(`/clubs/${clubId}`);
+    } catch (error) {
+      setStatus({ type: "error", message: toMessage(error) });
+      setBusy(null);
+    }
+  }
+
+  async function handleClaimMember() {
+    if (!claimCandidate) return;
+
+    setBusy("join");
+    try {
+      const clubId = await claimClubMemberByInvite({
+        inviteCode: normalizedCode,
+        memberId: claimCandidate.id,
+      });
       router.replace(`/clubs/${clubId}`);
     } catch (error) {
       setStatus({ type: "error", message: toMessage(error) });
@@ -252,6 +330,47 @@ export function InviteJoinView({ inviteCode }: InviteJoinViewProps) {
             <div className="rounded-lg border px-3 py-2 text-xs text-muted-foreground">
               현재 모드: {isGuest ? "게스트 참가 (조회/참가만 가능)" : "정회원 참가"}
             </div>
+            {!isGuest && claimCandidate ? (
+              <div className="space-y-3 rounded-lg border border-[var(--brand)]/30 bg-[var(--brand)]/5 px-3 py-3">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">
+                    {claimCandidate.clubName}에 같은 이름의 멤버가 있습니다.
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {claimCandidate.nickname} 님으로 저장된 기존 기록과 현재 계정을
+                    연결할 수 있습니다.
+                  </p>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <Button
+                    type="button"
+                    onClick={() => void handleClaimMember()}
+                    disabled={busy !== null}
+                  >
+                    {busy === "join" ? (
+                      <>
+                        <Loader2 className="size-4 animate-spin" />
+                        연결 중...
+                      </>
+                    ) : (
+                      "기존 멤버로 연결"
+                    )}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={busy !== null}
+                    onClick={() => setClaimCandidate(null)}
+                  >
+                    다른 이름으로 참가
+                  </Button>
+                </div>
+              </div>
+            ) : !isGuest && !claimLookupDone ? (
+              <div className="rounded-lg border px-3 py-2 text-xs text-muted-foreground">
+                같은 이름의 기존 멤버를 확인 중입니다.
+              </div>
+            ) : null}
             <div className="space-y-1.5">
               <Label htmlFor="invite-nickname">활동 닉네임</Label>
               <Input

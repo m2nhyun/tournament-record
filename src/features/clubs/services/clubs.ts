@@ -4,6 +4,7 @@ import { requireCompletedProfile } from "@/features/auth/services/profile";
 import { mapClubSettingsError } from "@/features/clubs/services/club-error";
 
 import type {
+  ClaimableClubMember,
   ClubSummary,
   ClubRole,
   ClubDetail,
@@ -22,6 +23,13 @@ type ClubMemberRow = {
   role: ClubRole;
   nickname: string;
   clubs: ClubEntity | ClubEntity[] | null;
+};
+
+type ClaimableClubMemberRow = {
+  id: string;
+  club_id: string;
+  club_name: string;
+  nickname: string;
 };
 
 function normalizeClub(club: ClubMemberRow["clubs"]): ClubEntity | null {
@@ -137,6 +145,54 @@ export async function joinClubAsGuest(input: {
   return data as string;
 }
 
+export async function findClaimableClubMemberByInvite(input: {
+  inviteCode: string;
+  displayName: string;
+}): Promise<ClaimableClubMember | null> {
+  await requireRegisteredUser();
+
+  const { data, error } = await getSupabaseClient().rpc(
+    "find_claimable_club_member_by_invite",
+    {
+      p_invite_code: input.inviteCode.trim().toUpperCase(),
+      p_display_name: input.displayName.trim(),
+    },
+  );
+
+  if (error) throw error;
+
+  const row = Array.isArray(data)
+    ? (data[0] as ClaimableClubMemberRow | undefined)
+    : (data as ClaimableClubMemberRow | null);
+
+  if (!row) return null;
+
+  return {
+    id: row.id,
+    clubId: row.club_id,
+    clubName: row.club_name,
+    nickname: row.nickname,
+  };
+}
+
+export async function claimClubMemberByInvite(input: {
+  inviteCode: string;
+  memberId: string;
+}) {
+  await requireRegisteredUser();
+
+  const { data, error } = await getSupabaseClient().rpc(
+    "claim_club_member_by_invite",
+    {
+      p_invite_code: input.inviteCode.trim().toUpperCase(),
+      p_member_id: input.memberId,
+    },
+  );
+
+  if (error) throw error;
+  return data as string;
+}
+
 export async function getClubDetail(clubId: string): Promise<ClubDetail> {
   const user = await requireUser();
 
@@ -199,6 +255,21 @@ export async function listClubMembers(clubId: string): Promise<ClubMember[]> {
     allowRecordSearch: row.allow_record_search ?? false,
     shareHistory: row.share_history ?? false,
   }));
+}
+
+export async function addClubMemberByName(clubId: string, nickname: string) {
+  await requireUser();
+
+  const { data, error } = await getSupabaseClient().rpc(
+    "add_unclaimed_club_member",
+    {
+      p_club_id: clubId,
+      p_nickname: nickname.trim(),
+    },
+  );
+
+  if (error) throw mapClubSettingsError(error);
+  return data as string;
 }
 
 export async function updateClubName(clubId: string, name: string) {

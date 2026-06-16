@@ -64,6 +64,11 @@ export function ClubMemberList({
                   나
                 </Badge>
               ) : null}
+              {!member.userId ? (
+                <Badge variant="default" className="text-[10px]">
+                  미연결
+                </Badge>
+              ) : null}
               <Badge variant={member.role === "owner" ? "brand" : "default"}>
                 {roleLabelMap[member.role] ?? member.role}
               </Badge>

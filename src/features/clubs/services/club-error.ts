@@ -74,6 +74,14 @@ export function mapClubSettingsError(error: unknown): Error {
     return new Error("클럽장만 멤버를 내보낼 수 있습니다.");
   }
 
+  if (message.includes("클럽 운영진만 멤버를 추가할 수 있습니다.")) {
+    return new Error("클럽 운영진만 멤버를 추가할 수 있습니다.");
+  }
+
+  if (message.includes("계정 연결 전에는 운영진으로 지정할 수 없습니다.")) {
+    return new Error("계정 연결 전에는 운영진으로 지정할 수 없습니다.");
+  }
+
   if (message.includes("Owner cannot be removed")) {
     return new Error("방장은 내보낼 수 없습니다.");
   }

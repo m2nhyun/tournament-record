@@ -40,6 +40,7 @@
   - `invite_expires_at` (초대 만료 시각)
 - `club_members`
   - 역할: `owner | manager | member | guest`
+  - `user_id`는 정회원/게스트 계정과 연결된 경우에만 값이 있으며, 운영진이 이름으로 먼저 추가한 미연결 멤버는 `user_id = null` 상태를 허용한다.
   - `is_active`, `left_at` (소프트 삭제/탈퇴 처리)
   - 개인 설정: `open_kakao_profile`, `allow_record_search`, `share_history`
 - `user_profiles`
@@ -79,6 +80,9 @@
 
 - `join_club_by_invite(code, nickname)`: 정회원 참가
 - `join_club_by_invite_as_guest(code, nickname)`: 게스트 참가
+- `add_unclaimed_club_member(club_id, nickname)`: 운영진이 로그인 전 클럽 인원을 이름으로 먼저 추가
+- `find_claimable_club_member_by_invite(code, display_name)`: 정회원 초대 참가 시 같은 이름의 미연결 멤버 후보 조회
+- `claim_club_member_by_invite(code, member_id)`: 초대 코드로 진입한 정회원 계정을 기존 미연결 멤버에 연결
 - `join_club_record_event_guest_by_invite_code(code, profile_input)`: club_record 게스트 초대 참가
 - `sync_club_record_members(club_id)`: 운영진/관리자가 활성 클럽 회원을 club_record 랭킹에 append하고 그룹을 재계산
 - `get_my_club_record_history(club_id)`, `get_club_record_member_history(club_id, member_id)`: club_record 확정 경기 히스토리 조회. `team_names`는 조회 대상 본인/대상 회원을 첫 항목으로 포함한 내 팀 전체이며, `partner_names`는 기존 호환용 파트너 목록이다. 팀/상대 이름에는 정회원 닉네임과 게스트 프로필 표시명을 모두 포함한다.
@@ -89,9 +93,14 @@
 ## Permission Model
 
 - 공통 검증 함수:
-  - `is_club_member(club_id)`: `is_active = true` 멤버만 true
+  - `is_club_member(club_id)`: 현재 로그인 사용자와 연결된 `is_active = true` 멤버만 true. `user_id = null` 미연결 멤버는 기록 대상이 될 수 있지만 권한 주체는 아니다.
   - `is_club_admin(club_id)`: active + `owner/manager`
   - `can_manage_match(club_id, created_by)`: `owner/manager` 또는 생성자
+- 클럽 멤버 연결:
+  - 운영진은 클럽 관리 화면에서 이름만으로 `member` 역할의 미연결 멤버를 추가할 수 있다.
+  - 초대 링크로 들어온 정회원의 카카오/계정 이름이 미연결 멤버 닉네임과 일치하면, 사용자가 확인한 뒤 기존 멤버 row의 `user_id`를 현재 auth user로 연결한다.
+  - 이름이 다르거나 사용자가 원하지 않으면 기존 초대 참가 흐름으로 별도 멤버를 생성한다.
+  - 미연결 멤버는 운영진으로 임명할 수 없다.
 - 경기 권한:
   - 생성: `owner/manager/member`만
   - 수정/결과 수정: `owner/manager/생성자`

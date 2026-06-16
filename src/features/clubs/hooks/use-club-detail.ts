@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import {
+  addClubMemberByName,
   getClubDetail,
   listClubMembers,
   regenerateClubInviteCode,
@@ -98,6 +99,41 @@ export function useClubDetail(clubId: string) {
     [clubId, saving],
   );
 
+  const addMemberByName = useCallback(
+    async (nickname: string) => {
+      if (saving) return;
+      setSaving(true);
+      try {
+        const memberId = await addClubMemberByName(clubId, nickname);
+        const trimmedNickname = nickname.trim();
+        setStatus({
+          type: "success",
+          message: `${trimmedNickname} 님을 미연결 멤버로 추가했습니다.`,
+        });
+        setMembers((prev) => [
+          ...prev,
+          {
+            id: memberId,
+            userId: null,
+            nickname: trimmedNickname,
+            role: "member",
+            isActive: true,
+            createdAt: new Date().toISOString(),
+            isMe: false,
+            openKakaoProfile: false,
+            allowRecordSearch: false,
+            shareHistory: false,
+          },
+        ]);
+      } catch (error) {
+        setStatus({ type: "error", message: toClubErrorMessage(error) });
+      } finally {
+        setSaving(false);
+      }
+    },
+    [clubId, saving],
+  );
+
   const regenerateInviteCode = useCallback(async () => {
     if (saving) return;
     setSaving(true);
@@ -149,6 +185,7 @@ export function useClubDetail(clubId: string) {
     refresh,
     saveClubName,
     saveMySettings,
+    addMemberByName,
     regenerateInviteCode,
     removeMember,
   };
